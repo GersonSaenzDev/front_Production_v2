@@ -1,0 +1,213 @@
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card bg-primary-subtle text-dark overflow-hidden"> 
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="mb-1">Consultar por Fecha 📅</h4>
+                        <p class="text-muted mb-0 opacity-75 text-sm">
+                            Fecha Seleccionada: 
+                            <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong> 
+                        </p>
+                    </div>
+
+                    <div class="col-12 col-md-3"> 
+                        <input 
+                            type="date" 
+                            class="form-control" 
+                            [(ngModel)]="selectedDate" 
+                            (change)="onDateChange(selectedDate)"
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="card earning-card bg-light-secondary text-white overflow-hidden">
+            <span class="round secondary-round small"></span>
+            <span class="round secondary-round big"></span>
+            <div class="card-body">
+                <span class="text-secondary d-block f-34 f-w-500 my-2">
+                    {{ totalProductoTerminado | number }}
+                    <i class="ti ti-circle-arrow-up-right opacity-50"></i>
+                </span>
+                <p class="text-muted mb-0 opacity-50">Total Producto Terminado</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="card earning-card bg-secondary-dark text-white overflow-hidden">
+            <span class="round secondary-round small"></span>
+            <span class="round secondary-round big"></span>
+            <div class="card-body">
+                <span class="text-white d-block f-34 f-w-500 my-2">
+                    {{ productoValidado | number }}
+                    <i class="ti ti-circle-arrow-up-right opacity-50"></i>
+                </span>
+                <p class=" mb-0 opacity-50">Producto Validado</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-12">
+        <div class="card total-income-card overflow-hidden bg-secondary-dark text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-lg icon m-r-5">
+                        <i class="text-white ti ti-layout-board-split f-24"></i>
+                    </div>
+                    <div class="ms-2">
+                        <h4 class="text-white f-w-600 mb-1">{{ productoConError | number }}</h4>
+                        <p class="mb-0 opacity-50 text-sm">Producto con Error</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card total-income-card warning overflow-hidden">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-lg icon-warning m-r-5">
+                        <i class="text-warning ti ti-layout-board-split f-24"></i>
+                    </div>
+                    <div class="ms-2">
+                        <h4 class="f-w-600 mb-1">{{ duplicados | number }}</h4>
+                        <p class="mb-0 opacity-50 text-sm">Duplicados</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-8 col-md-12">
+        <app-bar-chart [chartData]="barChartData" />
+    </div>
+
+    <!-- <div class="col-xl-4 col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row mb-3 align-items-center">
+                    <div class="col">
+                        <h4>Producción del Día</h4>
+                    </div>
+                    <div class="col-auto"></div>
+                </div>
+                <div class="rounded bg-light-secondary mb-3">
+                    <div class="px-3 pt-3">
+                        <div class="row mb-1 align-items-start">
+                            <div class="col">
+                                <h5 class="text-secondary mb-0">Bajaj Finery</h5>
+                                <small class="text-muted">10% Profit</small>
+                            </div>
+                            <div class="col-auto">
+                                <h4 class="mb-0">$1839.00</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <app-bajaj-chart />
+                </div>
+                <ul class="list-group list-group-flush">
+                    @for (list of ListGroup; track list) {
+                        <li class="list-group-item px-0 {{ list.space }}">
+                            <div class="row align-items-start">
+                                <div class="col">
+                                    <h5 class="mb-0">{{ list.name }}</h5>
+                                    <small class="{{ list.color }}">{{ list.profit }}</small>
+                                </div>
+                                <div class="col-auto">
+                                    <h4 class="mb-0">
+                                        {{ list.invest }}
+                                        <span class="ms-2 align-top avatar avatar-xxs {{ list.bgColor }}">
+                                            <i class="{{ list.icon }} {{ list.color }}"></i>
+                                        </span>
+                                    </h4>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+                <div class="text-center">
+                    <a href="javascript:" class="b-b-primary text-primary f-w-500">
+                        View all
+                        <i class="ti ti-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div> -->
+    
+    <div class="col-12 mt-4">
+        <div class="card">
+            <div class="card-header bg-light-secondary text-secondary">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5>Producción del día Detallada</h5>
+                        <p class="text-muted mb-0">
+                            Productos Seleccionado para {{ selectedDate | date:'shortDate':'':'es' }} (De {{ timeStart }} a {{ timeEnd }})
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body border-bottom">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Hora de Inicio</label>
+                        <input 
+                            type="time" 
+                            class="form-control" 
+                            [(ngModel)]="timeStart"
+                            (change)="onTimeRangeChange()"
+                        >
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Hora de Fin</label>
+                        <input 
+                            type="time" 
+                            class="form-control" 
+                            [(ngModel)]="timeEnd"
+                            (change)="onTimeRangeChange()"
+                        >
+                    </div>
+                    
+                    <div class="col-12 col-md-auto d-grid">
+                        <button class="btn btn-primary" (click)="onTimeRangeChange()">Aplicar Filtro</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Código Producto</th>
+                            <th>Nombre Producto</th>
+                            <th class="text-end">Producidos (Total)</th>
+                            <th class="text-end">Válidos</th>
+                            <th class="text-end">Errores</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (product of totalProducts; track product.productCode) {
+                            <tr>
+                                <td>{{ product.productCode }}</td>
+                                <td>{{ product.productName | titlecase }}</td>
+                                <td class="text-end text-primary f-w-600">{{ product.Producidos | number }}</td>
+                                <td class="text-end text-success">{{ product.Validos | number }}</td>
+                                <td class="text-end text-danger">{{ (product.Producidos - product.Validos) | number }}</td>
+                            </tr>
+                        }
+                        @empty {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No hay datos de producción disponibles para este rango y fecha.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>

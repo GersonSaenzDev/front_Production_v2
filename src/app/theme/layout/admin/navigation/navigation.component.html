@@ -1,0 +1,8 @@
+<nav class="app-main-header"> 
+  <div class="navbar-wrapper ">
+    <div class="m-header">
+      <a [routerLink]="['/production/']" class="b-brand"></a>
+    </div>
+    <app-nav-content (NavCollapsedMob)="navCollapseMob()" (SubmenuCollapse)="navSubmenuCollapse()" class="scroll-div w-100 compact" />
+  </div>
+</nav>

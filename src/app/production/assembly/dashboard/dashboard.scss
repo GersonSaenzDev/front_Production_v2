@@ -1,0 +1,44 @@
+.nav-tabs {
+  border-bottom: none !important;
+}
+body.berry-dark .nav-tabs .nav-link,
+body.berry-dark .tab-content {
+  box-shadow: none !important;
+  background: none !important;
+}
+
+.earning-card {
+  .round {
+    &.secondary-round {
+      background: #4527a0;
+    }
+    &.primary-round {
+      background: #1565c0;
+    }
+  }
+}
+
+.total-income-card {
+  .avatar {
+    background: #1565c0;
+  }
+}
+
+// Estilos para la tabla de producción detallada
+.table-responsive table.table {
+    // Si quieres un fondo base diferente para la tabla
+    // background-color: #ffffff; // Blanco por ejemplo, para que el hover se note más
+
+    tbody tr {
+        // Estilo predeterminado para las filas (si no quieres el gris de tu tema)
+        // background-color: #fff; // O el color de fondo que prefieras
+
+        &:hover {
+            // Un color más distintivo al pasar el mouse
+            background-color: #e0f7fa; // Un azul claro (color pastel, ajustable)
+            // O puedes usar uno de tus colores de tema, por ejemplo:
+            // background-color: var(--bs-primary-bg-subtle); // Si tienes variables CSS de Bootstrap
+            cursor: pointer; // Indica que la fila es interactiva (opcional)
+        }
+    }
+}

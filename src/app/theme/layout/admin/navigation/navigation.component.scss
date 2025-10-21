@@ -1,0 +1,60 @@
+/* Contenedor principal del logo y el botón de menú */
+.m-header {
+  display: flex;       /* Habilita Flexbox */
+  align-items: center; /* Centra verticalmente logo y botón */
+  justify-content: flex-start; /* Alinea los elementos a la izquierda */
+  padding: 5px 0 5px 0; /* Ajuste el padding para reducir el espacio superior/inferior */
+  height: 60px; /* Opcional: define una altura fija para la barra de cabecera */
+}
+
+/* Contenedor del logo */
+.b-brand {
+    padding: 0 10px 0 0; /* Agrega un pequeño espacio a la derecha del logo si es necesario */
+}
+
+/* Imagen del logo */
+.b-brand .logo-lg {
+  max-height: 35px; /* Altura que se ajusta a la cabecera */
+  max-width: 100px; /* Ancho limitado */
+  height: auto;
+}
+
+.app-main-header {
+    // 🎯 Color de fondo sutil y moderno
+    background-color: #e1d8f1; 
+    // Opcional: Un azul muy, muy claro si quieres un tono frío: #F0F8FF; 
+
+    // Opcional: Una sombra suave para darle profundidad (sutileza y sofisticación)
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Sombra muy ligera */
+    
+    // Opcional: Borde inferior muy delgado para definir la separación
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+// Si la barra tiene un color por defecto que necesitas anular, puedes hacer esto:
+.navbar-wrapper {
+    background-color: transparent !important;
+}
+
+.app-main-header {
+    // 🎯 Color de fondo existente: morado muy pálido
+    background-color: #ddccf1; 
+    
+    // 🎯 Sombra Tenuemente Mejorada (Ajuste Clave)
+    // Valores recomendados:
+    // 0: offset X (sin desplazamiento lateral)
+    // 1px: offset Y (pequeño desplazamiento vertical)
+    // 8px: blur radius (radio de desenfoque, hace que la sombra sea más suave y dispersa)
+    // 0: spread radius (radio de extensión)
+    // rgba(0, 0, 0, 0.08): color negro con 8% de opacidad (muy sutil)
+    box-shadow: 0 3px 10px 0 rgba(0, 0, 0, 0.12); 
+    
+    // Borde inferior muy delgado (mantenido)
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+// ... (Resto de tus estilos, asegurando que .navbar-wrapper es transparente)
+
+.navbar-wrapper {
+    background-color: transparent !important;
+}

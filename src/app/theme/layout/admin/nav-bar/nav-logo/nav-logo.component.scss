@@ -1,0 +1,22 @@
+
+// app/theme/layout/admin/nav-bar/nav-logo/nav-logo.component.scss
+/* Contenedor principal del logo y el botón de menú */
+.m-header {
+  display: flex;       /* Habilita Flexbox */
+  align-items: center; /* Centra verticalmente logo y botón */
+  justify-content: flex-start; /* Alinea los elementos a la izquierda */
+  padding: 5px 0 5px 0; /* Ajuste el padding para reducir el espacio superior/inferior */
+  height: 60px; /* Opcional: define una altura fija para la barra de cabecera */
+}
+
+/* Contenedor del logo */
+.b-brand {
+    padding: 0 10px 0 0; /* Agrega un pequeño espacio a la derecha del logo si es necesario */
+}
+
+/* Imagen del logo */
+.b-brand .logo-lg {
+  max-height: 100px; /* Altura que se ajusta a la cabecera */
+  max-width: 450px; /* Ancho limitado */
+  height: auto;
+}
