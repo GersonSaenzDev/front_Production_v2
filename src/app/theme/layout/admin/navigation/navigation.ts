@@ -18,7 +18,7 @@ export interface NavigationItem {
 export const NavigationItems: NavigationItem[] = [
   {
     id: 'dashboard',
-    title: 'Producción',
+    title: 'Panel de Control',
     type: 'group',
     icon: 'ti ti-building-factory-2',
     children: [
@@ -34,8 +34,8 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
-    id: 'Producción',
-    title: 'prod',
+    id: 'Produccion',
+    title: 'Producción',
     type: 'group',
     icon: 'icon-navigation',
     children: [
@@ -49,7 +49,7 @@ export const NavigationItems: NavigationItem[] = [
             id: 'barcode',
             title: 'Registro Producción',
             type: 'item',
-            url: '/login',
+            url: '/',
             target: true,
             breadcrumbs: false
           },
@@ -57,7 +57,7 @@ export const NavigationItems: NavigationItem[] = [
             id: 'new',
             title: 'Registro Novedades',
             type: 'item',
-            url: '/register',
+            url: '/',
             target: true,
             breadcrumbs: false
           }

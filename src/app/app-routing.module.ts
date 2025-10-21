@@ -1,22 +1,21 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AdminComponent } from './theme/layout/admin/admin.component';
-import { GuestComponent } from './theme/layout/guest/guest.component';
 
 const routes: Routes = [
-  // Rutas con Layout de Administración (AdminComponent)
   {
     path: '',
     component: AdminComponent,
     children: [
       {
-        // Esta ruta cargará el MÓDULO de producción de forma perezosa.
-        // El path 'production' será el prefijo para todas las rutas internas del módulo.
+        path: '',
+        redirectTo: '/production',
+        pathMatch: 'full'
+      },
+      {
         path: 'production',
-        // Usamos loadChildren y apuntamos a la clase ProductionModule.
         loadChildren: () => import('./production/production-module').then((m) => m.ProductionModule)
       },
-      // Aquí se agregarían otras rutas de módulos perezosos del área de administración
     ]
   },
 
