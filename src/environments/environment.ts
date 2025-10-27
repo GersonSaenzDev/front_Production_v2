@@ -8,7 +8,7 @@ export const environment = {
   appVersion: packageInfo.version,
   production: false,
   apiUrl: 'http://localhost:4210',
-  backendUrl: 'https://induproduction:7443',
+  // backendUrl: 'https://induproduction:7443',
   // backendUrl: 'https://backproduction:8443',
-  // backendUrl: 'http://localhost:3016',
+  backendUrl: 'http://localhost:3016',
 };

@@ -13,6 +13,16 @@ const routes: Routes = [
       },
     ]
   },
+  {
+    // Path completo: /production/productionNews
+    path: 'productionNews',
+    loadComponent: () => import('./assembly/production-news/production-news').then((c) => c.ProductionNews)
+  },
+  {
+    // Path completo: /production/wineryNews
+    path: 'wineryNews',
+    loadComponent: () => import('./assembly/winery-news/winery-news').then((c) => c.WineryNews)
+  },
 ];
 
 @NgModule({

@@ -1,0 +1,139 @@
+<div class="container-fluid py-4">
+    <div class="card bg-primary-subtle text-dark overflow-hidden">
+        <div class="card-body p-4">
+            <h3 class="text-primary-darker mb-1">Registro de Novedades de Bodega</h3>
+            <p class="text-muted mb-0">Reportar incidentes o inconsistencias de producto y logística.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-lg border-0">
+        <div class="card-body p-4 p-md-5">
+            
+            <!-- Mensajes de Feedback -->
+            <div class="alert-container mb-4" *ngIf="submitSuccess || submitError || isSubmitting">
+                
+                <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm" 
+                     role="alert" 
+                     *ngIf="submitSuccess">
+                    <i class="ti ti-circle-check fs-3 me-3"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-1">¡Novedad de Bodega Registrada!</h5>
+                        <p class="mb-0">{{ successMessage }}</p>
+                    </div>
+                    <button type="button" class="btn-close" (click)="submitSuccess = false" aria-label="Close"></button>
+                </div>
+
+                <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm" 
+                     role="alert" 
+                     *ngIf="submitError">
+                    <i class="ti ti-alert-circle fs-3 me-3"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-1">Error al Registrar Novedad</h5>
+                        <p class="mb-0">{{ submitError }}</p>
+                    </div>
+                    <button type="button" class="btn-close" (click)="submitError = ''" aria-label="Close"></button>
+                </div>
+
+                <div class="alert alert-info alert-dismissible fade show d-flex align-items-center shadow-sm" 
+                     role="alert" 
+                     *ngIf="isSubmitting">
+                    <div class="spinner-border spinner-border-sm text-info me-3" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-1">Procesando...</h5>
+                        <p class="mb-0">Registrando la novedad de bodega, por favor espere.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <form [formGroup]="wineryNewsForm" (ngSubmit)="onSubmit()">
+                <div class="row g-4">
+                    
+                    <div class="col-md-6">
+                        <label for="fechaNovedad" class="form-label text-muted">Fecha de Novedad (*)</label>
+                        <input type="date" id="fechaNovedad" class="form-control" formControlName="fechaNovedad"
+                            [ngClass]="{'is-invalid': isFieldInvalid('fechaNovedad')}">
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('fechaNovedad')">La fecha es obligatoria.</div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="tipoNovedad" class="form-label text-muted">Tipo de Novedad (*)</label>
+                        <select id="tipoNovedad" class="form-select" formControlName="tipoNovedad"
+                            [ngClass]="{'is-invalid': isFieldInvalid('tipoNovedad')}">
+                            <option value="" disabled>Seleccione el tipo</option>
+                            <option *ngFor="let tipo of tiposNovedad" [value]="tipo">{{ tipo }}</option>
+                        </select>
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('tipoNovedad')">Debe seleccionar un tipo de novedad.</div>
+                    </div>
+                    
+                    <div class="col-md-6 position-relative"> 
+                        <label for="productReference" class="form-label text-muted">Referencia en Producción (*)</label>
+                        <input 
+                            type="text" 
+                            id="productReference" 
+                            class="form-control" 
+                            formControlName="productReference"
+                            placeholder="Escriba código o nombre de referencia"
+                            [ngClass]="{'is-invalid': isFieldInvalid('productReference')}"
+                            (focus)="onFocus()"
+                            (blur)="onBlur()"
+                            autocomplete="off"
+                        >
+                        
+                        <div 
+                            class="autocomplete-results shadow-lg" 
+                            *ngIf="predictiveList.length > 0 && showDropdown"
+                        >
+                            <div 
+                                class="autocomplete-item" 
+                                *ngFor="let item of predictiveList"
+                                (mousedown)="selectReference(item)"
+                            >
+                                {{ item }}
+                            </div>
+                        </div>
+
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('productReference')">La referencia de producción es obligatoria.</div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="cantidadProducto" class="form-label text-muted">Cantidad de Producto (*)</label>
+                        <input 
+                            type="number" 
+                            id="cantidadProducto" 
+                            class="form-control" 
+                            formControlName="cantidadProducto"
+                            placeholder="Ingrese la cantidad"
+                            [ngClass]="{'is-invalid': isFieldInvalid('cantidadProducto')}"
+                        >
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('cantidadProducto')">La cantidad es obligatoria y debe ser mayor a 0.</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="detalleNovedad" class="form-label text-muted">Detalle de Novedad (*)</label>
+                        <textarea id="detalleNovedad" class="form-control" rows="3" formControlName="detalleNovedad"
+                            placeholder="Describa la novedad de forma clara y concisa (mínimo 10 caracteres)."
+                            [ngClass]="{'is-invalid': isFieldInvalid('detalleNovedad')}"></textarea>
+                        <div class="invalid-feedback" *ngIf="isFieldInvalid('detalleNovedad')">El detalle es obligatorio y requiere una descripción mínima.</div>
+                    </div>
+
+                    <div class="col-12 mt-4 text-end">
+                        <button type="submit" 
+                                class="btn btn-primary btn-lg shadow-sm" 
+                                [disabled]="wineryNewsForm.invalid || isSubmitting">
+                            <span *ngIf="!isSubmitting">
+                                <i class="ti ti-send me-2"></i> Registrar Novedad
+                            </span>
+                            <span *ngIf="isSubmitting">
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Registrando...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

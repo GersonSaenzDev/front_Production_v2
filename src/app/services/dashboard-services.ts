@@ -10,7 +10,8 @@ import {
     TopProductsResponse, 
     ChartDataResponse, 
     ChartData, 
-    TopProductsItem 
+    TopProductsItem, 
+    ReferenceSearchResponse
 } from '../interfaces/assembly.interface'; 
 import { environment } from 'src/environments/environment';
 
@@ -23,7 +24,8 @@ private http = inject(HttpClient);
 private readonly BASE_URL = environment.backendUrl;
 private readonly CARD_METRICS_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/cardAssembly`;
 private readonly TOP_PRODUCTION_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/topProducts`;
-private readonly TOTAL_PRODUCTION_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/totalProductsDay`; 
+private readonly TOTAL_PRODUCTION_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/totalProductsDay`;
+private readonly VIEW_REF_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/viewRef`;
 
 private handleError(error: any) {
  console.error('DashboardServices: Error en la petición:', error);
@@ -120,4 +122,29 @@ getTotalProductsDay(date: string, timeStart?: string, timeEnd?: string): Observa
           })
       );
   }
+
+  /**
+     * @description Realiza una búsqueda predictiva de referencias de producción.
+     * @param {string} referenceTerm - El término de búsqueda parcial (ej: "at 201").
+     * @returns {Observable<ReferenceSearchResponse>} - Respuesta del backend con la lista de referencias.
+     */
+    searchReferences(referenceTerm: string): Observable<ReferenceSearchResponse> {
+        // El body debe coincidir con la estructura que espera el backend: { "reference": "at 201" }
+        const body = { reference: referenceTerm };
+
+        console.log('SERVICIOS - CONTROL: Petición a viewRef con body:', body);
+
+        return this.http.post<ReferenceSearchResponse>(this.VIEW_REF_ENDPOINT, body)
+            .pipe(
+                // Manejo de errores común
+                catchError(this.handleError.bind(this)),
+                // Asegurar que, si el backend responde ok pero sin msg, se devuelva un array vacío.
+                map(response => {
+                    if (!response.msg) {
+                        return { ok: response.ok, msg: [] };
+                    }
+                    return response;
+                })
+            );
+    }  
 }

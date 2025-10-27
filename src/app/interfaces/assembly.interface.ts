@@ -56,3 +56,16 @@ export interface TopProductsItem {
     Producidos: number; // Total de unidades producidas (con y sin error)
     Validos: number;    // Total de unidades sin error
 }
+
+// Interfaz para cada item de referencia del producto
+export interface ReferenceItem {
+    productCode: string;
+    productName: string;
+    reference: string;
+}
+
+// Interfaz para la respuesta completa del backend
+export interface ReferenceSearchResponse {
+    ok: boolean;
+    msg: ReferenceItem[]; // El array de resultados
+}

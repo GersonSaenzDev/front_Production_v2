@@ -1,21 +1,16 @@
-/* src/app/production/assembly/production-news/production-news.scss */
+/* Puedes copiar y pegar el contenido de tu production-news.scss aquí */
 
 .autocomplete-results {
-    /* POSICIONAMIENTO CLAVE: Hace que el div FLOTE y NO empuje el layout */
     position: absolute; 
-    z-index: 1000;      /* Asegura que esté por encima de otros campos */
-    
-    /* DIMENSIONES */
-    width: 100%;        /* Mismo ancho que el input padre */
+    z-index: 1000;      
+    width: 100%;        
     max-height: 250px;
-    overflow-y: auto;   /* Scroll si hay muchos resultados */
+    overflow-y: auto;   
     
-    /* DISEÑO MODERNO Y SOFISTICADO */
     background: #fff;
     border: 1px solid #ddd; 
     border-radius: 6px; 
     
-    /* Sombra refinada (ya tienes shadow-lg en el HTML, esto es opcional) */
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15); 
 }
 
@@ -26,19 +21,13 @@
     color: #444;
     transition: background-color 0.2s, color 0.2s;
     
-    /* Previene bordes duplicados */
-    &:first-child {
-        border-top-left-radius: 6px;
-        border-top-right-radius: 6px;
-    }
-    
-    /* Estilo al pasar el mouse (efecto sutil) */
     &:hover {
-        background-color: #f5f5ff; /* Color muy claro para un estilo sutil/moderno */
+        background-color: #f5f5ff;
         color: var(--bs-primary, #007bff); 
     }
 }
 
+// app/production/assembly/winery-news/winery-news.scss
 
 .alert-container {
   animation: slideDown 0.3s ease-out;
@@ -89,11 +78,26 @@
   }
 }
 
-.alert-heading {
-  font-weight: 600;
-  font-size: 1.1rem;
+.autocomplete-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
 }
 
-.btn-close {
-  font-size: 0.875rem;
+.autocomplete-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #f0f0f0;
+  }
 }

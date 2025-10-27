@@ -1,6 +1,7 @@
 {
   "name": "Indusel_Production",
-  "version": "1.0.9",
+  "version": "1.0.10",
+  "description": "Indusel Development Team - Production Environment",
   "author": "Indusel Development Team",
   "private": true,
   "scripts": {

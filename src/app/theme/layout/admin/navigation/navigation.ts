@@ -40,29 +40,36 @@ export const NavigationItems: NavigationItem[] = [
     icon: 'icon-navigation',
     children: [
       {
-        id: 'Authentication',
+        id: 'ensamble',
         title: 'Ensamble',
         type: 'collapse',
         icon: 'ti ti-brand-codesandbox',
         children: [
           {
             id: 'barcode',
-            title: 'Registro Producción',
+            title: 'Novedades Producción',
             type: 'item',
-            url: '/',
-            target: true,
-            breadcrumbs: false
-          },
-          {
-            id: 'new',
-            title: 'Registro Novedades',
-            type: 'item',
-            url: '/',
-            target: true,
+            url: 'production/productionNews',
             breadcrumbs: false
           }
         ]
-      }
+      },
+      {
+        id: 'bodega',
+        title: 'Bodega',
+        type: 'collapse',
+        icon: 'ti ti-building-warehouse',
+        children: [
+          {
+            id: 'novedades_bodega',
+            title: 'Registro Novedades',
+            type: 'item',
+            url: 'production/wineryNews',
+            breadcrumbs: false
+          }
+        ]
+      },
+      
     ]
   },
   // {

@@ -1,1 +1,189 @@
-<p>production-news works!</p>
+<!-- app/production/assembly/production-news/production-news.html -->
+<div class="container-fluid py-4">
+  <div class="card bg-primary-subtle text-dark overflow-hidden">
+    <div class="card-body p-4">
+      <h3 class="text-primary-darker mb-1">Registro de Novedades de Producción</h3>
+      <p class="text-muted mb-0">Reportar incidentes o Novedades de ensamble.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-lg border-0">
+    <div class="card-body p-4 p-md-5">
+      
+      <!-- 💡 NUEVO: Mensajes de Feedback -->
+      <div class="alert-container mb-4" *ngIf="submitSuccess || submitError || isSubmitting">
+        
+        <!-- Mensaje de Éxito -->
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm" 
+             role="alert" 
+             *ngIf="submitSuccess">
+          <i class="ti ti-circle-check fs-3 me-3"></i>
+          <div class="flex-grow-1">
+            <h5 class="alert-heading mb-1">¡Novedad Registrada Exitosamente!</h5>
+            <p class="mb-0">{{ successMessage }}</p>
+          </div>
+          <button type="button" class="btn-close" (click)="submitSuccess = false" aria-label="Close"></button>
+        </div>
+
+        <!-- Mensaje de Error -->
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm" 
+             role="alert" 
+             *ngIf="submitError">
+          <i class="ti ti-alert-circle fs-3 me-3"></i>
+          <div class="flex-grow-1">
+            <h5 class="alert-heading mb-1">Error al Registrar Novedad</h5>
+            <p class="mb-0">{{ submitError }}</p>
+          </div>
+          <button type="button" class="btn-close" (click)="submitError = ''" aria-label="Close"></button>
+        </div>
+
+        <!-- Mensaje de Carga -->
+        <div class="alert alert-info alert-dismissible fade show d-flex align-items-center shadow-sm" 
+             role="alert" 
+             *ngIf="isSubmitting">
+          <div class="spinner-border spinner-border-sm text-info me-3" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <div class="flex-grow-1">
+            <h5 class="alert-heading mb-1">Procesando...</h5>
+            <p class="mb-0">Registrando la novedad de producción, por favor espere.</p>
+          </div>
+        </div>
+
+      </div>
+      
+      <form [formGroup]="novedadForm" (ngSubmit)="onSubmit()">
+        <div class="row g-4">
+          
+          <div class="col-md-6">
+            <label for="fecha" class="form-label text-muted">Fecha de Novedad (*)</label>
+            <input type="date" id="fecha" class="form-control" formControlName="fecha"
+              [ngClass]="{'is-invalid': isFieldInvalid('fecha')}">
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('fecha')">La fecha es obligatoria.</div>
+          </div>
+          
+          <div class="col-md-6">
+            <label for="categoriaNovedad" class="form-label text-muted">Categoría de Novedad (*)</label>
+            <select id="categoriaNovedad" class="form-select" formControlName="categoriaNovedad"
+              [ngClass]="{'is-invalid': isFieldInvalid('categoriaNovedad')}">
+              <option value="" disabled>Seleccione la categoría</option>
+              <option *ngFor="let categoria of categoriasNovedad" [value]="categoria">{{ categoria }}</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('categoriaNovedad')">Debe seleccionar una categoría de novedad.</div>
+          </div>
+          
+          <div class="col-md-6">
+            <label for="lineaNovedad" class="form-label text-muted">Línea con Novedad (*)</label>
+            <select id="lineaNovedad" class="form-select" formControlName="lineaNovedad"
+              [ngClass]="{'is-invalid': isFieldInvalid('lineaNovedad')}">
+              <option value="" disabled>Seleccione la línea</option>
+              <option *ngFor="let linea of lineasNovedad" [value]="linea">{{ linea }}</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('lineaNovedad')">Debe seleccionar la línea afectada.</div>
+          </div>
+
+          <div class="col-md-6 position-relative"> 
+            <label for="productReference" class="form-label text-muted">Referencia en Producción (*)</label>
+            <input 
+                type="text" 
+                id="productReference" 
+                class="form-control" 
+                formControlName="productReference"
+                placeholder="Escriba código o nombre de referencia"
+                [ngClass]="{'is-invalid': isFieldInvalid('productReference')}"
+                (focus)="onFocus()"
+                (blur)="onBlur()"
+            >
+            
+            <div 
+                class="autocomplete-results shadow-lg" 
+                *ngIf="predictiveList.length > 0 && showDropdown"
+            >
+                <div 
+                    class="autocomplete-item" 
+                    *ngFor="let item of predictiveList"
+                    (click)="selectReference(item)"
+                >
+                    {{ item }}
+                </div>
+            </div>
+
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('productReference')">La referencia de producción es obligatoria.</div>
+          </div>
+          
+          <div class="col-12"><hr *ngIf="isLineaParada"></div>
+
+          <ng-container *ngIf="isLineaParada">
+            <div class="col-md-4">
+                <label for="tipoNovedad" class="form-label text-muted">Tipo de Parada (*)</label>
+                <select id="tipoNovedad" class="form-select" formControlName="tipoNovedad"
+                  [ngClass]="{'is-invalid': isFieldInvalid('tipoNovedad')}">
+                  <option value="" disabled>Seleccione el tipo de parada</option>
+                  <option *ngFor="let tipo of tiposParada" [value]="tipo">{{ tipo }}</option>
+                </select>
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('tipoNovedad')">Debe especificar el tipo de parada.</div>
+            </div>
+          
+            <div class="col-md-2 col-6">
+                <label for="horaInicio" class="form-label text-muted">Inicio (HH:mm) (*)</label>
+                <input 
+                    type="text"  
+                    id="horaInicio" 
+                    class="form-control" 
+                    formControlName="horaInicio"
+                    placeholder="Ej: 14:30"
+                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                    [ngClass]="{'is-invalid': isFieldInvalid('horaInicio')}">
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('horaInicio')">
+                    Obligatorio y debe ser **HH:mm** (24h).
+                </div>
+            </div>
+
+            <div class="col-md-2 col-6">
+                <label for="horaFin" class="form-label text-muted">Fin (HH:mm) (*)</label>
+                <input 
+                    type="text"  
+                    id="horaFin" 
+                    class="form-control" 
+                    formControlName="horaFin"
+                    placeholder="Ej: 15:00"
+                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]" 
+                    [ngClass]="{'is-invalid': isFieldInvalid('horaFin')}">
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('horaFin')">
+                    Obligatoria y debe ser **HH:mm** (24h).
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+              <label for="totalParada" class="form-label text-muted">Total Parada (HH:mm)</label>
+              <input type="text" id="totalParada" class="form-control bg-light-purple" formControlName="totalParada" readonly>
+              <small class="form-text text-muted">Calculado automáticamente.</small>
+            </div>
+          </ng-container>
+
+          <div class="col-12">
+            <label for="detalle" class="form-label text-muted">Detalle de Novedad (*)</label>
+            <textarea id="detalle" class="form-control" rows="3" formControlName="detalle"
+              placeholder="Describa la novedad de forma clara y concisa (mínimo 10 caracteres)."
+              [ngClass]="{'is-invalid': isFieldInvalid('detalle')}"></textarea>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('detalle')">El detalle es obligatorio y requiere una descripción mínima.</div>
+          </div>
+
+          <div class="col-12 mt-4 text-end">
+            <button type="submit" 
+                    class="btn btn-secundary-light btn-lg shadow-sm" 
+                    [disabled]="novedadForm.invalid || isSubmitting">
+              <span *ngIf="!isSubmitting">
+                <i class="ti ti-send me-2"></i> Registrar Novedad
+              </span>
+              <span *ngIf="isSubmitting">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Registrando...
+              </span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
