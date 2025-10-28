@@ -164,7 +164,7 @@
           <div class="col-12">
             <label for="detalle" class="form-label text-muted">Detalle de Novedad (*)</label>
             <textarea id="detalle" class="form-control" rows="3" formControlName="detalle"
-              placeholder="Describa la novedad de forma clara y concisa (mínimo 10 caracteres)."
+              placeholder="Describa la novedad de forma clara y concisa (mínimo 50 caracteres)."
               [ngClass]="{'is-invalid': isFieldInvalid('detalle')}"></textarea>
             <div class="invalid-feedback" *ngIf="isFieldInvalid('detalle')">El detalle es obligatorio y requiere una descripción mínima.</div>
           </div>

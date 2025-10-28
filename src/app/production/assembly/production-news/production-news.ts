@@ -29,16 +29,26 @@ export class ProductionNews implements OnInit {
   ];
   
   tiposParada = [
-    'Eléctrica',
-    'Mecánica',
     'Mantenimiento',
     'Calidad',
     'Insidente',
     'Papeleria Logistica',
-    'Falta de Material'
+    'Falta de Material',
+    'Compras',
+    'Abastecimiento Logistica'
   ];
 
-  lineasNovedad: string[] = Array.from({ length: 9 }, (_, i) => `Línea ${i + 1}`);
+  lineasNovedad: [
+    'Sobremesa 1',
+    'Sobremesa 2',
+    'Cubierta 1',
+    'Cubierta 2',
+    'Apartamento 1',
+    'Apartamento 2',
+    'Apartamento 3',
+    'Apartamento 4',
+    'Exportación USA'    
+  ];
     
   predictiveList: string[] = [];
   novedadForm!: FormGroup;
@@ -63,7 +73,7 @@ export class ProductionNews implements OnInit {
       horaInicio: [{ value: '', disabled: true }], 
       horaFin: [{ value: '', disabled: true }], 
       totalParada: [{ value: '00:00', disabled: true }], 
-      detalle: ['', [Validators.required, Validators.minLength(10)]]
+      detalle: ['', [Validators.required, Validators.minLength(50)]]
     });
 
     this.setupReferenceSearch();
