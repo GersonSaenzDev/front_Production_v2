@@ -29,6 +29,8 @@ export class ProductionNews implements OnInit {
   ];
   
   tiposParada = [
+    'Eléctrica',
+    'Mecánica',
     'Mantenimiento',
     'Calidad',
     'Insidente',
@@ -38,7 +40,7 @@ export class ProductionNews implements OnInit {
     'Abastecimiento Logistica'
   ];
 
-  lineasNovedad: [
+  lineasNovedad: string[] = [
     'Sobremesa 1',
     'Sobremesa 2',
     'Cubierta 1',
@@ -47,7 +49,8 @@ export class ProductionNews implements OnInit {
     'Apartamento 2',
     'Apartamento 3',
     'Apartamento 4',
-    'Exportación USA'    
+    'Exportación USA',
+    'Multi Linea'
   ];
     
   predictiveList: string[] = [];
@@ -73,7 +76,7 @@ export class ProductionNews implements OnInit {
       horaInicio: [{ value: '', disabled: true }], 
       horaFin: [{ value: '', disabled: true }], 
       totalParada: [{ value: '00:00', disabled: true }], 
-      detalle: ['', [Validators.required, Validators.minLength(50)]]
+      detalle: ['', [Validators.required, Validators.minLength(10)]]
     });
 
     this.setupReferenceSearch();
