@@ -304,19 +304,22 @@ export class ProductionNews implements OnInit {
       )
       .subscribe({
         next: (response) => {
-          console.log('RESPUESTA DEL BACKEND:', response);
+          console.log('RESPUESTA DEL BACKEND:', response.ok, response.msg.length);
           
           if (response.ok && response.msg.length > 0) {
             this.predictiveList = this.extractPredictiveValues(response.msg);
-            console.log('Lista predictiva actualizada con', this.predictiveList.length, 'ítems.');
+            this.showDropdown = true; // <- encender dropdown
+            console.log('Lista predictiva actualizada con', this.predictiveList, 'ítems.');
           } else {
             this.predictiveList = [];
+            this.showDropdown = false; // <- apagar dropdown al no haber resultados
             console.log('Respuesta válida, pero sin resultados.');
           }
         },
         error: (err) => {
           console.error('Error FATAL en la llamada al servicio searchReferences:', err);
           this.predictiveList = [];
+          this.showDropdown = false;
         }
       });
   }
