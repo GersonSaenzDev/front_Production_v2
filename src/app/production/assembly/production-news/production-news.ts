@@ -29,8 +29,6 @@ export class ProductionNews implements OnInit {
   ];
   
   tiposParada = [
-    'Eléctrica',
-    'Mecánica',
     'Mantenimiento',
     'Calidad',
     'Insidente',
