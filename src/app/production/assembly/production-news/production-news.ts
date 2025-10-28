@@ -63,6 +63,7 @@ export class ProductionNews implements OnInit {
   submitSuccess: boolean = false;
   submitError: string = '';
   successMessage: string = '';
+  private isSelecting: boolean = false;
 
   constructor() {}
 
@@ -76,7 +77,7 @@ export class ProductionNews implements OnInit {
       horaInicio: [{ value: '', disabled: true }], 
       horaFin: [{ value: '', disabled: true }], 
       totalParada: [{ value: '00:00', disabled: true }], 
-      detalle: ['', [Validators.required, Validators.minLength(10)]]
+      detalle: ['', [Validators.required, Validators.minLength(50)]]
     });
 
     this.setupReferenceSearch();
@@ -278,46 +279,34 @@ export class ProductionNews implements OnInit {
     return control?.invalid && (control?.dirty || control?.touched);
   }
 
+  // En tu setupReferenceSearch añade este filtro al inicio del pipe:
   setupReferenceSearch(): void {
     this.novedadForm.get('productReference')?.valueChanges
       .pipe(
-        debounceTime(300), 
+        debounceTime(300),
+        // Ignorar cambios mientras estamos seleccionando
+        filter(() => !this.isSelecting),
         tap((term: string) => {
           const trimmedTerm = term.trim();
-          console.log('--- BÚSQUEDA PREDICTIVA ---');
-          console.log('Término capturado:', trimmedTerm);
-          
           if (trimmedTerm.length < 2) {
-            this.predictiveList = []; 
-            if (trimmedTerm.length === 0) {
-              console.log('Término vacío. Búsqueda detenida.');
-            } else {
-              console.log('Término < 2 caracteres. Esperando más input.');
-            }
+            this.predictiveList = [];
+            this.showDropdown = false;
           }
         }),
         filter((term: string) => term.trim().length >= 2),
-        switchMap((term: string) => {
-          console.log('ENVIANDO al servicio:', term.trim());
-          return this.dashboardService.searchReferences(term.trim());
-        })
+        switchMap((term: string) => this.dashboardService.searchReferences(term.trim()))
       )
       .subscribe({
         next: (response) => {
-          console.log('RESPUESTA DEL BACKEND:', response.ok, response.msg.length);
-          
           if (response.ok && response.msg.length > 0) {
             this.predictiveList = this.extractPredictiveValues(response.msg);
-            this.showDropdown = true; // <- encender dropdown
-            console.log('Lista predictiva actualizada con', this.predictiveList, 'ítems.');
+            this.showDropdown = true;
           } else {
             this.predictiveList = [];
-            this.showDropdown = false; // <- apagar dropdown al no haber resultados
-            console.log('Respuesta válida, pero sin resultados.');
+            this.showDropdown = false;
           }
         },
-        error: (err) => {
-          console.error('Error FATAL en la llamada al servicio searchReferences:', err);
+        error: () => {
           this.predictiveList = [];
           this.showDropdown = false;
         }
@@ -326,32 +315,55 @@ export class ProductionNews implements OnInit {
 
   extractPredictiveValues(items: ReferenceItem[]): string[] {
     const list = new Set<string>();
-    items.forEach(p => {
-      list.add(p.reference);
-    });
+    for (const p of items) {
+      const ref = (p.reference || '').trim();
+      if (ref) list.add(ref);
+    }
     return Array.from(list);
   }
 
   selectReference(item: string): void {
+    console.log('🎯 Seleccionando item:', item);
+
+    // 1) Bloquear valueChanges durante la selección
+    this.isSelecting = true;
+
+    // 2) Limpieza inmediata del dropdown
+    this.predictiveList = [];
+    this.showDropdown = false;
+
+    // 3) Establecer el valor sin emitir valueChanges
     this.novedadForm.get('productReference')?.setValue(item, { emitEvent: false });
-    this.predictiveList = []; 
-    this.showDropdown = false; 
     this.novedadForm.get('productReference')?.updateValueAndValidity();
-    document.getElementById('lineaNovedad')?.focus(); 
+
+    // 4) Desbloquear luego de un pequeño delay
+    setTimeout(() => {
+      this.isSelecting = false;
+      console.log('✅ Selección completada, bandera desactivada');
+    }, 400);
+
+    // 5) Enfocar siguiente campo
+    setTimeout(() => {
+      document.getElementById('lineaNovedad')?.focus();
+    }, 50);
   }
 
   onBlur(): void {
     setTimeout(() => {
       this.showDropdown = false;
-      if (this.predictiveList.length > 0) {
-        this.predictiveList = [];
-      }
-    }, 150); 
+      this.predictiveList = [];
+      console.log('👋 onBlur: Dropdown oculto');
+    }, 120);
   }
   
   onFocus(): void {
-    const term = this.novedadForm.get('productReference')?.value || '';
-    if (this.predictiveList.length > 0 && term.trim().length >= 2) {
+    // No mostrar si venimos de una selección
+    if (this.isSelecting) {
+      console.log('⚠️ onFocus bloqueado: selección en proceso');
+      return;
+    }
+    const term = (this.novedadForm.get('productReference')?.value || '').trim();
+    if (this.predictiveList.length > 0 && term.length >= 2) {
       this.showDropdown = true;
     }
   }

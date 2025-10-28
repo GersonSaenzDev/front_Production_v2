@@ -100,12 +100,12 @@
                 class="autocomplete-results shadow-lg" 
                 *ngIf="predictiveList.length > 0 && showDropdown"
             >
-                <div 
-                    class="autocomplete-item" 
-                    *ngFor="let item of predictiveList"
-                    (click)="selectReference(item)"
+                <div
+                  class="autocomplete-item"
+                  *ngFor="let item of predictiveList"
+                  (mousedown)="selectReference(item)"
                 >
-                    {{ item }}
+                  {{ item }}
                 </div>
             </div>
 
