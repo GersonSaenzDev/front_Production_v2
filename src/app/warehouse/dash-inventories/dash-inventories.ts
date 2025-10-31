@@ -1,0 +1,435 @@
+import { registerLocaleData } from '@angular/common';
+import localeEs from '@angular/common/locales/es';
+
+import { Component, LOCALE_ID, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { BajajChartComponent } from 'src/app/production/assembly/apexchart/bajaj-chart/bajaj-chart.component';
+import { BarChartComponent } from 'src/app/production/assembly/apexchart/bar-chart/bar-chart.component';
+import { ChartDataMonthComponent } from 'src/app/production/assembly/apexchart/chart-data-month/chart-data-month.component';
+import { DashInventoryServices } from 'src/app/services/dashInventory-services';
+
+import { SharedModule } from 'src/app/theme/shared/shared.module';
+
+registerLocaleData(localeEs, 'es');
+
+@Component({
+  selector: 'app-dash-inventories',
+  standalone: true,
+  imports: [
+    BajajChartComponent,
+    BarChartComponent,
+    ChartDataMonthComponent,
+    SharedModule,
+    FormsModule,
+  ],
+  templateUrl: './dash-inventories.html',
+  styleUrls: ['./dash-inventories.scss'],
+  providers: [
+    { provide: LOCALE_ID, useValue: 'es' },
+  ]
+})
+export class DashInventories {
+
+  private dashboardService = inject(DashInventoryServices);
+
+  public selectedDate: string = this.formatDate(new Date());
+
+  // Datos crudos / responses
+  public storageGroupsData: any[] = [];
+  public confirmedCountData: any[] = [];
+  public duplicatesData: any[] = [];
+
+  // Contadores que usa la plantilla
+  public productosLeidosCount: number = 0;
+  public equiposRegistradosCount: number = 0;
+  public duplicadosCount: number = 0;
+  public productosOkCount: number = 0;
+  public noConformesCount: number = 0;
+  public revisionesCount: number = 0;
+  public configuracionesCount: number = 0;
+  public bloqueosCount: number = 0;
+  public globalCount: number = 0;
+  public validatedTrueCount: number = 0;
+  public validatedFalseCount: number = 0;
+  public teamCount: number = 0;
+  public areaCount: number = 0;
+
+  // Estado del modal y dato seleccionado
+  public showAnnotationModal: boolean = false;
+  public annotationItem: any = null;
+  public annotationText: string = '';
+
+  // Panel y filtros
+  public panel: 'global'|'teams' = 'global';
+  public globalSearch = '';
+  public filterText = '';
+  public filterArea = '';
+  public filterTeam = '';
+  public areaOptions: string[] = [];
+  public teamOptions: Array<{ key: string; label: string; area?: string }> = [];
+
+  public loading: boolean = false;
+  public errorMessage: string = '';
+
+  // Inventario plano para tabla (uno por barcode)
+  public inventoryList: Array<any> = [];
+  public filteredInventory: Array<any> = [];
+
+  // Comparador por equipos
+  public selectedTeamLeft: string = '';
+  public selectedTeamRight: string = '';
+  public teamLeft: { area?: string; total?: number; codes: string[] } | null = null;
+  public teamRight: { area?: string; total?: number; codes: string[] } | null = null;
+
+  public comparisonResult: { matchCount: number; diffCount: number } | null = null;
+
+  constructor() {
+    // Cargar datos iniciales (fecha por defecto)
+    this.loadAllData(this.formatDateForBackend(this.selectedDate));
+  }
+
+  private formatDate(date: Date): string {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  }
+
+  public formatDateForBackend(dateString: string | Date): string {
+    const d = (typeof dateString === 'string') ? new Date(dateString.replace(/-/g, '/')) : dateString;
+    let day = '' + d.getDate();
+    let month = '' + (d.getMonth() + 1);
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [day, month, year].join('/');
+  }
+
+  public onDateChange(newDate: string): void {
+    const dateForBackend = this.formatDateForBackend(newDate);
+    this.loadAllData(dateForBackend);
+  }
+
+  public loadAllData(dateForBackend: string): void {
+    this.loading = true;
+    this.errorMessage = '';
+    this.resetCounts();
+
+    // 1) Vista completa de inventarios (plano por barcode) -> llena inventoryList
+    this.dashboardService.getViewInventories(dateForBackend).subscribe({
+      next: (res) => {
+        if (res?.ok && res.msg) {
+          this.inventoryList = res.msg.items.map((it: any) => {
+            const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
+            const teamKey = `${it.area || ''}||${persons.join('|')}`;
+            return { ...it, teamKey, teamLabel: persons.length ? persons.join(', ') : (it.team || it.area || '') };
+          });
+          this.filteredInventory = [...this.inventoryList];
+
+          // Construir areaOptions y teamOptions desde inventoryList
+          this.areaOptions = Array.from(new Set(this.inventoryList.map(i => i.area).filter(Boolean))).sort();
+          // teamKey: area || persons joined by '|'
+          const teamMap = new Map<string, { label: string; area?: string }>();
+          this.inventoryList.forEach(it => {
+            const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
+            const key = `${it.area || ''}||${persons.join('|')}`;
+            if (!teamMap.has(key)) {
+              const label = persons.length ? `${persons.join(', ')}` : (it.team || it.area || 'Equipo');
+              teamMap.set(key, { label, area: it.area });
+            }
+          });
+          this.teamOptions = Array.from(teamMap.entries()).map(([key, v]) => ({ key, label: v.label, area: v.area }));
+
+        } else {
+          this.inventoryList = [];
+          this.filteredInventory = [];
+          this.areaOptions = [];
+          this.teamOptions = [];
+        }
+      },
+      error: (err) => {
+        console.error('Error viewInventories:', err);
+        this.errorMessage = err?.message || 'Error cargando inventarios';
+        this.inventoryList = [];
+        this.filteredInventory = [];
+        this.areaOptions = [];
+        this.teamOptions = [];
+      }
+    });
+
+    // 2) Storage Groups (existente)
+    this.dashboardService.getStorageGroups(dateForBackend).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg) {
+          this.storageGroupsData = Array.isArray(res.msg.data) ? res.msg.data : [];
+          this.productosLeidosCount = Number(res.msg.totalRecords ?? this.storageGroupsData.length ?? 0);
+          this.equiposRegistradosCount = Number(res.msg.totalGroups ?? 0);
+        } else {
+          this.storageGroupsData = [];
+          this.productosLeidosCount = 0;
+          this.equiposRegistradosCount = 0;
+        }
+      },
+      error: (err) => {
+        console.error('Error getStorageGroups:', err);
+        this.errorMessage = err?.message || 'Error cargando grupos de almacenamiento';
+        this.storageGroupsData = [];
+        this.productosLeidosCount = 0;
+        this.equiposRegistradosCount = 0;
+      }
+    });
+
+    // 3) Confirmed Count (existente)
+    this.dashboardService.getConfirmedCount(dateForBackend).subscribe({
+      next: (res) => {
+        if (res && res.ok && Array.isArray(res.msg)) {
+          this.confirmedCountData = res.msg;
+          this.productosOkCount = this.confirmedCountData.reduce((acc, item) => acc + (Number(item.validatedTrue ?? 0) || 0), 0);
+          this.noConformesCount = this.confirmedCountData.reduce((acc, item) => acc + (Number(item.validatedFalse ?? 0) || 0), 0);
+          this.revisionesCount = this.confirmedCountData.length;
+        } else {
+          this.confirmedCountData = [];
+          this.productosOkCount = 0;
+          this.noConformesCount = 0;
+          this.revisionesCount = 0;
+        }
+      },
+      error: (err) => {
+        console.error('Error getConfirmedCount:', err);
+        this.errorMessage = err?.message || 'Error cargando conteo confirmado';
+        this.confirmedCountData = [];
+        this.productosOkCount = 0;
+        this.noConformesCount = 0;
+        this.revisionesCount = 0;
+      }
+    });
+
+    // 4) Duplicates
+    this.dashboardService.getDuplicates(dateForBackend).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg && Array.isArray(res.msg.data)) {
+          this.duplicatesData = res.msg.data;
+          this.duplicadosCount = this.duplicatesData.length;
+        } else {
+          this.duplicatesData = [];
+          this.duplicadosCount = 0;
+        }
+      },
+      error: (err) => {
+        console.error('Error getDuplicates:', err);
+        this.errorMessage = err?.message || 'Error cargando duplicados';
+        this.duplicatesData = [];
+        this.duplicadosCount = 0;
+      }
+    });
+
+    // 5) Global count
+    this.dashboardService.getCountGlobal(dateForBackend).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg) {
+          this.globalCount = Number(res.msg.total ?? 0);
+          this.validatedTrueCount = Number(res.msg.validatedTrue ?? 0);
+          this.validatedFalseCount = Number(res.msg.validatedFalse ?? 0);
+        } else {
+          this.globalCount = 0;
+          this.validatedTrueCount = 0;
+          this.validatedFalseCount = 0;
+        }
+      },
+      error: (err) => {
+        console.error('Error getCountGlobal:', err);
+        this.errorMessage = err?.message || 'Error cargando conteo global';
+        this.globalCount = 0;
+        this.validatedTrueCount = 0;
+        this.validatedFalseCount = 0;
+      }
+    });
+
+    // 6) Team count
+    this.dashboardService.getTeamCount(dateForBackend).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg) {
+          this.teamCount = Number(res.msg.totalTeams ?? 0);
+        } else {
+          this.teamCount = 0;
+        }
+      },
+      error: (err) => {
+        console.error('Error getTeamCount:', err);
+        this.errorMessage = err?.message || 'Error cargando conteo de equipos';
+        this.teamCount = 0;
+      }
+    });
+
+    // 7) Area count
+    this.dashboardService.getAreaCount(dateForBackend).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg) {
+          this.areaCount = Number(res.msg.totalAreas ?? 0);
+        } else {
+          this.areaCount = 0;
+        }
+      },
+      error: (err) => {
+        console.error('Error getAreaCount:', err);
+        this.errorMessage = err?.message || 'Error cargando conteo de áreas';
+        this.areaCount = 0;
+      }
+    });
+
+    // Cuando todas las llamadas asíncronas terminen, podrías necesitar usar forkJoin; aquí simplemente levantamos loading = false
+    // con un pequeño timeout para dar tiempo a la mayoría de respuestas. Si prefieres precisión, reemplaza por forkJoin para algunas llamadas.
+    setTimeout(() => this.loading = false, 400);
+  }
+
+  // Filtrado en la tabla global
+  public applyGlobalFilters(): void {
+    const q = (this.filterText || '').toLowerCase();
+    this.filteredInventory = this.inventoryList.filter(it => {
+      const matchesQ = q ? (
+        String(it.code || '').toLowerCase().includes(q) ||
+        String(it.referencia || '').toLowerCase().includes(q) ||
+        String(it.producto || '').toLowerCase().includes(q) ||
+        String(it.codRef || '').toLowerCase().includes(q)
+      ) : true;
+      const matchesArea = this.filterArea ? it.area === this.filterArea : true;
+      const matchesTeam = this.filterTeam ? this.computeTeamKey(it) === this.filterTeam : true;
+      return matchesQ && matchesArea && matchesTeam;
+    });
+  }
+
+  public onGlobalFilterChange() {
+    // simple alias
+    this.applyGlobalFilters();
+  }
+
+  public resetGlobalFilters(): void {
+    this.filterText = '';
+    this.filterArea = '';
+    this.filterTeam = '';
+    this.filteredInventory = [...this.inventoryList];
+  }
+
+  // Helpers para teamKey
+  public computeTeamKey(it: any): string {
+    const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
+    return `${it.area || ''}||${persons.join('|')}`;
+  }
+
+  // Selección equipo -> trae codes/area/total desde backend
+  public onSelectTeam(side: 'left' | 'right'): void {
+    const teamKey = side === 'left' ? this.selectedTeamLeft : this.selectedTeamRight;
+    if (!teamKey) {
+      if (side === 'left') this.teamLeft = null; else this.teamRight = null;
+      return;
+    }
+    const dateForBackend = this.formatDateForBackend(this.selectedDate);
+    this.dashboardService.getTeamItems(dateForBackend, { teamKey }).subscribe({
+      next: (res) => {
+        if (res?.ok && res.msg) {
+          const payload = res.msg;
+          if (side === 'left') this.teamLeft = { area: payload.area, total: payload.total, codes: payload.codes.map((c: any) => c.code) };
+          else this.teamRight = { area: payload.area, total: payload.total, codes: payload.codes.map((c: any) => c.code) };
+        } else {
+          if (side === 'left') this.teamLeft = null; else this.teamRight = null;
+        }
+      },
+      error: (err) => {
+        console.error('Error getTeamItems:', err);
+        if (side === 'left') this.teamLeft = null; else this.teamRight = null;
+      }
+    });
+  }
+
+  public clearTeam(side: 'left' | 'right'): void {
+    if (side === 'left') {
+      this.selectedTeamLeft = '';
+      this.teamLeft = null;
+    } else {
+      this.selectedTeamRight = '';
+      this.teamRight = null;
+    }
+    this.comparisonResult = null;
+  }
+
+  public compareTeams(): void {
+    if (!this.teamLeft || !this.teamRight) { this.comparisonResult = null; return; }
+    const leftSet = new Set(this.teamLeft.codes);
+    const rightSet = new Set(this.teamRight.codes);
+    let matchCount = 0;
+    leftSet.forEach(c => { if (rightSet.has(c)) matchCount++; });
+    const union = new Set([...leftSet, ...rightSet]);
+    const diffCount = union.size - matchCount;
+    this.comparisonResult = { matchCount, diffCount };
+  }
+
+  public exportComparison(): void {
+    if (!this.teamLeft || !this.teamRight) return;
+    // Export simple CSV of code, leftCount(1), rightCount(1)
+    const leftCounts = this.teamLeft.codes.reduce((acc: any, c) => (acc[c] = (acc[c] || 0) + 1, acc), {});
+    const rightCounts = this.teamRight.codes.reduce((acc: any, c) => (acc[c] = (acc[c] || 0) + 1, acc), {});
+    const union = Array.from(new Set([...Object.keys(leftCounts), ...Object.keys(rightCounts)]));
+    const rows = union.map(code => `${code},${leftCounts[code]||0},${rightCounts[code]||0}`);
+    const csv = ['code,leftCount,rightCount', ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comparison_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private resetCounts(): void {
+    this.productosLeidosCount = 0;
+    this.equiposRegistradosCount = 0;
+    this.duplicadosCount = 0;
+    this.productosOkCount = 0;
+    this.noConformesCount = 0;
+    this.revisionesCount = 0;
+    this.validatedTrueCount = 0;
+    this.validatedFalseCount = 0;
+    this.globalCount = 0;
+    this.teamCount = 0;
+    this.areaCount = 0;
+  }
+
+
+  // Abre modal y carga anotación existente (si la tuviera)
+  public openAnnotationModal(item: any): void {
+    // Mantener referencia al item para que puedas usarlo después
+    this.annotationItem = item;
+    // Si el objeto ya tiene propiedad 'annotation' la mostramos, sino cadena vacía
+    this.annotationText = item?.annotation ?? '';
+    this.showAnnotationModal = true;
+  }
+
+  // Cierra modal sin guardar
+  public closeAnnotationModal(): void {
+    this.showAnnotationModal = false;
+    this.annotationItem = null;
+    this.annotationText = '';
+  }
+
+  // Guardar anotación localmente (placeholder) — luego lo conectas al backend
+  public saveAnnotation(): void {
+    if (!this.annotationItem) return;
+
+    // Asignamos la nota al objeto en memoria
+    this.annotationItem.annotation = (this.annotationText || '').trim();
+
+    // Opcional: mostrar notificación / feedback aquí (toast, alert, etc.)
+    // Luego cierras modal
+    this.closeAnnotationModal();
+
+    // IMPORTANTE: aquí debes llamar más tarde a tu servicio para persistir:
+    // this.dashboardService.saveAnnotation(this.annotationItem._id, this.annotationItem.annotation).subscribe(...)
+  }
+}

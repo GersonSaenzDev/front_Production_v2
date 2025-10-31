@@ -16,8 +16,13 @@ const routes: Routes = [
         path: 'production',
         loadChildren: () => import('./production/production-module').then((m) => m.ProductionModule)
       },
+      {
+        path: 'inventories',
+        loadChildren: () => import('./warehouse/warehouse-module').then((m) => m.WarehouseModule)
+      },
     ]
   },
+  
 
   // Rutas con Layout de Invitado (GuestComponent)
   // {

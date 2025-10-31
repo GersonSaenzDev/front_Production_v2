@@ -40,7 +40,7 @@ export const NavigationItems: NavigationItem[] = [
     icon: 'icon-navigation',
     children: [
       {
-        id: 'ensamble',
+        id: 'Produccion',
         title: 'Ensamble',
         type: 'collapse',
         icon: 'ti ti-brand-codesandbox',
@@ -50,7 +50,7 @@ export const NavigationItems: NavigationItem[] = [
             title: 'Novedades Producción',
             type: 'item',
             url: 'production/productionNews',
-            breadcrumbs: false
+            breadcrumbs: true
           }
         ]
       },
@@ -61,10 +61,31 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'ti ti-building-warehouse',
         children: [
           {
-            id: 'novedades_bodega',
+            id: 'bodega',
             title: 'Registro Novedades',
             type: 'item',
             url: 'production/wineryNews',
+            breadcrumbs: false
+          },
+          {
+            id: 'bodega',
+            title: 'Ver Novedades',
+            type: 'item',
+            url: 'inventories/checkNews',
+            breadcrumbs: false
+          },
+          // {
+          //   id: 'bodega',
+          //   title: 'Config. Inventarios',
+          //   type: 'item',
+          //   url: 'inventories/configInventories',
+          //   breadcrumbs: false
+          // },
+          {
+            id: 'bodega',
+            title: 'Dashboard Inventarios',
+            type: 'item',
+            url: 'inventories/dash',
             breadcrumbs: false
           }
         ]

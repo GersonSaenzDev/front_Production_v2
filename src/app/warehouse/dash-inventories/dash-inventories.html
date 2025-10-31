@@ -1,0 +1,337 @@
+<!-- Encabezado y selector de fecha (mantenido) -->
+<div class="row">
+  <div class="col-12 mb-4">
+    <div class="card bg-primary-subtle text-dark overflow-hidden"> 
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="mb-1">Consultar Inventario 📦 por Fecha 📅</h4>
+            <p class="text-muted mb-0 opacity-75 text-sm">
+              Fecha Seleccionada:
+              <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+            </p>
+          </div>
+
+          <div class="col-12 col-md-3"> 
+            <input 
+              type="date" 
+              class="form-control" 
+              [(ngModel)]="selectedDate" 
+              (change)="onDateChange(selectedDate)"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fila de 4 tarjetas -->
+<div class="row mb-4">
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card overflow-hidden bg-primary text-white">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon m-r-5">
+            <i class="text-white ti ti-layout-board-split f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="text-white f-w-600 mb-1">{{ globalCount || '0' }}</h4>
+            <p class="mb-0 opacity-50 text-sm">Total Productos Leidos</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card warning overflow-hidden">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-warning m-r-5">
+            <i class="text-warning ti ti-layout-board-split f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="f-w-600 mb-1">{{ validatedTrueCount || '0' }}</h4>
+            <p class="mb-0 opacity-50 text-sm">Productos Conformes</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card danger overflow-hidden bg-danger text-white">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-danger m-r-5">
+            <i class="text-white ti ti-alert-circle f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="text-white f-w-600 mb-1">{{ validatedFalseCount || '0' }}</h4>
+            <p class="mb-0 opacity-50 text-sm">Productos No Conformes</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card success overflow-hidden bg-success text-white">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-success m-r-5">
+            <i class="text-white ti ti-check f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="text-white f-w-600 mb-1">{{ teamCount || '0' }}</h4>
+            <p class="mb-0 opacity-50 text-sm">Equipos Registrados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Segunda fila de tarjetas -->
+<div class="row">
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card info overflow-hidden bg-info text-white">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-info m-r-5">
+            <i class="text-white ti ti-info-circle f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="text-white f-w-600 mb-1">{{ areaCount || '0' }}</h4>
+            <p class="mb-0 opacity-50 text-sm">Áreas Registradas</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card warning overflow-hidden bg-warning text-dark">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-warning m-r-5">
+            <i class="text-dark ti ti-exclamation f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="f-w-600 mb-1">0</h4>
+            <p class="mb-0 opacity-50 text-sm">Revisiones Auditoria</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card secondary overflow-hidden bg-secondary text-white">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-secondary m-r-5">
+            <i class="text-white ti ti-settings f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="text-white f-w-600 mb-1">0</h4>
+            <p class="mb-0 opacity-50 text-sm">Registros de Novedades</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-3">
+    <div class="card total-income-card dark overflow-hidden bg-dark text-white">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-dark m-r-5">
+            <i class="text-white ti ti-lock f-24"></i>
+          </div>
+          <div class="ms-2">
+            <h4 class="text-white f-w-600 mb-1">0</h4>
+            <p class="mb-0 opacity-50 text-sm">??</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Card expandida con tabs (Inventario Global / Inventario por Equipos) -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <ul class="list-group list-group-horizontal mb-0">
+          <li class="list-group-item" [class.active]="panel === 'global'" (click)="panel='global'">Inventario Global</li>
+          <li class="list-group-item" [class.active]="panel === 'teams'" (click)="panel='teams'">Inventario por Equipos</li>
+        </ul>
+
+        <div class="d-flex align-items-center">
+          <input class="form-control form-control-sm" type="text" placeholder="Buscar rápido (código, ref, producto)"
+                 [(ngModel)]="globalSearch" (ngModelChange)="onGlobalFilterChange()" />
+        </div>
+      </div>
+
+      <div class="card-body">
+        <!-- PANEL: Inventario Global -->
+        <div *ngIf="panel === 'global'">
+          <div class="row mb-3 g-2">
+            <div class="col-md-3">
+              <input type="text" class="form-control" placeholder="Buscar código / referencia / producto"
+                     [(ngModel)]="filterText" (ngModelChange)="applyGlobalFilters()" />
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" [(ngModel)]="filterArea" (change)="applyGlobalFilters()">
+                <option value="">Todas las Áreas</option>
+                <option *ngFor="let a of areaOptions" [value]="a">{{ a }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" [(ngModel)]="filterTeam" (change)="applyGlobalFilters()">
+                <option value="">Todos los Equipos</option>
+                <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }}</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex">
+              <button class="btn btn-sm btn-outline-primary me-2" (click)="resetGlobalFilters()">Reset</button>
+              <button class="btn btn-sm btn-primary" (click)="loadAllData(formatDateForBackend(selectedDate))">Refrescar</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead class="table-light">
+  <tr>
+    <th>Código</th>
+    <th>CodRef</th>
+    <th>Referencia</th>
+    <th>Área</th>
+    <th>Equipo</th>
+    <th class="text-center">Anotaciones</th> <!-- nueva columna -->
+  </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let it of filteredInventory">
+                        <td>{{ it.code }}</td>
+                        <td>{{ it.codRef }}</td>
+                        <td>{{ it.referencia }}</td>
+                        <td>{{ it.area }}</td>
+                        <td>{{ it.teamLabel || computeTeamKey(it) }}</td>
+
+                        <!-- Botón para abrir modal de anotación -->
+                        <td class="text-center">
+                        <button
+                            class="btn btn-sm btn-outline-secondary"
+                            (click)="openAnnotationModal(it)"
+                            title="Agregar / ver anotación">
+                            <i class="ti ti-note"></i>
+                        </button>
+                        </td>
+                    </tr>
+
+                    <tr *ngIf="filteredInventory.length === 0">
+                        <td colspan="6" class="text-center text-muted">No hay registros para la fecha seleccionada</td>
+                    </tr>
+                </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PANEL: Inventario por Equipos (Comparador) -->
+        <div *ngIf="panel === 'teams'">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="mb-2 d-flex align-items-center gap-2">
+                <select class="form-select" [(ngModel)]="selectedTeamLeft" (change)="onSelectTeam('left')">
+                  <option value="">Selecciona equipo (Izq)</option>
+                  <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }} — {{ t.area }}</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" (click)="clearTeam('left')">Limpiar</button>
+              </div>
+
+              <div class="card h-100">
+                <div class="card-body">
+                  <div *ngIf="teamLeft">
+                    <h6 class="mb-1">{{ teamLeft.area || '—' }}</h6>
+                    <p class="mb-2 text-muted">Registros: <strong>{{ teamLeft.total || 0 }}</strong></p>
+                    <div class="codes-list" style="max-height:320px; overflow:auto;">
+                      <ul class="list-group list-group-flush">
+                        <li class="list-group-item" *ngFor="let c of teamLeft.codes">{{ c }}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div *ngIf="!teamLeft" class="text-muted">Elige un equipo para ver códigos</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="mb-2 d-flex align-items-center gap-2">
+                <select class="form-select" [(ngModel)]="selectedTeamRight" (change)="onSelectTeam('right')">
+                  <option value="">Selecciona equipo (Der)</option>
+                  <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }} — {{ t.area }}</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" (click)="clearTeam('right')">Limpiar</button>
+              </div>
+
+              <div class="card h-100">
+                <div class="card-body">
+                  <div *ngIf="teamRight">
+                    <h6 class="mb-1">{{ teamRight.area || '—' }}</h6>
+                    <p class="mb-2 text-muted">Registros: <strong>{{ teamRight.total || 0 }}</strong></p>
+                    <div class="codes-list" style="max-height:320px; overflow:auto;">
+                      <ul class="list-group list-group-flush">
+                        <li class="list-group-item" *ngFor="let c of teamRight.codes">{{ c }}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div *ngIf="!teamRight" class="text-muted">Elige un equipo para ver códigos</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" (click)="compareTeams()">Comparar equipos</button>
+            <button class="btn btn-outline-secondary" (click)="exportComparison()">Exportar (CSV)</button>
+            <div *ngIf="comparisonResult" class="ms-3">
+              <small class="text-muted">Coincidencias: {{ comparisonResult.matchCount }}, Diferencias: {{ comparisonResult.diffCount }}</small>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal de Anotaciones (template-driven, aparece/cloose con *ngIf) -->
+<div *ngIf="showAnnotationModal" class="annotation-modal-backdrop">
+  <div class="annotation-modal dialog-card">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Anotación - Código:</strong>
+        <small class="text-muted ms-2">{{ annotationItem?.code }}</small>
+        <button type="button" class="btn-close" aria-label="Cerrar" (click)="closeAnnotationModal()"></button>
+      </div>
+      <div class="card-body">
+        <p class="mb-2"><small class="text-muted">Referencia: {{ annotationItem?.referencia }} — Área: {{ annotationItem?.area }}</small></p>
+
+        <div class="mb-3">
+          <label class="form-label">Anotación</label>
+          <textarea class="form-control" rows="6" [(ngModel)]="annotationText" placeholder="Escribe tu nota aquí..."></textarea>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <button class="btn btn-outline-secondary" (click)="closeAnnotationModal()">Cancelar</button>
+          <button class="btn btn-primary" (click)="saveAnnotation()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

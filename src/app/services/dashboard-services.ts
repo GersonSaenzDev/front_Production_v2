@@ -22,10 +22,11 @@ export class DashboardServices {
 
 private http = inject(HttpClient);
 private readonly BASE_URL = environment.backendUrl;
-private readonly CARD_METRICS_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/cardAssembly`;
-private readonly TOP_PRODUCTION_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/topProducts`;
-private readonly TOTAL_PRODUCTION_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/totalProductsDay`;
-private readonly VIEW_REF_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/viewRef`;
+private readonly BASE_API = environment.api;
+private readonly CARD_METRICS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/cardAssembly`;
+private readonly TOP_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/topProducts`;
+private readonly TOTAL_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/totalProductsDay`;
+private readonly VIEW_REF_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewRef`;
 
 private handleError(error: any) {
  console.error('DashboardServices: Error en la petición:', error);

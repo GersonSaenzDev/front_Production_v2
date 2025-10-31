@@ -7,6 +7,7 @@ import packageInfo from '../../package.json';
 export const environment = {
   appVersion: packageInfo.version,
   production: false,
+  api: '/api/v1',
   apiUrl: 'http://localhost:4210',
   // backendUrl: 'https://induproduction:7443',
   // backendUrl: 'https://backproduction:8443',
