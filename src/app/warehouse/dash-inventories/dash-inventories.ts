@@ -3,6 +3,7 @@ import localeEs from '@angular/common/locales/es';
 
 import { Component, LOCALE_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, } from 'src/app/interfaces/dashInventory.interface';
 import { BajajChartComponent } from 'src/app/production/assembly/apexchart/bajaj-chart/bajaj-chart.component';
 import { BarChartComponent } from 'src/app/production/assembly/apexchart/bar-chart/bar-chart.component';
 import { ChartDataMonthComponent } from 'src/app/production/assembly/apexchart/chart-data-month/chart-data-month.component';
@@ -54,13 +55,27 @@ export class DashInventories {
   public teamCount: number = 0;
   public areaCount: number = 0;
 
+  // Propiedades del componente
+  public notCompliantTotal: number = 0;
+  public notCompliantTotalPages: number = 0;
+  public notCompliantCurrentPage: number = 1;
+  public notCompliantPageSize: number = 20;
+  public notCompliantItems: NotCompliantItem[] = [];
+  public notCompliantLoading: boolean = false;
+  public notCompliantError: string = '';
+  // Variables para el panel de no conformes
+  public filteredNotCompliantItems: NotCompliantItem[] = [];
+  public filterTextNotCompliant: string = '';
+  public filterAreaNotCompliant: string = '';
+  public filterTeamNotCompliant: string = '';
+
   // Estado del modal y dato seleccionado
   public showAnnotationModal: boolean = false;
   public annotationItem: any = null;
   public annotationText: string = '';
 
   // Panel y filtros
-  public panel: 'global'|'teams' = 'global';
+  public panel: 'global' | 'teams' | 'notCompliant' = 'global';
   public globalSearch = '';
   public filterText = '';
   public filterArea = '';
@@ -74,6 +89,10 @@ export class DashInventories {
   // Inventario plano para tabla (uno por barcode)
   public inventoryList: Array<any> = [];
   public filteredInventory: Array<any> = [];
+
+  // Paginación
+  public p: number = 1;
+  public itemsPerPage: number = 10;
 
   // Comparador por equipos
   public selectedTeamLeft: string = '';
@@ -283,6 +302,37 @@ export class DashInventories {
         this.areaCount = 0;
       }
     });
+    
+    // 8) Not Compliant
+    this.dashboardService.getNotCompliant(dateForBackend, { teamKey: 'all' }).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg) {
+          this.notCompliantTotal = res.msg.total ?? 0;
+          this.notCompliantTotalPages = res.msg.totalPages ?? 0;
+          this.notCompliantCurrentPage = res.msg.currentPage ?? 1;
+          this.notCompliantItems = Array.isArray(res.msg.items) ? res.msg.items : [];
+
+          // Aplicar filtros locales para construir filteredNotCompliantItems
+          // Esto también asegura que la tabla use los datos recibidos
+          this.applyNotCompliantFilters();
+
+          // Si quieres que las opciones de área incluyan áreas provenientes de no conformes:
+          const areasFromNot = this.notCompliantItems.map(i => i.area).filter(Boolean);
+          this.areaOptions = Array.from(new Set([...this.areaOptions, ...areasFromNot])).sort();
+
+          // Si usas teamOptions basadas en inventoryList, no es necesario cambiarlas aquí.
+          // Forzar copia de array (ayuda a change-detection en casos extraños)
+          this.filteredNotCompliantItems = [...this.filteredNotCompliantItems];
+        } else {
+          this.resetNotCompliantData();
+        }
+      },
+      error: (err) => {
+        console.error('Error getNotCompliant:', err);
+        this.errorMessage = err?.message || 'Error cargando items no conformes';
+        this.resetNotCompliantData();
+      }
+    });
 
     // Cuando todas las llamadas asíncronas terminen, podrías necesitar usar forkJoin; aquí simplemente levantamos loading = false
     // con un pequeño timeout para dar tiempo a la mayoría de respuestas. Si prefieres precisión, reemplaza por forkJoin para algunas llamadas.
@@ -401,35 +451,196 @@ export class DashInventories {
     this.areaCount = 0;
   }
 
-
-  // Abre modal y carga anotación existente (si la tuviera)
-  public openAnnotationModal(item: any): void {
-    // Mantener referencia al item para que puedas usarlo después
+  /* --- Abrir modal y precargar anotación existente --- */
+  public openAnnotationModal(item: AuditNoteItem): void {
     this.annotationItem = item;
-    // Si el objeto ya tiene propiedad 'annotation' la mostramos, sino cadena vacía
-    this.annotationText = item?.annotation ?? '';
+    this.annotationText = item?.annotation ?? item?.note ?? '';
     this.showAnnotationModal = true;
   }
 
-  // Cierra modal sin guardar
+  /* --- Cerrar modal (sin guardar) --- */
   public closeAnnotationModal(): void {
     this.showAnnotationModal = false;
     this.annotationItem = null;
     this.annotationText = '';
   }
 
-  // Guardar anotación localmente (placeholder) — luego lo conectas al backend
+  /* --- Guardar: llama a sendAuditNoteForItem para persistir en backend --- */
   public saveAnnotation(): void {
     if (!this.annotationItem) return;
 
-    // Asignamos la nota al objeto en memoria
-    this.annotationItem.annotation = (this.annotationText || '').trim();
+    const note = (this.annotationText || '').trim();
 
-    // Opcional: mostrar notificación / feedback aquí (toast, alert, etc.)
-    // Luego cierras modal
-    this.closeAnnotationModal();
+    // Evitar llamada si no hay cambios (opcional)
+    if (note === (this.annotationItem.annotation ?? this.annotationItem.note ?? '')) {
+      this.closeAnnotationModal();
+      return;
+    }
 
-    // IMPORTANTE: aquí debes llamar más tarde a tu servicio para persistir:
-    // this.dashboardService.saveAnnotation(this.annotationItem._id, this.annotationItem.annotation).subscribe(...)
+    // Llamada para persistir la anotación (se encarga de actualizar arrays locales)
+    this.sendAuditNoteForItem({
+      code: this.annotationItem.code,
+      referencia: this.annotationItem.referencia,
+      area: this.annotationItem.area
+    }, note);
   }
+
+  // Type-guards (colócalos en la clase DashInventories)
+  private isSimpleResponse(res: any): res is AuditNoteResponseSimple {
+    return !!res && typeof res.msg === 'string';
+  }
+  private isWithItemResponse(res: any): res is AuditNoteResponseWithItem {
+    return !!res && res.msg && typeof res.msg === 'object' && ('code' in res.msg || '_id' in res.msg);
+  }
+
+  /* --- Enviar nota al backend y actualizar estado local --- */
+  public sendAuditNoteForItem(item: { code: string; referencia?: string; area?: string }, noteText: string) {
+    const dateForBackend = this.formatDateForBackend(this.selectedDate); // 'DD/MM/YYYY'
+    const payload: AuditNoteRequest = {
+      barcode: item.code,
+      reference: item.referencia,
+      area: item.area,
+      note: noteText,
+      date: dateForBackend
+    };
+
+    // Mostrar spinner/estado local de guardado
+    this.notCompliantLoading = true;
+
+    this.dashboardService.getAuditNote(payload).subscribe({
+      next: (res) => {
+        // Validación básica del body de respuesta
+        if (!res || !res.ok) {
+          console.warn('Respuesta no OK del backend:', res);
+          this.notCompliantLoading = false;
+          return;
+        }
+
+        // Buscar item localmente (por código) en la lista original
+        const found = this.notCompliantItems.find(i => String(i.code) === String(payload.barcode));
+
+        if (this.isSimpleResponse(res)) {
+          // Backend devolvió solo mensaje -> actualizamos la anotación con lo enviado
+          if (found) {
+            found.annotation = payload.note ?? found.annotation;
+          } else {
+            // opcional: insertar registro mínimo si necesitas reflejarlo en UI
+          }
+          console.log(res.msg);
+        } else if (this.isWithItemResponse(res)) {
+          const updated = (res as AuditNoteResponseWithItem).msg;
+          if (found) {
+            // Actualizar solo campos relevantes
+            found.annotation = updated.annotation ?? updated.note ?? payload.note ?? found.annotation;
+            found.area = updated.area ?? found.area;
+            found.referencia = updated.referencia ?? found.referencia;
+            found.producto = updated.producto ?? found.producto;
+            found.validate = typeof updated.validate === 'boolean' ? updated.validate : found.validate;
+            found.codRef = typeof updated.codRef === 'number' ? updated.codRef : found.codRef;
+            found.persons = Array.isArray(updated.persons) ? updated.persons : found.persons;
+            found.team = updated.team ?? found.team;
+          } else {
+            // Insertar el item si no existía antes (opcional)
+            this.notCompliantItems.push({
+              _id: updated._id,
+              area: updated.area,
+              persons: updated.persons || [],
+              team: updated.team || '',
+              code: updated.code,
+              codRef: updated.codRef,
+              referencia: updated.referencia,
+              producto: updated.producto,
+              validate: updated.validate,
+              annotation: updated.annotation ?? updated.note
+            } as NotCompliantItem);
+          }
+          console.log('Item actualizado:', updated);
+        } else {
+          // En caso de estructura inesperada, aplicar la nota enviada
+          if (found) found.annotation = payload.note ?? found.annotation;
+          console.warn('Respuesta con formato inesperado:', res);
+        }
+
+        // Reaplicar filtros para actualizar la tabla mostrada
+        this.applyNotCompliantFilters();
+
+        // Cerrar modal y limpiar estado
+        this.closeAnnotationModal();
+        this.notCompliantLoading = false;
+      },
+      error: (err) => {
+        console.error('Error al guardar anotación:', err);
+        this.notCompliantLoading = false;
+        // Aquí puedes mostrar una notificación al usuario con el error
+      }
+    });
+  }
+
+  // --- Cargar datos no conformes (fecha en formato backend) ---
+  loadNotCompliantData(date: string, page: number = 1, limit: number = 20) {
+    // payload puede incluir page y limit: dependiendo de la definición del servicio,
+    // si getNotCompliant tiene una firma estricta ajusta el servicio o castea el payload.
+    const payload: any = { teamKey: 'all', page, limit };
+
+    this.dashboardService.getNotCompliant(date, payload).subscribe({
+      next: (res) => {
+        if (res && res.ok && res.msg) {
+          this.notCompliantTotal = res.msg.total ?? 0;
+          this.notCompliantTotalPages = res.msg.totalPages ?? 0;
+          this.notCompliantCurrentPage = res.msg.currentPage ?? page;
+          this.notCompliantItems = res.msg.items ?? [];
+          this.applyNotCompliantFilters();
+        } else {
+          this.resetNotCompliantData();
+        }
+      },
+      error: (err) => {
+        console.error('Error getNotCompliant:', err);
+        this.errorMessage = err?.message || 'Error cargando items no conformes';
+        this.resetNotCompliantData();
+      }
+    });
+  }
+
+  private resetNotCompliantData() {
+    this.notCompliantTotal = 0;
+    this.notCompliantTotalPages = 0;
+    this.notCompliantCurrentPage = 1;
+    this.notCompliantItems = [];
+    this.filteredNotCompliantItems = [];
+  }
+
+  // --- Filtros localmente aplicados ---
+  applyNotCompliantFilters() {
+    const text = (this.filterTextNotCompliant || '').trim().toLowerCase();
+
+    this.filteredNotCompliantItems = this.notCompliantItems.filter(item => {
+      const matchesText = !text ||
+        (item.code || '').toLowerCase().includes(text) ||
+        (item.referencia || '').toLowerCase().includes(text) ||
+        (item.producto || '').toLowerCase().includes(text);
+
+      const matchesArea = !this.filterAreaNotCompliant || item.area === this.filterAreaNotCompliant;
+      const matchesTeam = !this.filterTeamNotCompliant || item.team === this.filterTeamNotCompliant;
+
+      return matchesText && matchesArea && matchesTeam;
+    });
+  }
+
+  resetNotCompliantFilters() {
+    this.filterTextNotCompliant = '';
+    this.filterAreaNotCompliant = '';
+    this.filterTeamNotCompliant = '';
+    this.applyNotCompliantFilters();
+  }
+
+  // --- Paginación: método requerido por la plantilla ---
+  changeNotCompliantPage(page: number) {
+    if (!page || page < 1) return;
+    if (this.notCompliantTotalPages && page > this.notCompliantTotalPages) return;
+
+    const dateForBackend = this.formatDateForBackend(this.selectedDate); // usa tu función existente
+    this.loadNotCompliantData(dateForBackend, page, this.notCompliantPageSize);
+  }
+
 }

@@ -275,6 +275,9 @@ THE SOFTWARE.
 ng-apexcharts
 MIT
 
+ngx-pagination
+MIT
+
 ngx-scrollbar
 MIT
 

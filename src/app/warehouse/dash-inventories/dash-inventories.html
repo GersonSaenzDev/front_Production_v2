@@ -168,6 +168,7 @@
         <ul class="list-group list-group-horizontal mb-0">
           <li class="list-group-item" [class.active]="panel === 'global'" (click)="panel='global'">Inventario Global</li>
           <li class="list-group-item" [class.active]="panel === 'teams'" (click)="panel='teams'">Inventario por Equipos</li>
+          <li class="list-group-item" [class.active]="panel === 'notCompliant'" (click)="panel='notCompliant'">Inventario No Conformes</li>
         </ul>
 
         <div class="d-flex align-items-center">
@@ -300,6 +301,100 @@
             <button class="btn btn-outline-secondary" (click)="exportComparison()">Exportar (CSV)</button>
             <div *ngIf="comparisonResult" class="ms-3">
               <small class="text-muted">Coincidencias: {{ comparisonResult.matchCount }}, Diferencias: {{ comparisonResult.diffCount }}</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL: Inventario por No Conforme -->
+        <div *ngIf="panel === 'notCompliant'">
+          <div class="row mb-3 g-2">
+            <div class="col-md-3">
+              <input type="text" class="form-control" placeholder="Buscar código / referencia / producto"
+                    [(ngModel)]="filterTextNotCompliant" (ngModelChange)="applyNotCompliantFilters()" />
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" [(ngModel)]="filterAreaNotCompliant" (change)="applyNotCompliantFilters()">
+                <option value="">Todas las Áreas</option>
+                <option *ngFor="let a of areaOptions" [value]="a">{{ a }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" [(ngModel)]="filterTeamNotCompliant" (change)="applyNotCompliantFilters()">
+                <option value="">Todos los Equipos</option>
+                <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }}</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex">
+              <button class="btn btn-sm btn-outline-primary me-2" (click)="resetNotCompliantFilters()">Reset</button>
+              <button class="btn btn-sm btn-primary" (click)="loadNotCompliantData(formatDateForBackend(selectedDate))">Refrescar</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>Código</th>
+                  <th>CodRef</th>
+                  <th>Referencia</th>
+                  <th>Producto</th>
+                  <th>Área</th>
+                  <th>Equipo</th>
+                  <th>Personas</th>
+                  <th class="text-center">Anotaciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of filteredNotCompliantItems">
+                  <td>{{ item.code }}</td>
+                  <td>{{ item.codRef }}</td>
+                  <td>{{ item.referencia }}</td>
+                  <td>{{ item.producto }}</td>
+                  <td>{{ item.area }}</td>
+                  <td>{{ item.team || 'Sin equipo' }}</td>
+                  <td>
+                    <span *ngFor="let person of item.persons; let last = last">
+                      {{ person }}<span *ngIf="!last">, </span>
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      (click)="openAnnotationModal(item)"
+                      title="Agregar / ver anotación">
+                      <i class="ti ti-note"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr *ngIf="filteredNotCompliantItems.length === 0">
+                  <td colspan="8" class="text-center text-muted">No hay registros no conformes para la fecha seleccionada</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Paginación si es necesaria -->
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="text-muted">
+              Mostrando {{ filteredNotCompliantItems.length }} de {{ notCompliantTotal }} registros no conformes
+            </div>
+            <div *ngIf="notCompliantTotalPages > 1" class="btn-group" role="group">
+              <button 
+                class="btn btn-outline-primary btn-sm"
+                [disabled]="notCompliantCurrentPage <= 1"
+                (click)="changeNotCompliantPage(notCompliantCurrentPage - 1)">
+                Anterior
+              </button>
+              <button class="btn btn-primary btn-sm disabled">
+                Página {{ notCompliantCurrentPage }} de {{ notCompliantTotalPages }}
+              </button>
+              <button 
+                class="btn btn-outline-primary btn-sm"
+                [disabled]="notCompliantCurrentPage >= notCompliantTotalPages"
+                (click)="changeNotCompliantPage(notCompliantCurrentPage + 1)">
+                Siguiente
+              </button>
             </div>
           </div>
         </div>

@@ -126,3 +126,96 @@ export interface TeamItemsResponse {
   msg: TeamItemsData;
 }
 
+export interface NotCompliantItem {
+  _id: string;
+  area: string;
+  persons: string[];      // nombres de las personas (strings)
+  team: string;           // puede ser cadena vacía
+  code: string;           // barcode.code
+  codRef: number;         // inventory.codRef
+  referencia: string;
+  producto: string;
+  validate: boolean;
+}
+
+export interface NotCompliantData {
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  items: NotCompliantItem[];
+}
+
+export interface NotCompliantResponse {
+  ok: boolean;
+  msg: NotCompliantData;
+}
+
+// Request que envías al backend
+export interface AuditNoteRequest {
+  barcode: string;
+  reference?: string;
+  area?: string;
+  note?: string;
+  date?: string; // opcional
+}
+
+// Respuesta simple (mensaje)
+export interface AuditNoteResponseSimple {
+  ok: boolean;
+  msg: string;
+}
+
+// Respuesta con item actualizado en msg
+export interface AuditNoteItemResponse {
+  _id: string;
+  area: string;
+  persons: string[];
+  team: string;
+  code: string;
+  codRef: number;
+  referencia: string;
+  producto: string;
+  validate: boolean;
+  annotation?: string;
+  note?: string;
+}
+
+export interface AuditNoteResponseWithItem {
+  ok: boolean;
+  msg: AuditNoteItemResponse;
+}
+
+// Union para el servicio
+export type AuditNoteResponse = AuditNoteResponseSimple | AuditNoteResponseWithItem;
+
+// Ajustar NotCompliantItem (agregar annotation y note opcionales)
+export interface NotCompliantItem {
+  _id: string;
+  area: string;
+  persons: string[];      // nombres de las personas (strings)
+  team: string;           // puede ser cadena vacía
+  code: string;           // barcode.code
+  codRef: number;         // inventory.codRef
+  referencia: string;
+  producto: string;
+  validate: boolean;
+  annotation?: string;    // <-- opcional
+  note?: string;          // <-- opcional (si el backend usa esta propiedad)
+}
+
+export interface AuditNoteItem {
+  _id: string;
+  area: string;
+  persons: string[];
+  team: string;
+  code: string;
+  codRef: number;
+  referencia: string;
+  producto: string;
+  validate: boolean;
+  annotation?: string;
+  note?: string;
+}
+
+
+

@@ -3,9 +3,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
-import { AreaCountResponse, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, SeeGroupsResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
+import { catchError } from 'rxjs/operators';
+import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, NotCompliantResponse, SeeGroupsResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
 import { environment } from 'src/environments/environment';
+
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +23,9 @@ export class DashInventoryServices {
   private readonly GLOBALCOUNT_TEAMCOUNT = `${this.BASE_URL}${this.BASE_API}/storage/teamCount`;
   private readonly GLOBALCOUNT_AREACOUNT = `${this.BASE_URL}${this.BASE_API}/storage/areaCount`;
   private readonly GLOBALCOUNT_VIEWINVENTORIES = `${this.BASE_URL}${this.BASE_API}/storage/viewInventories`;
+  private readonly GLOBALCOUNT_TEAMITEMS = `${this.BASE_URL}${this.BASE_API}/storage/TeamItems`;
+  private readonly GLOBALCOUNT_NOTCOMPLIANT = `${this.BASE_URL}${this.BASE_API}/storage/notCompliant`;
+  private readonly GLOBALCOUNT_AUDITNOTE = `${this.BASE_URL}${this.BASE_API}/storage/auditNote`;
 
   private handleError(error: any) {
     console.error('DashInventoryServices: Error en la petición:', error);
@@ -122,13 +126,27 @@ export class DashInventoryServices {
  * Obtiene items agregados por equipo (area, total, codes[])
  * body: { date, teamKey }
  */
-    getTeamItems(date: string, payload: { teamKey: string }): Observable<TeamItemsResponse> {
-    const body = { date, ...payload };
-    return this.http.post<TeamItemsResponse>(`${this.BASE_URL}/storage/teamItems`, body)
-        .pipe(
-        catchError(this.handleError.bind(this))
-        );
-    }
+  getTeamItems(date: string, payload: { teamKey: string }): Observable<TeamItemsResponse> {
+  const body = { date, ...payload };
+  return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body)
+      .pipe(
+      catchError(this.handleError.bind(this))
+      );
+  }
 
+  getNotCompliant(date: string, payload: { teamKey: string }): Observable<NotCompliantResponse> {
+    const body = { date, ...payload };
+    return this.http.post<NotCompliantResponse>(this.GLOBALCOUNT_NOTCOMPLIANT, body)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
+
+  getAuditNote(payload: AuditNoteRequest): Observable<AuditNoteResponse> {
+    return this.http.post<AuditNoteResponse>(this.GLOBALCOUNT_AUDITNOTE, payload)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
 
 }
