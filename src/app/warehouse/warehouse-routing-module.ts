@@ -23,6 +23,11 @@ const routes: Routes = [
     path: 'configInventories',
     loadComponent: () => import('./configure-inventories/configure-inventories').then((c) => c.ConfigureInventories)
   },
+  {
+    // Path completo: /production/productionNews
+    path: 'enterInventory',
+    loadComponent: () => import('./reader-inventory/reader-inventory').then((c) => c.InventoryReader)
+  },
 ];
 
 @NgModule({

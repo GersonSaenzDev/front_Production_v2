@@ -17,13 +17,13 @@ export interface NavigationItem {
 
 export const NavigationItems: NavigationItem[] = [
   {
-    id: 'dashboard',
+    id: 'dashboard-group',
     title: 'Panel de Control',
     type: 'group',
     icon: 'ti ti-building-factory-2',
     children: [
       {
-        id: 'default',
+        id: 'dashboard-default',
         title: 'Dashboard',
         type: 'item',
         classes: 'nav-item',
@@ -34,19 +34,21 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
-    id: 'Produccion',
+    id: 'produccion-group',
     title: 'Producción',
     type: 'group',
     icon: 'icon-navigation',
     children: [
       {
-        id: 'Produccion',
+        id: 'ensamble-collapse',
         title: 'Ensamble',
         type: 'collapse',
         icon: 'ti ti-brand-codesandbox',
+        classes: 'nav-item',
+        isMainParent: true,
         children: [
           {
-            id: 'barcode',
+            id: 'novedades-produccion-item',
             title: 'Novedades Producción',
             type: 'item',
             url: 'production/productionNews',
@@ -55,102 +57,68 @@ export const NavigationItems: NavigationItem[] = [
         ]
       },
       {
-        id: 'bodega',
+        id: 'bodega-collapse',
         title: 'Bodega',
         type: 'collapse',
         icon: 'ti ti-building-warehouse',
+        classes: 'nav-item',
+        isMainParent: true,
         children: [
           {
-            id: 'bodega',
+            id: 'registro-novedades-item',
             title: 'Registro Novedades',
             type: 'item',
             url: 'production/wineryNews',
             breadcrumbs: false
           },
           {
-            id: 'bodega',
+            id: 'ver-novedades-item',
             title: 'Ver Novedades',
             type: 'item',
             url: 'inventories/checkNews',
             breadcrumbs: false
           },
-          // {
-          //   id: 'bodega',
-          //   title: 'Config. Inventarios',
-          //   type: 'item',
-          //   url: 'inventories/configInventories',
-          //   breadcrumbs: false
-          // },
           {
-            id: 'bodega',
+            id: 'dashboard-inventarios-item',
             title: 'Dashboard Inventarios',
             type: 'item',
             url: 'inventories/dash',
             breadcrumbs: false
           }
+          ,
+          {
+            id: 'dashboard-inventarios-item',
+            title: 'Inventario Bodega',
+            type: 'item',
+            url: 'inventories/enterInventory',
+            breadcrumbs: false
+          }
         ]
       },
-      
+      {
+        id: 'etiquetas-collapse',
+        title: 'Generar Etiquetas',
+        type: 'collapse',
+        icon: 'ti ti-vocabulary',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'impresion-etiquetas-item',
+            title: 'Impresion Etiquetas',
+            type: 'item',
+            url: 'production/wineryNews',
+            breadcrumbs: false
+          },
+          {
+            id: 'leer-etiquetas-item',
+            title: 'Leer Etiquetas',
+            type: 'item',
+            url: 'inventories/checkNews',
+            breadcrumbs: false
+          }
+        ]
+      }
     ]
-  },
-  // {
-  //   id: 'elements',
-  //   title: 'Elements',
-  //   type: 'group',
-  //   icon: 'icon-navigation',
-  //   children: [
-  //     {
-  //       id: 'typography',
-  //       title: 'Typography',
-  //       type: 'item',
-  //       classes: 'nav-item',
-  //       url: '/typography',
-  //       icon: 'ti ti-typography'
-  //     },
-  //     {
-  //       id: 'color',
-  //       title: 'Colors',
-  //       type: 'item',
-  //       classes: 'nav-item',
-  //       url: '/color',
-  //       icon: 'ti ti-brush'
-  //     },
-  //     {
-  //       id: 'tabler',
-  //       title: 'Tabler',
-  //       type: 'item',
-  //       classes: 'nav-item',
-  //       url: 'https://tabler-icons.io/',
-  //       icon: 'ti ti-plant-2',
-  //       target: true,
-  //       external: true
-  //     }
-  //   ]
-  // },
-  // {
-  //   id: 'other',
-  //   title: 'Other',
-  //   type: 'group',
-  //   icon: 'icon-navigation',
-  //   children: [
-  //     {
-  //       id: 'sample-page',
-  //       title: 'Sample Page',
-  //       type: 'item',
-  //       url: '/sample-page',
-  //       classes: 'nav-item',
-  //       icon: 'ti ti-brand-chrome'
-  //     },
-  //     {
-  //       id: 'document',
-  //       title: 'Document',
-  //       type: 'item',
-  //       classes: 'nav-item',
-  //       url: 'https://codedthemes.gitbook.io/berry-angular/',
-  //       icon: 'ti ti-vocabulary',
-  //       target: true,
-  //       external: true
-  //     }
-  //   ]
-  // }
+  }
 ];

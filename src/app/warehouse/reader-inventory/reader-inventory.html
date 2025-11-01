@@ -1,0 +1,130 @@
+<!-- app/warehouse/reader-inventory/reader-inventory.html -->
+<div class="inventory-container">
+  <header class="header">
+    <h1>Lectura de Inventario con Lector de Código de Barras</h1>
+  </header>
+
+  <main class="main-content">
+    <!-- Panel izquierdo - Entrada de códigos -->
+    <section class="left-panel">
+      <h2>Entrada de Códigos</h2>
+
+      <div class="mode-selector">
+        <label class="mode-option">
+          <input
+            type="radio"
+            name="modoLectura"
+            value="simple"
+            [(ngModel)]="readingMode"
+            (change)="onModeChange('simple')" />
+          Lectura Simple
+        </label>
+        <label class="mode-option">
+          <input
+            type="radio"
+            name="modoLectura"
+            value="regleta"
+            [(ngModel)]="readingMode"
+            (change)="onModeChange('regleta')" />
+          Regleta (4-5 códigos)
+        </label>
+      </div>
+
+      <label for="codigoBarras">Código de Barras</label>
+      <input
+        type="text"
+        id="codigoBarras"
+        placeholder="Escanee o ingrese código de barras"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        [(ngModel)]="barcodeInput"
+        (keydown)="onKeyPress($event)" />
+
+      <div class="button-group">
+        <button id="btnLeer" (click)="readBarcode()">Leer Código</button>
+        <button id="btnLimpiar" class="btn-secondary" (click)="clearData()">Limpiar</button>
+      </div>
+
+      <div class="status-message" *ngIf="statusMessage">
+        {{ statusMessage }}
+      </div>
+
+      <ul class="codes-list" *ngIf="scannedCodes.length > 0">
+        <li *ngFor="let code of scannedCodes">{{ code }}</li>
+      </ul>
+    </section>
+
+    <!-- Panel derecho - Información del producto -->
+    <section class="right-panel">
+      <h2>Información del Producto</h2>
+
+      <!-- Vista para modo simple -->
+      <div class="product-info" *ngIf="readingMode === 'simple'">
+        <div *ngIf="currentProduct; else noProduct">
+          <h3>{{ currentProduct.name }}</h3>
+          <p><strong>ID:</strong> {{ currentProduct.id }}</p>
+          <p><strong>Descripción:</strong> {{ currentProduct.description }}</p>
+          <p><strong>Precio:</strong> ${{ currentProduct.price.toFixed(2) }}</p>
+          <p><strong>Stock:</strong> {{ currentProduct.stock }} unidades</p>
+        </div>
+        <ng-template #noProduct>
+          <p class="placeholder">Escanee un código de barras para ver la información del producto</p>
+        </ng-template>
+      </div>
+
+      <!-- Vista para modo regleta -->
+      <div class="regleta-view" *ngIf="readingMode === 'regleta'">
+        <div class="regleta-products" *ngIf="regletaProducts.length > 0; else noRegletaProducts">
+          <div class="regleta-product" *ngFor="let product of regletaProducts">
+            <h4>{{ product.name }}</h4>
+            <p><strong>ID:</strong> {{ product.id }}</p>
+            <p><strong>Precio:</strong> ${{ product.price.toFixed(2) }}</p>
+            <p><strong>Stock:</strong> {{ product.stock }} unidades</p>
+          </div>
+        </div>
+        <ng-template #noRegletaProducts>
+          <p class="placeholder">Escanee códigos de barras para crear una regleta de productos</p>
+        </ng-template>
+      </div>
+
+      <!-- Formulario para Área y Nombres -->
+      <form class="inventory-form" (ngSubmit)="registerInventory()" #inventoryForm="ngForm">
+        <h3>Registrar Información</h3>
+
+        <label for="area">Área</label>
+        <input
+          type="text"
+          id="area"
+          name="area"
+          class="form-input"
+          placeholder="Ingrese área"
+          required
+          [(ngModel)]="inventoryArea" />
+
+        <label for="nombre1">Nombre 1</label>
+        <input
+          type="text"
+          id="nombre1"
+          name="nombre1"
+          class="form-input"
+          placeholder="Ingrese primer nombre"
+          required
+          [(ngModel)]="personName1" />
+
+        <label for="nombre2">Nombre 2</label>
+        <input
+          type="text"
+          id="nombre2"
+          name="nombre2"
+          class="form-input"
+          placeholder="Ingrese segundo nombre"
+          required
+          [(ngModel)]="personName2" />
+
+        <button type="submit" class="btn-register" [disabled]="!inventoryForm.form.valid">
+          Registrar al Inventario
+        </button>
+      </form>
+    </section>
+  </main>
+</div>

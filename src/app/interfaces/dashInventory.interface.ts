@@ -216,6 +216,21 @@ export interface AuditNoteItem {
   annotation?: string;
   note?: string;
 }
+export interface StorageItem {
+  EAN: string;
+  productCode: string;
+  productName: string;
+  reference: string;
+  barcode: string;
+  consecutivo: string;
+}
 
+export interface StorageResponse {
+  ok: boolean;
+  msg: StorageItem[]; // el backend devuelve un array de objetos (puede ser de longitud 0 o más)
+}
 
+export interface BarcodeRequest {
+  barcode: string;
+}
 
