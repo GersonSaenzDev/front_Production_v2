@@ -6,9 +6,9 @@ import { FormsModule } from '@angular/forms';
 import { SharedModule } from 'src/app/theme/shared/shared.module';
 import { DashboardServices } from 'src/app/services/dashboard-services';
 import { ChartData, ChartDataResponse, CardAssemblyResponse, AssemblyMetrics, TopProductsItem, TopProductsResponse } from 'src/app/interfaces/assembly.interface';
-import { BajajChartComponent } from '../apexchart/bajaj-chart/bajaj-chart.component';
+// import { BajajChartComponent } from '../apexchart/bajaj-chart/bajaj-chart.component';
 import { BarChartComponent } from '../apexchart/bar-chart/bar-chart.component';
-import { ChartDataMonthComponent } from '../apexchart/chart-data-month/chart-data-month.component';
+// import { ChartDataMonthComponent } from '../apexchart/chart-data-month/chart-data-month.component';
 
 // Registrar el locale de español
 registerLocaleData(localeEs, 'es'); 
@@ -18,9 +18,7 @@ registerLocaleData(localeEs, 'es');
   selector: 'app-dashboard',
   // Asegúrate de incluir FormsModule en los imports
   imports: [
-    BajajChartComponent, 
     BarChartComponent, 
-    ChartDataMonthComponent, 
     SharedModule, 
     FormsModule,    
   ], 
@@ -104,7 +102,6 @@ export class Dashboard {
    * Maneja el evento de cambio de fecha en el input y recarga todos los datos.
    */
   public onDateChange(newDate: string): void {
-    console.log(`Nueva fecha seleccionada (Input): ${newDate}`);
     const dateForBackend = this.formatDateForBackend(newDate); 
     this.loadDataForDate(dateForBackend);
     this.loadTopProductsData(dateForBackend); 
@@ -120,7 +117,6 @@ export class Dashboard {
    * 🎯 NUEVO MÉTODO: Maneja el cambio en el rango de horas y recarga la tabla.
    */
   public onTimeRangeChange(): void {
-    console.log(`Rango horario cambiado. Inicio: ${this.timeStart}, Fin: ${this.timeEnd}`);
     const dateForBackend = this.formatDateForBackend(this.selectedDate); 
     this.loadTotalProducts(dateForBackend, this.timeStart, this.timeEnd);
   }
@@ -133,14 +129,11 @@ export class Dashboard {
       
     this.dashboardService.getTotalProductsDay(date, timeStart, timeEnd).subscribe({
         next: (response: TopProductsResponse) => {
-            console.log(`%c[Backend OK] Datos de Producción Total recibidos:`, 'color: orange; font-weight: bold;');
             
             // 🎯 ASIGNACIÓN: Asignamos el array de productos a la variable de la tabla
             this.totalProducts = response.msg; 
         },
         error: (error) => {
-            console.error(`%c[Backend ERROR] Fallo al consultar Producción Total:`, 'color: red; font-weight: bold;');
-            console.error(error);
             this.totalProducts = []; // Vaciar la tabla en caso de error
         }
     });
@@ -151,29 +144,19 @@ export class Dashboard {
    * @param date La fecha con la que se hará la consulta al backend (formato DD/MM/YYYY).
    */
   private loadDataForDate(date: string): void {
-    console.log(`[Servicio] Iniciando consulta de métricas de tarjeta para la fecha: ${date}`);
-
+    
     this.dashboardService.getCardMetrics(date).subscribe({
         next: (response: CardAssemblyResponse) => { // Tipado correcto
             
-            console.log(`%c[Backend OK] Datos de métricas recibidos correctamente para ${date}:`, 'color: green; font-weight: bold;');
-            console.log(response.msg); 
+          // 🎯 LÓGICA CLAVE: ASIGNACIÓN DE PROPIEDADES A LAS VARIABLES DE LA CLASE
+            const metrics: AssemblyMetrics = response.msg;
+            this.totalProductoTerminado = metrics.TotalReadingsRecorded;
+            this.productoValidado = metrics.TotalValidUnits; 
+            this.productoConError = metrics.TotalErrorMarked; 
+            this.duplicados = metrics.TotalDuplicated; 
             
-            // 🎯 LÓGICA CLAVE: ASIGNACIÓN DE PROPIEDADES A LAS VARIABLES DE LA CLASE
-             const metrics: AssemblyMetrics = response.msg;
-             this.totalProductoTerminado = metrics.TotalReadingsRecorded;
-             this.productoValidado = metrics.TotalValidUnits; 
-             this.productoConError = metrics.TotalErrorMarked; 
-             this.duplicados = metrics.TotalDuplicated; 
-             
-             console.log('[Dashboard] Métricas de Tarjetas Actualizadas:', {
-                 totalProductoTerminado: this.totalProductoTerminado,
-                 productoValidado: this.productoValidado,
-             });
         },
         error: (error) => {
-            console.error(`%c[Backend ERROR] Fallo al consultar métricas para ${date}:`, 'color: red; font-weight: bold;');
-            console.error(error);
             // Limpiar los valores en caso de error
             this.totalProductoTerminado = 0;
             this.productoValidado = 0;
@@ -188,19 +171,14 @@ export class Dashboard {
    * @param date La fecha con la que se hará la consulta al backend (formato DD/MM/YYYY).
    */
   private loadTopProductsData(date: string): void {
-      console.log(`[Servicio] Iniciando consulta de Top Products para la fecha: ${date}`);
       
       // El servicio ya se encarga de llamar al endpoint y transformar los datos
       this.dashboardService.getTopProductsChartData(date).subscribe({
           next: (response: ChartDataResponse) => {
-              console.log(`%c[Backend OK] Datos de Top Products (Gráfico) recibidos:`, 'color: blue; font-weight: bold;');
-              
               // Asignamos directamente el objeto ChartData
               this.barChartData = response.msg; 
           },
           error: (error) => {
-              console.error(`%c[Backend ERROR] Fallo al consultar Top Products para ${date}:`, 'color: red; font-weight: bold;');
-              console.error(error);
               this.barChartData = { categories: [], produced: [], valid: [] };
           }
       });

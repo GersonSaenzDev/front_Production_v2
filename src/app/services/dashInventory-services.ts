@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
+import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, InsertInventoryRequest, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
 import { environment } from 'src/environments/environment';
 
 
@@ -27,6 +27,7 @@ export class DashInventoryServices {
   private readonly GLOBALCOUNT_NOTCOMPLIANT = `${this.BASE_URL}${this.BASE_API}/storage/notCompliant`;
   private readonly GLOBALCOUNT_AUDITNOTE = `${this.BASE_URL}${this.BASE_API}/storage/auditNote`;
   private readonly GLOBALCOUNT_STORAGE = `${this.BASE_URL}${this.BASE_API}/storage`;
+  private readonly GLOBALCOUNT_INSERTINVENTORY = `${this.BASE_URL}${this.BASE_API}/storage/insertInventory`;
 
   private handleError(error: any) {
     console.error('DashInventoryServices: Error en la petición:', error);
@@ -152,6 +153,13 @@ export class DashInventoryServices {
 
   getStorage(payload: BarcodeRequest): Observable<StorageResponse> {
     return this.http.post<StorageResponse>(this.GLOBALCOUNT_STORAGE, payload)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
+
+  getInsertInventory(payload: InsertInventoryRequest): Observable<StorageResponse> {
+    return this.http.post<StorageResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload)
       .pipe(
         catchError(this.handleError.bind(this))
       );

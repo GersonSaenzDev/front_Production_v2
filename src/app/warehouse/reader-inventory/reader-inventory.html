@@ -1,11 +1,10 @@
-<!-- app/warehouse/reader-inventory/reader-inventory.html -->
+<!-- /app/warehouse/reader-inventory/reader-inventory.html -->
 <div class="inventory-container">
   <header class="header">
-    <h1>Lectura de Inventario con Lector de Código de Barras</h1>
+    <h1>Lectura de Código de Barras Bodega Indusel</h1>
   </header>
 
   <main class="main-content">
-    <!-- Panel izquierdo - Entrada de códigos -->
     <section class="left-panel">
       <h2>Entrada de Códigos</h2>
 
@@ -32,54 +31,164 @@
 
       <label for="codigoBarras">Código de Barras</label>
       <input
+        #barcodeInputEl
         type="text"
         id="codigoBarras"
         placeholder="Escanee o ingrese código de barras"
         inputmode="numeric"
         pattern="[0-9]*"
         [(ngModel)]="barcodeInput"
-        (keydown)="onKeyPress($event)" />
+        (keydown)="onKeyPress($event)"
+        (ngModelChange)="onBarcodeChange($event)"
+        autofocus
+        required />
 
-      <div class="button-group">
-        <button id="btnLeer" (click)="readBarcode()">Leer Código</button>
+      <div class="button-group" style="margin-top:12px;">
         <button id="btnLimpiar" class="btn-secondary" (click)="clearData()">Limpiar</button>
+
+        <!-- Abre modal de ng-bootstrap -->
+        <button id="btnUsuarioInventario" class="btn-primary" (click)="openUserModal(userModal)">Usuario Inventario</button>
       </div>
 
-      <div class="status-message" *ngIf="statusMessage">
-        {{ statusMessage }}
+      <!-- Resumen rápido del usuario configurado -->
+      <div class="user-summary" *ngIf="inventoryArea || personName1 || personName2" style="margin-top:12px;">
+        <strong>Usuario configurado:</strong>
+        <div *ngIf="inventoryArea"><small>Área:</small> {{ inventoryArea }}</div>
+        <div *ngIf="personName1"><small>Nombre 1:</small> {{ personName1 }}</div>
+        <div *ngIf="personName2"><small>Nombre 2:</small> {{ personName2 }}</div>
       </div>
 
-      <ul class="codes-list" *ngIf="scannedCodes.length > 0">
+        <div style="margin-top:12px;">
+            <!-- Éxito -->
+            <div *ngIf="serverSuccess === true" class="alert alert-success" role="alert">
+                <strong>OK:</strong> {{ serverResponse?.msg || statusMessage }}
+            </div>
+
+            <!-- Error del backend -->
+            <div *ngIf="serverSuccess === false" class="alert alert-danger" role="alert">
+                <strong>Error:</strong> {{ serverResponse?.msg || statusMessage }}
+
+                <div *ngIf="duplicateBarcode" class="mt-2">
+                <small>Barcode duplicado: <code>{{ duplicateBarcode }}</code></small>
+
+                <!-- Botón: añadir el barcode duplicado a la lista de escaneados -->
+                <button type="button" class="btn btn-sm btn-outline-light ms-2"
+                        (click)="addDuplicateToScanned(duplicateBarcode)">
+                    Añadir a escaneados
+                </button>
+
+                <!-- Botón copiar -->
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+                        (click)="copyToClipboard(duplicateBarcode)">
+                    Copiar
+                </button>
+                </div>
+
+                <!-- Si la respuesta contiene más info, muéstrala cruda (opcional) -->
+                <pre *ngIf="serverResponse?.details" class="mt-2">{{ serverResponse.details | json }}</pre>
+            </div>
+
+            <!-- Mensaje genérico si no hubo llamada o mientras se procesa -->
+            <div *ngIf="serverSuccess === null && statusMessage" class="alert alert-info">
+                {{ statusMessage }}
+            </div>
+            </div>
+
+      <ul class="codes-list" *ngIf="scannedCodes.length > 0" style="margin-top:12px;">
         <li *ngFor="let code of scannedCodes">{{ code }}</li>
       </ul>
+
+      <!-- Plantilla de modal para ng-bootstrap -->
+        <ng-template #userModal let-modal>
+        <div class="modal-header">
+            <h5 class="modal-title">Usuario Inventario</h5>
+            <!-- <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('cancel')"></button> -->
+        </div>
+
+        <form #userForm="ngForm" (ngSubmit)="saveUserInfo(modal, userForm)">
+            <div class="modal-body">
+            <div class="mb-3">
+                <label for="modalArea" class="form-label">Área</label>
+                <input
+                id="modalArea"
+                name="modalArea"
+                class="form-control"
+                type="text"
+                placeholder="Ingrese área"
+                required
+                [(ngModel)]="inventoryArea" />
+            </div>
+
+            <div class="mb-3">
+                <label for="modalNombre1" class="form-label">Nombre 1</label>
+                <input
+                id="modalNombre1"
+                name="modalNombre1"
+                class="form-control"
+                type="text"
+                placeholder="Ingrese primer nombre"
+                required
+                [(ngModel)]="personName1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="modalNombre2" class="form-label">Nombre 2</label>
+                <input
+                id="modalNombre2"
+                name="modalNombre2"
+                class="form-control"
+                type="text"
+                placeholder="Ingrese segundo nombre"
+                required
+                [(ngModel)]="personName2" />
+            </div>
+            </div>
+
+            <div class="modal-footer">
+            <!-- Nuevo: Limpiar (no cierra el modal) -->
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="clearUserFields(userForm)">
+                Limpiar
+            </button>
+
+            <!-- Cancelar cierra el modal sin guardar -->
+            <button type="button" class="btn btn-secondary" (click)="modal.dismiss('cancel')">Cancelar</button>
+
+            <!-- Guardar valida y cierra -->
+            <button type="submit" class="btn btn-primary" [disabled]="!userForm.form.valid">Guardar</button>
+            </div>
+        </form>
+        </ng-template>
     </section>
 
-    <!-- Panel derecho - Información del producto -->
     <section class="right-panel">
       <h2>Información del Producto</h2>
 
-      <!-- Vista para modo simple -->
       <div class="product-info" *ngIf="readingMode === 'simple'">
         <div *ngIf="currentProduct; else noProduct">
-          <h3>{{ currentProduct.name }}</h3>
-          <p><strong>ID:</strong> {{ currentProduct.id }}</p>
-          <p><strong>Descripción:</strong> {{ currentProduct.description }}</p>
-          <p><strong>Precio:</strong> ${{ currentProduct.price.toFixed(2) }}</p>
-          <p><strong>Stock:</strong> {{ currentProduct.stock }} unidades</p>
+          <h3>{{ currentProduct.productName }}</h3>
+          <p><strong>EAN:</strong> {{ currentProduct.EAN }}</p>
+          <p><strong>Código Producto:</strong> {{ currentProduct.productCode }}</p>
+          <p><strong>Referencia:</strong> {{ currentProduct.reference }}</p>
+          <p><strong>Código de Barras:</strong> {{ currentProduct.barcode }}</p>
+          <p><strong>Consecutivo:</strong> {{ currentProduct.consecutivo }}</p>
         </div>
         <ng-template #noProduct>
           <p class="placeholder">Escanee un código de barras para ver la información del producto</p>
         </ng-template>
       </div>
 
-      <!-- Vista para modo regleta -->
       <div class="regleta-view" *ngIf="readingMode === 'regleta'">
         <div class="regleta-products" *ngIf="regletaProducts.length > 0; else noRegletaProducts">
           <div class="regleta-product" *ngFor="let product of regletaProducts">
-            <h4>{{ product.name }}</h4>
-            <p><strong>ID:</strong> {{ product.id }}</p>
-            <p><strong>Precio:</strong> ${{ product.price.toFixed(2) }}</p>
-            <p><strong>Stock:</strong> {{ product.stock }} unidades</p>
+            <h4>{{ product.productName }}</h4>
+            <p><strong>EAN:</strong> {{ product.EAN }}</p>
+            <p><strong>Código Producto:</strong> {{ product.productCode }}</p>
+            <p><strong>Referencia:</strong> {{ product.reference }}</p>
+            <p><strong>Código de Barras:</strong> {{ product.barcode }}</p>
+            <p><strong>Consecutivo:</strong> {{ product.consecutivo }}</p>
           </div>
         </div>
         <ng-template #noRegletaProducts>
@@ -87,44 +196,11 @@
         </ng-template>
       </div>
 
-      <!-- Formulario para Área y Nombres -->
-      <form class="inventory-form" (ngSubmit)="registerInventory()" #inventoryForm="ngForm">
-        <h3>Registrar Información</h3>
-
-        <label for="area">Área</label>
-        <input
-          type="text"
-          id="area"
-          name="area"
-          class="form-input"
-          placeholder="Ingrese área"
-          required
-          [(ngModel)]="inventoryArea" />
-
-        <label for="nombre1">Nombre 1</label>
-        <input
-          type="text"
-          id="nombre1"
-          name="nombre1"
-          class="form-input"
-          placeholder="Ingrese primer nombre"
-          required
-          [(ngModel)]="personName1" />
-
-        <label for="nombre2">Nombre 2</label>
-        <input
-          type="text"
-          id="nombre2"
-          name="nombre2"
-          class="form-input"
-          placeholder="Ingrese segundo nombre"
-          required
-          [(ngModel)]="personName2" />
-
-        <button type="submit" class="btn-register" [disabled]="!inventoryForm.form.valid">
+      <div style="margin-top:20px;">
+        <button class="btn-register btn btn-success" (click)="registerInventory()">
           Registrar al Inventario
         </button>
-      </form>
+      </div>
     </section>
   </main>
 </div>

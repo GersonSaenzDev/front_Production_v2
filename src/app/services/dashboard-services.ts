@@ -29,7 +29,7 @@ private readonly TOTAL_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/a
 private readonly VIEW_REF_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewRef`;
 
 private handleError(error: any) {
- console.error('DashboardServices: Error en la petición:', error);
+ 
  let errorMessage = 'Ocurrió un error desconocido en el servicio.';
  if (error.error && error.error.msg) {
  errorMessage = error.error.msg;
@@ -60,8 +60,6 @@ getTopProductsChartData(date: string): Observable<ChartDataResponse> {
 return this.getTopProduction(date).pipe(
  map(response => {
  
- console.log('Respuesta CRUDA del backend (getTopProduction):', response);
-
  if (!response.ok || !response.msg || response.msg.length === 0) {
   console.warn('Backend respondió sin datos válidos. Se devuelve estructura vacía.');
   return {
@@ -106,9 +104,6 @@ getTotalProductsDay(date: string, timeStart?: string, timeEnd?: string): Observa
       if (timeStart) body.timeStart = timeStart;
       if (timeEnd) body.timeEnd = timeEnd;
 
-      // 🚨 PUNTO DE CONTROL 1: Petición saliente
-      console.log('SERVICIOS - CONTROL: Petición a totalProductsDay con body:', body);
-      
   return this.http.post<TopProductsResponse>(this.TOTAL_PRODUCTION_ENDPOINT, body)
     .pipe(
           catchError(this.handleError.bind(this)),
@@ -132,8 +127,6 @@ getTotalProductsDay(date: string, timeStart?: string, timeEnd?: string): Observa
     searchReferences(referenceTerm: string): Observable<ReferenceSearchResponse> {
         // El body debe coincidir con la estructura que espera el backend: { "reference": "at 201" }
         const body = { reference: referenceTerm };
-
-        console.log('SERVICIOS - CONTROL: Petición a viewRef con body:', body);
 
         return this.http.post<ReferenceSearchResponse>(this.VIEW_REF_ENDPOINT, body)
             .pipe(

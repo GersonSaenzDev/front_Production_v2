@@ -105,16 +105,30 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'impresion-etiquetas-item',
+            title: 'Control Impresion',
+            type: 'item',
+            url: 'printing/dash',
+            breadcrumbs: false
+          },
+          {
+            id: 'impresion-etiquetas-item',
+            title: 'Parametros Etiquetas',
+            type: 'item',
+            url: 'printing/barcodeParameters',
+            breadcrumbs: false
+          },
+          {
+            id: 'impresion-etiquetas-item',
             title: 'Impresion Etiquetas',
             type: 'item',
-            url: 'production/wineryNews',
+            url: 'printing/barcodePrinting',
             breadcrumbs: false
           },
           {
             id: 'leer-etiquetas-item',
             title: 'Leer Etiquetas',
             type: 'item',
-            url: 'inventories/checkNews',
+            url: 'printing/readBarcode',
             breadcrumbs: false
           }
         ]

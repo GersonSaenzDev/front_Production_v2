@@ -4,9 +4,9 @@ import localeEs from '@angular/common/locales/es';
 import { Component, LOCALE_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, } from 'src/app/interfaces/dashInventory.interface';
-import { BajajChartComponent } from 'src/app/production/assembly/apexchart/bajaj-chart/bajaj-chart.component';
-import { BarChartComponent } from 'src/app/production/assembly/apexchart/bar-chart/bar-chart.component';
-import { ChartDataMonthComponent } from 'src/app/production/assembly/apexchart/chart-data-month/chart-data-month.component';
+// import { BajajChartComponent } from 'src/app/production/assembly/apexchart/bajaj-chart/bajaj-chart.component';
+// import { BarChartComponent } from 'src/app/production/assembly/apexchart/bar-chart/bar-chart.component';
+// import { ChartDataMonthComponent } from 'src/app/production/assembly/apexchart/chart-data-month/chart-data-month.component';
 import { DashInventoryServices } from 'src/app/services/dashInventory-services';
 
 import { SharedModule } from 'src/app/theme/shared/shared.module';
@@ -17,9 +17,6 @@ registerLocaleData(localeEs, 'es');
   selector: 'app-dash-inventories',
   standalone: true,
   imports: [
-    BajajChartComponent,
-    BarChartComponent,
-    ChartDataMonthComponent,
     SharedModule,
     FormsModule,
   ],

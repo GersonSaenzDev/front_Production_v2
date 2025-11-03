@@ -234,3 +234,32 @@ export interface BarcodeRequest {
   barcode: string;
 }
 
+export interface Product {
+  EAN: string;
+  productCode: string;
+  productName: string;
+  reference: string;
+  barcode: string;
+  consecutivo: string;
+}
+
+export interface InsertInventoryRequest {
+  inventoryStaff: {
+    area: string;
+    persons: { Person1: string; Person2: string }[];
+  };
+  inventory: {
+    barcode: string[];
+    producto: string;
+    referencia: string;
+    codRef: string;
+    consecutive: string[];
+    validate: boolean;
+  };
+}
+
+export interface InsertInventoryResponse {
+  ok: boolean;
+  msg: string;
+}
+

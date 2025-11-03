@@ -20,6 +20,10 @@ const routes: Routes = [
         path: 'inventories',
         loadChildren: () => import('./warehouse/warehouse-module').then((m) => m.WarehouseModule)
       },
+      {
+        path: 'printing',
+        loadChildren: () => import('./barcode-printing/barcode-printing-module').then((m) => m.BarcodePrintingModule)
+      },
     ]
   },
   
