@@ -59,6 +59,7 @@ export interface TopProductsItem {
 
 // Interfaz para cada item de referencia del producto
 export interface ReferenceItem {
+    EAN: string;
     productCode: string;
     productName: string;
     reference: string;
