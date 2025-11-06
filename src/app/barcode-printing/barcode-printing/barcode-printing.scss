@@ -1,0 +1,369 @@
+// /app/barcode-printing/barcode-printing/barcode-printing.scss
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+.inventory-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: #f5f7fa;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(90deg, #87D1E6 0%, #003366 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+/* Main layout */
+.main-content {
+  flex: 1;
+  display: flex;
+  padding: 2rem;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Row container */
+.layout-row {
+  display: flex;
+  gap: 2rem;
+  width: 100%;
+  align-items: flex-start;
+}
+
+/* Left column: ancho cómodo para no apretar campos */
+.left-panel-col {
+  flex: 0 0 320px; /* ancho fijo de 320px */
+  max-width: 340px;
+}
+
+/* Right column: ocupa el resto */
+.right-panel-col {
+  flex: 1 1 auto;
+  min-width: 480px;
+}
+
+/* Panel genérico */
+.panel-card {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 1.2rem 1.4rem;
+  border-bottom: 1px solid #eef4ff;
+  background: linear-gradient(90deg, rgba(75,108,183,0.06), rgba(75,108,183,0.02));
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #182848;
+}
+
+/* Panel body con padding generoso */
+.panel-body {
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* Form groups con más espacio para que no se vean apretados */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+/* Labels e inputs */
+label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+  color: #4b6cb7;
+  font-size: 0.95rem;
+}
+
+.form-control {
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #d6dde8;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.form-control[readonly] {
+  background: #f4f7fb;
+  color: #5b6b84;
+}
+
+/* Autocomplete */
+.position-relative { position: relative; }
+
+.autocomplete-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e6eefc;
+  overflow-y: auto;
+  max-height: 220px;
+  box-shadow: 0 6px 14px rgba(30,50,100,0.08);
+}
+
+.autocomplete-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5fb;
+}
+
+.autocomplete-item:hover { background: #f0f4ff; }
+
+.item-ref { font-weight: 700; color: #182848; }
+.item-name { color: #6b7280; }
+
+/* Spinner position */
+.spinner {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Buttons */
+.button-group {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  min-width: 120px;
+}
+
+.btn-primary {
+  background: #4b6cb7;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(75,108,183,0.18);
+}
+
+.btn-secondary {
+  background: #a0aec0;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(160,174,192,0.14);
+}
+
+/* Right panel - labels area */
+.labels-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 360px;
+}
+
+.labels-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed #eef4ff;
+}
+
+.labels-actions .left-actions { display:flex; gap: 0.8rem; }
+.labels-actions .right-actions { color: #55607a; font-weight: 600; font-size: 0.95rem; }
+
+/* Lista de códigos con scroll */
+.labels-list-wrapper {
+  margin-top: 0.6rem;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.labels-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid #e7effb;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+/* Cada item */
+.labels-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #eef4ff;
+  font-family: 'Roboto Mono', monospace;
+  color: #1f2937;
+}
+
+.labels-list li:last-child { border-bottom: none; }
+
+.code-number { font-weight: 700; font-size: 1rem; color: #182848; }
+.code-meta .badge {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.badge-created { background: #28a745; }
+.badge-validated { background: #17a2b8; }
+.labels-list li.pending .badge { background: #6c757d; }
+
+/* Placeholder message */
+.placeholder {
+  color: #9aa7bd;
+  font-style: italic;
+  text-align: center;
+  padding: 3rem 1rem;
+  background: linear-gradient(180deg, rgba(75,108,183,0.02), transparent);
+  border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main-content { padding: 1rem; }
+  .layout-row { flex-direction: column; }
+  .left-panel-col, .right-panel-col { flex: 1 1 auto; max-width: 100%; }
+  .labels-list { max-height: 260px; }
+}
+
+.autocomplete-results {
+  z-index: 1200; /* aseguramos que esté por encima del layout y panel */
+  max-height: 260px;
+  box-shadow: 0 8px 22px rgba(30,50,100,0.12);
+}
+
+/* Evitar que el input se vea pegado al borde */
+.left-panel-col .form-group { margin-bottom: 1.2rem; }
+.form-control { min-height: 44px; }
+
+
+/* Estilo para el estado "Faltante" (Naranja) */
+.labels-list li.missing .badge { 
+    background: #ffc107; /* Naranja/Amarillo */
+    color: #343a40;
+}
+.labels-list li.missing .code-number { 
+    color: #ffc107; 
+}
+
+/* Estilo para el estado "Error" (Rojo) */
+.labels-list li.error .badge { 
+    background: #dc3545; /* Rojo */
+}
+.labels-list li.error .code-number { 
+    color: #dc3545; 
+}
+
+/* Reajustar el estado inicial 'pending' para que siga siendo gris/neutro */
+.labels-list li.pending .badge { background: #6c757d; }
+.labels-list li.pending .code-number { color: #55607a; }
+
+/* Nuevo color para el estado de la barra de acciones: 'Registrado' */
+.text-success { color: #28a745 !important; }
+.text-danger { color: #dc3545 !important; }
+.text-warning { color: #ffc107 !important; }
+
+
+/* Estilo para el estado "Faltante" (Naranja) */
+.labels-list li.missing {
+    background-color: #fff8e1; /* Fondo muy claro */
+}
+.labels-list li.missing .badge { 
+    background: #ffc107; /* Naranja/Amarillo */
+    color: #343a40;
+}
+.labels-list li.missing .code-number { 
+    color: #ffc107; 
+}
+
+/* Estilo para el estado "Error" (Rojo) */
+.labels-list li.error {
+    background-color: #fcebeb; /* Fondo muy claro */
+}
+.labels-list li.error .badge { 
+    background: #dc3545; /* Rojo */
+}
+.labels-list li.error .code-number { 
+    color: #dc3545; 
+    font-weight: 700;
+}
+
+/* Ajustes de color para los estados de la barra de acciones */
+.text-success { color: #28a745 !important; } /* Creado */
+.text-danger { color: #dc3545 !important; } /* Pendiente */
+
+
+// /app/barcode-printing/barcode-printing/barcode-printing.scss
+
+// ... (Estilos existentes)
+
+/* Ajuste de color para el badge "Faltan" en el modal */
+.badge.bg-info { 
+    background-color: #87D1E6 !important; /* Usando el color azul de tu header */
+    color: #003366 !important;
+    font-weight: 700;
+}
+
+/* Estilo para la lista de códigos leídos en el modal */
+.list-group.codes-read-list {
+    border: 1px solid #d6dde8; 
+    border-radius: 8px;
+    background: #f4f7fb;
+    padding: 0;
+}
+
+.codes-read-list .list-group-item {
+    border: none;
+    border-bottom: 1px solid #eef4ff;
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+}
+
+.codes-read-list .code-text {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #182848;
+}
+
+/* Botones dentro del modal */
+.btn-success {
+    background: #28a745;
+    border-color: #28a745;
+}
+.btn-danger {
+    background: #dc3545;
+    border-color: #dc3545;
+}
