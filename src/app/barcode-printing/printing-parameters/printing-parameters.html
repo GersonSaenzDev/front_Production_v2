@@ -1,113 +1,217 @@
-<!-- /app/barcode-printing/printing-parameters/printing-parameters.html -->
 <div class="inventory-container" [ngClass]="{ 'loading': loading }">
   <header class="header">
     <h1>Parámetros de Etiquetas</h1>
   </header>
 
   <form class="main-content" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-    <section class="left-panel" style="display: flex; gap: 2rem; flex-wrap: wrap;">
-      
-      <!-- Columna 1 -->
-      <div style="flex: 1 1 45%; min-width: 300px;">
-        <h2>Configuración de Parámetros</h2>
+    
+    <div class="form-wrapper" style="width: 100%; display: flex; flex-direction: column;">
 
-        <div class="form-group">
-          <label for="productReference">Referencia en Producción (*)</label>
-          <div class="position-relative">
-            <input
-              id="productReference"
-              type="text"
-              class="form-control"
-              formControlName="productReference"
-              placeholder="Escriba código o nombre de referencia"
-              autocomplete="off"
-              (input)="onReferenceInput($event)"
-              (focus)="onFocus()"
-              (blur)="onBlur()"
-            />
+        <section class="columns-section" style="display: flex; gap: 2rem; flex-wrap: wrap; width: 100%;">
 
-            <div class="autocomplete-results shadow-lg" *ngIf="predictiveList.length > 0 && showDropdown">
-              <div
-                class="autocomplete-item"
-                *ngFor="let item of predictiveList; let i = index"
-                (click)="selectReference(item)"
-              >
-                <div><strong>{{ item.reference }}</strong></div>
-                <div class="text-muted small">{{ item.productName }}</div>
+            <div style="flex: 1 1 45%; min-width: 300px;">
+              <h2>Configuración de Parámetros</h2>
+
+              <div class="form-group">
+                <label for="productReference">Referencia en Producción (*)</label>
+                <div class="position-relative">
+                  <input
+                    id="productReference"
+                    type="text"
+                    class="form-control"
+                    formControlName="productReference"
+                    placeholder="Escriba código o nombre de referencia"
+                    autocomplete="off"
+                    (input)="onReferenceInput($event)"
+                    (focus)="onFocus()"
+                    (blur)="onBlur()"
+                  />
+                  <div class="autocomplete-results shadow-lg" *ngIf="predictiveList.length > 0 && showDropdown">
+                    <div
+                      class="autocomplete-item"
+                      *ngFor="let item of predictiveList; let i = index"
+                      (click)="selectReference(item)"
+                    >
+                      <div><strong>{{ item.reference }}</strong></div>
+                      <div class="text-muted small">{{ item.productName }}</div>
+                    </div>
+                  </div>
+                  <div class="spinner" *ngIf="loading" aria-hidden="true">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                  </div>
+                </div>
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('productReference')">
+                  La referencia de producción es obligatoria.
+                </div>
+              </div>
+
+              <hr />
+
+              <h3>Información de la Referencia</h3>
+              <div class="form-group">
+                <label for="productName">Nombre Producto</label>
+                <input id="productName" type="text" class="form-control" formControlName="productName" readonly />
+              </div>
+              <div class="form-group">
+                <label for="EAN">EAN</label>
+                <input id="EAN" type="text" class="form-control" formControlName="EAN" readonly />
+              </div>
+
+              <hr />
+
+              <h3>Tipo de Producto</h3>
+              <div class="form-group form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="productType" formControlName="productType" />
+                <label class="form-check-label" for="productType">
+                  <span *ngIf="!form.get('productType')?.value">Nacional</span>
+                  <span *ngIf="form.get('productType')?.value" class="text-primary fw-bold">Exportación</span>
+                </label>
+              </div>
+              <div class="form-group" *ngIf="form.get('productType')?.value">
+                <label for="exportCountry">Exportación a País (*)</label>
+                <input
+                  id="exportCountry"
+                  type="text"
+                  class="form-control"
+                  formControlName="exportCountry"
+                  placeholder="Ingrese el país de destino"
+                />
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('exportCountry')">
+                  El país es obligatorio para exportación.
+                </div>
               </div>
             </div>
+            <div style="flex: 1 1 45%; min-width: 300px;">
+              <h3>&nbsp;</h3> <div class="form-group">
+                <label for="productCode">Código Producto</label>
+                <input id="productCode" type="text" class="form-control" formControlName="productCode" readonly />
+              </div>
+              
+              <hr />
 
-            <div class="spinner" *ngIf="loading" aria-hidden="true">
-              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+              <h3>Etiqueta</h3>
+              <div class="form-group">
+                <label for="labelCode">Consecutivo Producto<span class="text-danger">*</span></label>
+                <input
+                  id="labelCode"
+                  type="number"
+                  class="form-control"
+                  formControlName="labelCode"
+                  placeholder="Ingrese consecutivo/serial para la etiqueta"
+                  required
+                />
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('labelCode')">
+                  El consecutivo producto es obligatorio.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="labelNote">Notas (opcional)</label>
+                <textarea id="labelNote" rows="2" class="form-control" formControlName="labelNote" placeholder="Agregar una nota (opcional)"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="maximumPrintQuantity">Cantidad Máxima de Impresión (*)</label>
+                <input
+                  id="maximumPrintQuantity"
+                  type="number"
+                  class="form-control"
+                  formControlName="maximumPrintQuantity"
+                  placeholder="Ej: 55"
+                  min="1"
+                  max="500"
+                  required
+                />
+                <div class="invalid-feedback" *ngIf="isFieldInvalid('maximumPrintQuantity')">
+                  La cantidad es obligatoria (Máx. 500).
+                </div>
+              </div>
+            </div>
+            </section>
+        <hr />
+
+        <section class="checklist-section mt-3" style="width: 100%;">
+          <h3>Check List <button type="button" class="btn btn-sm btn-outline-primary ms-2" (click)="addAdditionalData()">Añadir Proceso</button></h3>
+          <div formArrayName="additionalData">
+            <div
+              *ngFor="let control of additionalDataControls.controls; let i = index"
+              [formGroupName]="i"
+              class="d-flex align-items-start mb-2 w-100"
+              style="gap: 0.5rem;"
+            >
+              <div style="flex: 2; min-width: 150px;" class="position-relative">
+                <label [for]="'process' + i" class="small text-muted">Proceso (*)</label>
+                <input
+                  [id]="'process' + i"
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="process"
+                  placeholder="Ej: Diagrama"
+                  (input)="onProcessInput($event, $any(control))"
+                  (focus)="onProcessFocus($any(control))"
+                  (blur)="onProcessBlur($any(control))"
+                  autocomplete="off"
+                />
+                <div class="spinner position-absolute" *ngIf="$any(control).loading" style="top: 25px; right: 8px;" aria-hidden="true">
+                  <div class="spinner-border spinner-border-sm text-primary" role="status" style="width: 1rem; height: 1rem;"></div>
+                </div>
+                <div class="autocomplete-results shadow-lg" *ngIf="$any(control).predictiveList?.length > 0 && $any(control).showDropdown">
+                  <div
+                    class="autocomplete-item"
+                    *ngFor="let processItem of $any(control).predictiveList; let j = index"
+                    (click)="selectProcess($any(control), processItem)"
+                  >
+                    <div><strong>{{ processItem.process }}</strong></div>
+                    <div class="text-muted small">{{ processItem.note || 'Sin nota' }}</div>
+                  </div>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <label [for]="'quantity' + i" class="small text-muted">Cantidad (*)</label>
+                <input
+                  [id]="'quantity' + i"
+                  type="number"
+                  min="1"
+                  class="form-control form-control-sm"
+                  formControlName="quantity"
+                  placeholder="Cant."
+                />
+              </div>
+              <div style="flex: 3; min-width: 150px;">
+                <label [for]="'note' + i" class="small text-muted">Nota (opcional)</label>
+                <input
+                  [id]="'note' + i"
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="note"
+                  placeholder="Agregar nota"
+                />
+              </div>
+              <div class="mt-3">
+                <button type="button" class="btn btn-sm btn-danger p-1" (click)="removeAdditionalData(i)">
+                  <i class="feather icon-x" aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
           </div>
-          <div class="invalid-feedback" *ngIf="isFieldInvalid('productReference')">
-            La referencia de producción es obligatoria.
+        </section>
+        <section class="alert-section mt-3" style="width: 100%;">
+          <div *ngIf="alert.visible" class="mt-12">
+            <div class="alert" [ngClass]="{'alert-success': alert.type === 'success', 'alert-danger': alert.type === 'danger'}" role="alert">
+              {{ alert.message }}
+            </div>
           </div>
-        </div>
+        </section>
 
         <hr />
 
-        <h3>Información de la Referencia</h3>
-
-        <div class="form-group">
-          <label for="productName">Nombre Producto</label>
-          <input id="productName" type="text" class="form-control" formControlName="productName" readonly />
+        <section class="buttons-section d-flex justify-content-end mt-3" style="width: 100%; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary" (click)="onCancel()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || submitting">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <span *ngIf="!submitting">Guardar Referencia</span>
+          </button>
+        </section>
         </div>
-
-        <div class="form-group">
-          <label for="EAN">EAN</label>
-          <input id="EAN" type="text" class="form-control" formControlName="EAN" readonly />
-        </div>
-
-        <!-- ALERTA BOOTSTRAP -->
-        <div *ngIf="alert.visible" class="mt-12">
-          <div class="alert" [ngClass]="{'alert-success': alert.type === 'success', 'alert-danger': alert.type === 'danger'}" role="alert">
-            {{ alert.message }}
-          </div>
-        </div>
-        
-      </div>
-
-      <!-- Columna 2 -->
-      <div style="flex: 1 1 45%; min-width: 300px;">
-        <h3>&nbsp;</h3> <!-- Espacio para alinear con la columna 1 -->  
-        <div class="form-group">
-          <label for="productCode">Código Producto</label>
-          <input id="productCode" type="text" class="form-control" formControlName="productCode" readonly />
-        </div>
-        
-        <hr />
-
-        <h3>Etiqueta</h3>
-        <div class="form-group">
-          <label for="labelCode">Consecutivo Producto<span class="text-danger">*</span></label>
-          <input
-            id="labelCode"
-            type="number"
-            class="form-control"
-            formControlName="labelCode"
-            placeholder="Ingrese consecutivo/serial para la etiqueta"
-            required
-          />
-          <div class="invalid-feedback" *ngIf="isFieldInvalid('labelCode')">
-            El consecutivo producto es obligatorio.
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="labelNote">Notas (opcional)</label>
-          <textarea id="labelNote" rows="2" class="form-control" formControlName="labelNote" placeholder="Agregar una nota (opcional)"></textarea>
-        </div>
-
-        <div class="button-group" style="margin-top: 1rem;">
-          <button type="button" class="btn-secondary" (click)="onCancel()">Cancelar</button>
-          <button type="submit" class="btn-primary" [disabled]="form.invalid || submitting">Guardar Referencia</button>
-        </div>
-
-      </div>
-      
-
-    </section>
-  </form>
+    </form>
 </div>

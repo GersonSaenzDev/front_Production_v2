@@ -6,7 +6,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { environment } from 'src/environments/environment';
-import { LabelParametersRequest, LabelParametersResponse, LabelPrintingRequest, LabelPrintingResponse } from '../interfaces/printingLabel.interfaces';
+import { LabelParametersRequest, LabelParametersResponse, LabelPrintingRequest, LabelPrintingResponse, ViewAddRequest, ViewAddResponse } from '../interfaces/printingLabel.interfaces';
 import { CurrentConsecutiveResponse } from './currentConsecutive.interface';
 
 @Injectable({
@@ -22,6 +22,7 @@ export class PrintingLabelsService {
     private readonly LABEL_PARAMETERS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/labelParameters`; 
     private readonly CURRENT_CONSECUTIVE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/currentConsecutive`; 
     private readonly LABEL_PRINTING_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/labelPrinting`; 
+    private readonly VIEW_ADD_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/viewAdd`; 
 
     private handleError(error: any) {
         let errorMessage = 'Ocurrió un error desconocido en el servicio.';
@@ -41,9 +42,6 @@ export class PrintingLabelsService {
      */
     postLabelParameters(body: LabelParametersRequest): Observable<LabelParametersResponse> {
         
-        // 💡 AJUSTE: Usamos el método POST y las interfaces correctas.
-        // El 'map' de la respuesta ya no es necesario ya que la respuesta
-        // exitosa del backend ya contiene 'ok' y 'msg'.
         return this.http.post<LabelParametersResponse>(this.LABEL_PARAMETERS_ENDPOINT, body)
             .pipe(
                 // Manejo de errores común
@@ -77,6 +75,21 @@ export class PrintingLabelsService {
         
         // 💡 AJUSTE: Usamos LabelPrintingRequest para el body y LabelPrintingResponse para el tipo de respuesta.
         return this.http.post<LabelPrintingResponse>(this.LABEL_PRINTING_ENDPOINT, body)
+            .pipe(
+                // Manejo de errores común
+                catchError(this.handleError.bind(this)),
+            );
+    }
+
+    /**
+     * @description Realiza una consulta predictiva en el campo 'process'.
+     * @param {ViewAddRequest} body - Objeto que contiene el término de búsqueda ('process').
+     * @returns {Observable<ViewAddResponse>} - Arreglo de procesos encontrados.
+     */
+    predictiveViewAdd(body: ViewAddRequest): Observable<ViewAddResponse> {
+        
+        // Usamos la nueva interfaz ViewAddRequest para el body y ViewAddResponse para la respuesta
+        return this.http.post<ViewAddResponse>(this.VIEW_ADD_ENDPOINT, body)
             .pipe(
                 // Manejo de errores común
                 catchError(this.handleError.bind(this)),

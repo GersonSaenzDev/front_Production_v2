@@ -1,9 +1,24 @@
 // src/app/interfaces/printingLabel.interfaces.ts (Versión CORREGIDA y ÚNICA)
 
+import { AbstractControl, FormGroup } from "@angular/forms";
+import { Subject } from "rxjs";
+
 // --- Solicitud (Body) enviada al servidor (POST) ---
 export interface LabelDetailsRequest {
       code: number;
       note: string;
+}
+
+export interface CountryRequest {
+      national: boolean;
+      country?: string;
+}
+
+export interface AdditionalDataEntry {
+      process: string;
+      note: string;
+      stripQuantity: number;
+      maxQuantity: number;
 }
 
 export interface LabelParametersRequest {
@@ -11,8 +26,16 @@ export interface LabelParametersRequest {
       EAN: string;
       reference: string;
       codRef: string;
+      destination: CountryRequest;
       label: LabelDetailsRequest;
+      maximumPrintQuantity: number;
+      additionalData?: AdditionalDataEntry[];
 }
+
+
+
+   
+
 
 // --- Respuesta recibida del servidor ---
 export interface LabelDetailsResponse {
@@ -224,4 +247,62 @@ export interface LabelPrintingResponse {
     ok: boolean;
     msg: string;
     data?: any; // Opcional: el objeto guardado
+}
+
+// ====================================================================
+// 🆕 INTERFACES PARA DATOS ADICIONALES Y CONSULTA PREDICTIVA
+// ====================================================================
+
+/** Esquema de la data individual de un proceso devuelto por el DAO (para autocompletado). */
+export interface ProcessData {
+    process: string; // En este contexto, este sería el valor sugerido para la Clave ('key')
+    note: string;
+    stripQuantity: number;
+    maxQuantity: number;
+}
+
+/** Solicitud para el endpoint POST /printing/viewAdd */
+export interface ViewAddRequest {
+    process: string; // El término de búsqueda que viene del input del usuario
+}
+
+/** Respuesta esperada del backend para la consulta predictiva de procesos. */
+export interface ViewAddResponse {
+    ok: boolean;
+    msg: ProcessData[]; // El arreglo de resultados
+}
+
+
+/** Esquema de cada par Clave/Valor que se añade dinámicamente */
+export interface AdditionalDataEntry {
+    key: string;   // El nombre del campo adicional (Ej: 'Lote')
+    value: string; // El valor ingresado por el usuario (Ej: 'L456')
+}
+
+
+// --- Solicitud (Body) enviada al servidor (POST) ---
+// 💡 AJUSTE: Extendemos LabelParametersRequest para incluir additionalData
+export interface LabelParametersRequest {
+    productName: string;
+    EAN: string;
+    reference: string;
+    codRef: string;
+    label: LabelDetailsRequest;
+    additionalData?: AdditionalDataEntry[]; // 🆕 Nuevo campo OPCIONAL
+}
+
+export interface AdditionalDataGroup extends FormGroup {
+  // Propiedades personalizadas que añadimos en el componente
+  searchSubject: Subject<string>;
+  predictiveList: ProcessData[];
+  loading: boolean;
+  showDropdown: boolean;
+  
+  // 💡 CORRECCIÓN AQUÍ:
+  // Los controles deben coincidir con los creados en createAdditionalDataGroup()
+  controls: {
+      process: AbstractControl;  // <-- Antes decía 'key'
+      quantity: AbstractControl; // <-- Nuevo
+      note: AbstractControl;     // <-- Antes decía 'value' o no existía
+  };
 }
