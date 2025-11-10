@@ -70,3 +70,33 @@ export interface ReferenceSearchResponse {
     ok: boolean;
     msg: ReferenceItem[]; // El array de resultados
 }
+
+/**
+ * @description Representa una única novedad de producción.
+ * (Basado en la respuesta de /assembly/viewNews)
+ */
+export interface ProductionNews {
+  _id: string;
+  newsDate: string;
+  category: string;
+  assemblyLine: string;
+  reference: string;
+  stopType?: string; // Es opcional, ej: "Mantenimiento"
+  startTime: string;
+  endTime: string;
+  totalTime: string;
+  detail: string;
+  dateCreate: string;
+  responsible?: string; // 💡 Campo añadido de nuestra conversación (opcional)
+  __v?: number; // Campo de Mongoose (opcional)
+}
+
+/**
+ * @description La respuesta completa del endpoint /assembly/viewNews.
+ */
+export interface ProductionNewsResponse {
+  ok: boolean;
+  msg: ProductionNews[];
+}
+
+

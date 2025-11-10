@@ -23,6 +23,10 @@ const routes: Routes = [
     path: 'wineryNews',
     loadComponent: () => import('./assembly/winery-news/winery-news').then((c) => c.WineryNews)
   },
+  {
+    path: 'viewNews',
+    loadComponent: () => import('./assembly/view-news/view-news').then((c) => c.ViewNews)
+  },
 ];
 
 @NgModule({

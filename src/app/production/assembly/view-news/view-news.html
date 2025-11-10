@@ -1,0 +1,112 @@
+<div class="inventory-container">
+  
+  <header class="header">
+    <h2 class="header-title">Consultar Novedades de Producción</h2>
+    
+    <div class="header-parameters">
+      <div class="form-group mb-0">
+        <input 
+          type="date" 
+          id="headerNewsDate"
+          class="form-control" 
+          [(ngModel)]="selectedDate"
+          (ngModelChange)="onDateChange()">
+      </div>
+      <p class="header-summary-text">
+        Mostrando novedades para:
+        <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+      </p>
+    </div>
+  </header>
+
+  <main class="main-content">
+    
+    <div class="right-panel">
+      
+      <div class="d-flex justify-content-between align-items-center">
+        <h3>Novedades Reportadas</h3>
+        <div class="form-group mb-0" style="width: 300px;">
+          <input 
+            type="text" 
+            class="form-control" 
+            placeholder="Buscar por categoría, línea, ref..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilter()">
+        </div>
+      </div>
+
+      <div 
+        class="summary-counters" 
+        *ngIf="categorySummaries.length > 0 && !isLoading">
+        
+        <div 
+          class="summary-card" 
+          *ngFor="let summary of categorySummaries"
+          [ngClass]="getCategoryClass(summary.category)">
+          
+          <span class="summary-time">{{ summary.totalTime }}</span>
+          <span class="summary-category">{{ summary.category }}</span>
+          <span class="summary-count">
+            {{ summary.count }} Novedad{{ summary.count > 1 ? 'es' : '' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Categoría</th>
+              <th>Línea</th>
+              <th>Referencia</th>
+              <th>Tipo Parada</th>
+              <th>Horario</th>
+              <th>Tiempo Total</th>
+              <th>Responsable</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody> 
+            <tr *ngIf="isLoading">
+              <td colspan="8" class="text-center text-muted">
+                Cargando novedades...
+              </td>
+            </tr>
+            
+            <tr *ngIf="!isLoading && paginatedNews.length === 0">
+              <td colspan="8" class="text-center text-muted">
+                No se encontraron novedades para esta fecha.
+              </td>
+            </tr>
+            
+            <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)">
+              <td>{{ item.category }}</td>
+              <td>{{ item.assemblyLine }}</td>
+              <td>{{ item.reference }}</td>
+              <td>{{ item.stopType || 'N/A' }}</td>
+              <td>{{ item.startTime }} - {{ item.endTime }}</td>
+              <td>{{ item.totalTime }}</td>
+              <td>{{ item.responsible || 'N/A' }}</td> 
+              <td>{{ item.detail }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination-controls mt-3">
+        <button class="btn-secondary" (click)="prevPage()" [disabled]="currentPage === 1">
+          Anterior
+        </button>
+        
+        <span>
+          Página {{ currentPage }} de {{ totalPages }}
+        </span>
+        
+        <button class="btn-secondary" (click)="nextPage()" [disabled]="currentPage === totalPages">
+          Siguiente
+        </button>
+      </div>
+
+    </div>
+  </main>
+</div>

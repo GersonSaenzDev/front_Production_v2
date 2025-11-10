@@ -53,6 +53,13 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'production/productionNews',
             breadcrumbs: true
+          },
+          {
+            id: 'novedades-produccion-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/viewNews',
+            breadcrumbs: true
           }
         ]
       },
