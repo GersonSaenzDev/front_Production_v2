@@ -169,7 +169,7 @@
                             type="time" 
                             class="form-control" 
                             [(ngModel)]="timeEnd"
-                            (change)="onTimeRangeChange()"
+                    _        (change)="onTimeRangeChange()"
                         >
                     </div>
                     
@@ -193,17 +193,17 @@
                     <tbody>
                         @for (product of totalProducts; track product.productCode) {
                             <tr>
-                                <td>{{ product.productCode }}</td>
-                                <td>{{ product.productName | titlecase }}</td>
+                                <td>{{ product.productCode.slice(0, -1) }}</td>
+                                <td>{{ product.productName | uppercase }}</td>
                                 <td class="text-end text-primary f-w-600">{{ product.Producidos | number }}</td>
                                 <td class="text-end text-success">{{ product.Validos | number }}</td>
                                 <td class="text-end text-danger">{{ (product.Producidos - product.Validos) | number }}</td>
                             </tr>
                         }
                         @empty {
-                            <tr>
-                                <td colspan="5" class="text-center text-muted">No hay datos de producción disponibles para este rango y fecha.</td>
-                            </tr>
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No hay datos de producción disponibles para este rango y fecha.</td>
+                         </tr>
                         }
                     </tbody>
                 </table>
