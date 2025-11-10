@@ -4,15 +4,16 @@
  * @description Estructura de datos para crear una novedad de producción.
  */
 export interface ProductionNewsRequest {
-    newsDate: string;           // Formato: "DD/MM/YYYY"
-    category: string;           // Ej: "Parada de Linea", "Reporte de Calidad"
-    assemblyLine: string;       // Ej: "Linea 1", "Linea 9"
-    reference?: string;         // Opcional: Referencia del producto
-    stopType?: string;          // Opcional (obligatorio si category es "Parada de Línea")
-    startTime?: string;         // Opcional: Formato "HH:MM"
-    endTime?: string;           // Opcional: Formato "HH:MM"
-    totalTime?: string;         // Opcional: Formato "HH:MM" o "HHh MMm"
-    detail: string;             // Detalle de la novedad
+    newsDate: string;         // Formato: "DD/MM/YYYY"
+    category: string;         // Ej: "Parada de Linea", "Reporte de Calidad"
+    assemblyLine: string;     // Ej: "Linea 1", "Linea 9"
+    reference: string;        // 💡 AJUSTE: Es obligatorio según el formulario
+    responsible: string;      // 💡 AJUSTE: Nuevo campo obligatorio
+    stopType?: string;        // Opcional (obligatorio si category es "Parada de Línea")
+    startTime?: string;       // Opcional: Formato "HH:MM"
+    endTime?: string;         // Opcional: Formato "HH:MM"
+    totalTime?: string;       // Opcional: Formato "HH:MM" o "HHh MMm"
+    detail: string;           // Detalle de la novedad
 }
 
 /**
@@ -33,6 +34,7 @@ export interface ProductionNewsData {
     category: string;
     assemblyLine: string;
     reference?: string;
+    responsible?: string; // 💡 AJUSTE: Añadido aquí también
     stopType?: string;
     startTime?: string;
     endTime?: string;

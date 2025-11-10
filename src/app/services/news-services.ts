@@ -89,6 +89,8 @@ export class NewsServices {
         if (!newsData.newsDate) errors.push('La fecha de novedad es obligatoria');
         if (!newsData.category) errors.push('La categoría es obligatoria');
         if (!newsData.assemblyLine) errors.push('La línea de ensamble es obligatoria');
+        if (!newsData.responsible) errors.push('El área responsable es obligatoria'); // 💡 AJUSTE
+        if (!newsData.reference) errors.push('La referencia es obligatoria'); // 💡 AJUSTE
         if (!newsData.detail) errors.push('El detalle es obligatorio');
 
         // Validación específica para "Parada de Línea"

@@ -56,7 +56,6 @@ export class ProductionNews implements OnInit {
   isLineaParada = false;
   showDropdown: boolean = false;
 
-  // 💡 NUEVO: Estados para feedback visual
   isSubmitting: boolean = false;
   submitSuccess: boolean = false;
   submitError: string = '';
@@ -70,6 +69,7 @@ export class ProductionNews implements OnInit {
       fecha: [this.getCurrentDate(), Validators.required],
       categoriaNovedad: ['', Validators.required], 
       lineaNovedad: ['', Validators.required],
+      responsible: ['', Validators.required], // 💡 AJUSTE: Nuevo campo
       productReference: ['', Validators.required], 
       tipoNovedad: [''], 
       horaInicio: [{ value: '', disabled: true }], 
@@ -91,6 +91,7 @@ export class ProductionNews implements OnInit {
   }
 
   handleCategoriaChange(value: string): void {
+    // ... (Este método no cambia)
     const inicioControl = this.novedadForm.get('horaInicio');
     const finControl = this.novedadForm.get('horaFin');
     const tipoControl = this.novedadForm.get('tipoNovedad');
@@ -132,6 +133,7 @@ export class ProductionNews implements OnInit {
   }
 
   getCurrentDate(): string {
+    // ... (Este método no cambia)
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -140,6 +142,7 @@ export class ProductionNews implements OnInit {
   }
   
   calculateTotalParada(): void {
+    // ... (Este método no cambia)
     const inicio = this.novedadForm.get('horaInicio')?.value;
     const fin = this.novedadForm.get('horaFin')?.value;
 
@@ -167,11 +170,8 @@ export class ProductionNews implements OnInit {
     }
   }
 
-  /**
-   * 💡 MÉTODO PRINCIPAL: Envía la novedad al backend
-   */
   onSubmit(): void {
-    // Resetear estados de feedback
+    // ... (Este método no cambia)
     this.submitSuccess = false;
     this.submitError = '';
 
@@ -181,13 +181,9 @@ export class ProductionNews implements OnInit {
       return;
     }
 
-    // 1. Obtener valores del formulario (incluyendo los disabled)
     const formValues = this.novedadForm.getRawValue();
-
-    // 2. Transformar al formato del backend
     const newsData: ProductionNewsRequest = this.transformFormToRequest(formValues);
 
-    // 3. Validar antes de enviar
     const validation = this.newsServices.validateProductionNews(newsData);
     if (!validation.valid) {
       console.error('❌ Errores de validación:', validation.errors);
@@ -195,15 +191,13 @@ export class ProductionNews implements OnInit {
       return;
     }
 
-    // 4. Enviar al backend
     this.isSubmitting = true;
     this.newsServices.createProductionNews(newsData).subscribe({
       next: (response) => {
         this.isSubmitting = false;
         this.submitSuccess = true;
-        this.successMessage = response.msg; // 💡 NUEVO: Captura el mensaje del backend
+        this.successMessage = response.msg;
         
-        // Resetear el formulario después de 3 segundos
         setTimeout(() => {
           this.resetForm();
           this.submitSuccess = false;
@@ -215,7 +209,6 @@ export class ProductionNews implements OnInit {
         this.isSubmitting = false;
         this.submitError = error.message || 'Error desconocido al registrar la novedad';
         
-        // Limpiar el mensaje de error después de 5 segundos
         setTimeout(() => {
           this.submitError = '';
         }, 5000);
@@ -223,11 +216,7 @@ export class ProductionNews implements OnInit {
     });
   }
 
-  /**
-   * 💡 NUEVO: Transforma los datos del formulario al formato del backend
-   */
   private transformFormToRequest(formValues: any): ProductionNewsRequest {
-    // Convertir fecha de YYYY-MM-DD a DD/MM/YYYY
     const [year, month, day] = formValues.fecha.split('-');
     const newsDate = `${day}/${month}/${year}`;
 
@@ -235,11 +224,11 @@ export class ProductionNews implements OnInit {
       newsDate: newsDate,
       category: formValues.categoriaNovedad,
       assemblyLine: formValues.lineaNovedad,
+      responsible: formValues.responsible, // 💡 AJUSTE: Nuevo campo
       reference: formValues.productReference,
       detail: formValues.detalle
     };
 
-    // Agregar campos opcionales solo si están presentes
     if (this.isLineaParada) {
       request.stopType = formValues.tipoNovedad;
       request.startTime = formValues.horaInicio;
@@ -250,14 +239,12 @@ export class ProductionNews implements OnInit {
     return request;
   }
 
-  /**
-   * 💡 NUEVO: Resetea el formulario a su estado inicial
-   */
   private resetForm(): void {
     this.novedadForm.reset({
       fecha: this.getCurrentDate(),
       categoriaNovedad: '',
       lineaNovedad: '',
+      responsible: '', // 💡 AJUSTE: Nuevo campo
       productReference: '',
       tipoNovedad: '',
       horaInicio: '',
@@ -273,16 +260,16 @@ export class ProductionNews implements OnInit {
   }
 
   isFieldInvalid(field: string): boolean | undefined {
+    // ... (Este método no cambia)
     const control = this.novedadForm.get(field);
     return control?.invalid && (control?.dirty || control?.touched);
   }
 
-  // En tu setupReferenceSearch añade este filtro al inicio del pipe:
   setupReferenceSearch(): void {
+    // ... (Este método no cambia)
     this.novedadForm.get('productReference')?.valueChanges
       .pipe(
         debounceTime(300),
-        // Ignorar cambios mientras estamos seleccionando
         filter(() => !this.isSelecting),
         tap((term: string) => {
           const trimmedTerm = term.trim();
@@ -312,6 +299,7 @@ export class ProductionNews implements OnInit {
   }
 
   extractPredictiveValues(items: ReferenceItem[]): string[] {
+    // ... (Este método no cambia)
     const list = new Set<string>();
     for (const p of items) {
       const ref = (p.reference || '').trim();
@@ -321,43 +309,31 @@ export class ProductionNews implements OnInit {
   }
 
   selectReference(item: string): void {
-    console.log('🎯 Seleccionando item:', item);
-
-    // 1) Bloquear valueChanges durante la selección
+    // ... (Este método no cambia)
     this.isSelecting = true;
-
-    // 2) Limpieza inmediata del dropdown
     this.predictiveList = [];
     this.showDropdown = false;
-
-    // 3) Establecer el valor sin emitir valueChanges
     this.novedadForm.get('productReference')?.setValue(item, { emitEvent: false });
     this.novedadForm.get('productReference')?.updateValueAndValidity();
-
-    // 4) Desbloquear luego de un pequeño delay
     setTimeout(() => {
       this.isSelecting = false;
-      console.log('✅ Selección completada, bandera desactivada');
     }, 400);
-
-    // 5) Enfocar siguiente campo
     setTimeout(() => {
       document.getElementById('lineaNovedad')?.focus();
     }, 50);
   }
 
   onBlur(): void {
+    // ... (Este método no cambia)
     setTimeout(() => {
       this.showDropdown = false;
       this.predictiveList = [];
-      console.log('👋 onBlur: Dropdown oculto');
     }, 120);
   }
   
   onFocus(): void {
-    // No mostrar si venimos de una selección
+    // ... (Este método no cambia)
     if (this.isSelecting) {
-      console.log('⚠️ onFocus bloqueado: selección en proceso');
       return;
     }
     const term = (this.novedadForm.get('productReference')?.value || '').trim();

@@ -1,4 +1,3 @@
-<!-- app/production/assembly/production-news/production-news.html -->
 <div class="container-fluid py-4">
   <div class="card bg-primary-subtle text-dark overflow-hidden">
     <div class="card-body p-4">
@@ -10,10 +9,8 @@
   <div class="card shadow-lg border-0">
     <div class="card-body p-4 p-md-5">
       
-      <!-- 💡 NUEVO: Mensajes de Feedback -->
       <div class="alert-container mb-4" *ngIf="submitSuccess || submitError || isSubmitting">
         
-        <!-- Mensaje de Éxito -->
         <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm" 
              role="alert" 
              *ngIf="submitSuccess">
@@ -25,7 +22,6 @@
           <button type="button" class="btn-close" (click)="submitSuccess = false" aria-label="Close"></button>
         </div>
 
-        <!-- Mensaje de Error -->
         <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm" 
              role="alert" 
              *ngIf="submitError">
@@ -37,7 +33,6 @@
           <button type="button" class="btn-close" (click)="submitError = ''" aria-label="Close"></button>
         </div>
 
-        <!-- Mensaje de Carga -->
         <div class="alert alert-info alert-dismissible fade show d-flex align-items-center shadow-sm" 
              role="alert" 
              *ngIf="isSubmitting">
@@ -82,6 +77,18 @@
             <div class="invalid-feedback" *ngIf="isFieldInvalid('lineaNovedad')">Debe seleccionar la línea afectada.</div>
           </div>
 
+          <div class="col-md-6">
+            <label for="responsible" class="form-label text-muted">Area/Seccion Responsable (*)</label>
+            <input 
+              type="text" 
+              id="responsible" 
+              class="form-control" 
+              formControlName="responsible"
+              placeholder="Ej: Almacen, Mantenimiento, Calidad"
+              [ngClass]="{'is-invalid': isFieldInvalid('responsible')}"
+            >
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('responsible')">El área responsable es obligatoria.</div>
+          </div>
           <div class="col-md-6 position-relative"> 
             <label for="productReference" class="form-label text-muted">Referencia en Producción (*)</label>
             <input 
