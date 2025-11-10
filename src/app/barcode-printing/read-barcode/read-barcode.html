@@ -1,1 +1,260 @@
-<p>read-barcode works!</p>
+<div class="inventory-container">
+  <header class="header">
+    <h1>Gestión de Etiquetas</h1>
+  </header>
+
+  <div class="main-content">
+    <div class="left-panel">
+      <h4>Acciones</h4>
+      <hr />
+      <div class="list-group">
+        <button
+          type="button"
+          class="list-group-item list-group-item-action"
+          [class.active]="activeView === 'reimprimir'"
+          (click)="setView('reimprimir')"
+        >
+          <i class="feather icon-printer me-2"></i> Reimprimir
+        </button>
+
+        <button
+          type="button"
+          class="list-group-item list-group-item-action"
+          [class.active]="activeView === 'anular'"
+          (click)="setView('anular')"
+        >
+          <i class="feather icon-slash me-2"></i> Anular
+        </button>
+
+        <button
+          type="button"
+          class="list-group-item list-group-item-action"
+          [class.active]="activeView === 'leer'"
+          (click)="setView('leer')"
+        >
+          <i class="feather icon-eye me-2"></i> Leer Etiquetas
+        </button>
+
+        <button
+          type="button"
+          class="list-group-item list-group-item-action"
+          [class.active]="activeView === 'validar'"
+          (click)="setView('validar')"
+        >
+          <i class="feather icon-check-circle me-2"></i> Validar Etiquetas
+        </button>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div [ngSwitch]="activeView">
+        
+        <div *ngSwitchCase="'reimprimir'">
+          <h3>Reimprimir Etiquetas</h3>
+          <p class="text-muted">Escanee las etiquetas a reimprimir. Se añadirán a la lista automáticamente.</p>
+          
+          <form [formGroup]="reprintForm" (ngSubmit)="onReimprimirSubmit()">
+            
+            <div class="form-group">
+              <label for="reprintSerialEntry">Escanear Serial (*)</label>
+              <input
+                id="reprintSerialEntry"
+                type="text"
+                class="form-control"
+                formControlName="serialEntry"
+                placeholder="Escanee un código de barras..."
+              />
+            </div>
+
+            <div class="form-group" *ngIf="serialsToReprint.length > 0">
+              <label>Seriales a Reimprimir ({{ serialsToReprint.length }})</label>
+              <ul class="list-group validation-list" style="height: 180px;">
+                <li *ngFor="let serial of serialsToReprint; let i = index" 
+                    class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>{{ serial }}</span>
+                  <button type="button" class="btn btn-sm btn-outline-danger p-1" (click)="removeSerial(serialsToReprint, i)">
+                    <i class="feather icon-x" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="form-group">
+              <label for="reprintReason">Motivo de Reimpresión (*)</label>
+              <input
+                id="reprintReason"
+                type="text"
+                class="form-control"
+                formControlName="reason"
+                placeholder="Ej: Daño en la impresión original, error de datos"
+              />
+            </div>
+            
+            <div class="button-group d-flex justify-content-end">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="reprintForm.get('reason')?.invalid || serialsToReprint.length === 0"
+              >
+                Reimprimir {{ serialsToReprint.length }} Etiqueta(s)
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div *ngSwitchCase="'anular'">
+          <h3>Anular Etiquetas</h3>
+          <p class="text-muted">Escanee las etiquetas a anular. Se añadirán a la lista automáticamente.</p>
+          
+          <form [formGroup]="cancelForm" (ngSubmit)="onAnularSubmit()">
+            
+            <div class="form-group">
+              <label for="cancelSerialEntry">Escanear Serial (*)</label>
+              <input
+                id="cancelSerialEntry"
+                type="text"
+                class="form-control"
+                formControlName="serialEntry"
+                placeholder="Escanee un código de barras..."
+              />
+            </div>
+
+            <div class="form-group" *ngIf="serialsToCancel.length > 0">
+              <label>Seriales a Anular ({{ serialsToCancel.length }})</label>
+              <ul class="list-group validation-list" style="height: 180px;">
+                <li *ngFor="let serial of serialsToCancel; let i = index" 
+                    class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>{{ serial }}</span>
+                  <button type="button" class="btn btn-sm btn-outline-danger p-1" (click)="removeSerial(serialsToCancel, i)">
+                    <i class="feather icon-x" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="form-group">
+              <label for="cancelReason">Motivo de Anulación (*)</label>
+              <textarea
+                id="cancelReason"
+                rows="3"
+                class="form-control"
+                formControlName="reason"
+                placeholder="Describa el motivo detalladamente..."
+              ></textarea>
+            </div>
+            
+            <div class="button-group d-flex justify-content-end">
+              <button
+                type="submit"
+                class="btn btn-danger"
+                [disabled]="cancelForm.get('reason')?.invalid || serialsToCancel.length === 0"
+              >
+                Anular {{ serialsToCancel.length }} Etiqueta(s)
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div *ngSwitchCase="'leer'">
+          <h3>Leer Etiqueta</h3>
+          <p class="text-muted">Escanee un código de barras para ver su información registrada.</p>
+          
+          <form [formGroup]="readForm" (ngSubmit)="onReadSubmit()">
+            <div class="form-group">
+              <label for="readSerial">Escanear Etiqueta</label>
+              <div class="input-group">
+                <input
+                  id="readSerial"
+                  type="text"
+                  class="form-control"
+                  formControlName="serial"
+                  placeholder="Escanee o ingrese el serial..."
+                />
+                <button type="submit" class="btn btn-outline-primary" [disabled]="readForm.invalid || isLoadingRead">
+                  <span *ngIf="!isLoadingRead">Consultar</span>
+                  <span *ngIf="isLoadingRead" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div *ngIf="readError" class="alert alert-danger mt-3">{{ readError }}</div>
+          
+          <div *ngIf="readResult" class="results-card mt-3">
+            <h4>Información de la Etiqueta</h4>
+            <div class="results-grid">
+              <strong>Serial:</strong>
+              <span>{{ readResult.serial }}</span>
+              
+              <strong>Producto:</strong>
+              <span>{{ readResult.productName }}</span>
+              
+              <strong>Referencia:</strong>
+              <span>{{ readResult.reference }}</span>
+              
+              <strong>Estado:</strong>
+              <span><span class="badge bg-info">{{ readResult.status }}</span></span>
+              
+              <strong>Creada:</strong>
+              <span>{{ readResult.createdAt | date: 'medium' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div *ngSwitchCase="'validar'">
+          <h3>Validar Etiquetas</h3>
+          <p class="text-muted">Consulte las etiquetas pendientes de validación y escanéelas para confirmarlas.</p>
+
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <button class="btn btn-info" (click)="onFetchPending()" [disabled]="isLoadingValidation">
+              <span *ngIf="!isLoadingValidation">Consultar Pendientes</span>
+              <span *ngIf="isLoadingValidation" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            </button>
+            <span class="text-muted" *ngIf="pendingLabels.length > 0">
+              Quedan <strong>{{ pendingLabels.length }}</strong> pendiente(s)
+            </span>
+          </div>
+          <hr>
+
+          <form [formGroup]="validationForm" (ngSubmit)="onValidateScan()">
+            <div class="form-group">
+              <label for="serialToValidate">Escanear para Validar</label>
+              <input
+                id="serialToValidate"
+                type="text"
+                class="form-control"
+                formControlName="serialToValidate"
+                placeholder="Escanee la etiqueta a validar..."
+                [disabled]="pendingLabels.length === 0 && validatedLabels.length === 0"
+              />
+            </div>
+            <div *ngIf="validationError" class="alert alert-danger small p-2 mt-2">{{ validationError }}</div>
+          </form>
+
+          <div class="validation-lists-container mt-3">
+            <div class="list-column">
+              <h5>Pendientes ({{ pendingLabels.length }})</h5>
+              <ul class="list-group validation-list" id="pending-list">
+                <li *ngIf="pendingLabels.length === 0 && !isLoadingValidation" class="list-group-item text-muted">No hay etiquetas pendientes.</li>
+                <li *ngFor="let serial of pendingLabels" class="list-group-item list-group-item-warning">
+                  {{ serial }}
+                </li>
+              </ul>
+            </div>
+            
+            <div class="list-column">
+              <h5>Validadas ({{ validatedLabels.length }})</h5>
+              <ul class="list-group validation-list" id="validated-list">
+                <li *ngIf="validatedLabels.length === 0" class="list-group-item text-muted">Aún no se han validado etiquetas.</li>
+                <li *ngFor="let serial of validatedLabels" class="list-group-item list-group-item-success">
+                  <i class="feather icon-check me-2"></i> {{ serial }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

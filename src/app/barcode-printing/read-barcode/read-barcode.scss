@@ -1,0 +1,216 @@
+/* /app/barcode-printing/read-barcode/read-barcode.scss */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+.inventory-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: #f5f7fa;
+}
+
+/* Header (tomado de tu ejemplo) */
+.header {
+  background: linear-gradient(90deg, #87D1E6 0%, #003366 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+/* AQUÍ ESTÁ EL ARREGLO PRINCIPAL:
+  Definimos .main-content como un contenedor flex.
+*/
+.main-content {
+  flex: 1;
+  display: flex;
+  padding: 2rem;
+  gap: 2rem;
+  max-width: 1400px; /* Un poco más ancho para este layout */
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* PANEL IZQUIERDO:
+  Usamos la lógica de tu ejemplo (.left-panel-col) pero
+  con el nombre de tu HTML (.left-panel).
+  Le damos un ancho fijo para el menú.
+*/
+.left-panel {
+  flex: 0 0 300px; /* Ancho fijo de 300px */
+  background: white;
+  border-radius: 12px;
+  padding: 1.2rem 0; /* Padding vertical, sin padding horizontal para que la lista ocupe todo */
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  height: fit-content; /* El panel se ajusta al alto del contenido */
+
+  h4 {
+    padding: 0 1.2rem; /* Añadimos padding al título */
+  }
+  hr {
+    margin: 1rem 0;
+  }
+  /* Ajustes para que los botones de la lista ocupen todo el ancho */
+  .list-group {
+    border-radius: 0;
+  }
+  .list-group-item {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: 1px solid #eee;
+    padding: 0.9rem 1.2rem;
+  }
+  .list-group-item:first-child {
+    border-top: none;
+  }
+}
+
+/* PANEL DERECHO:
+  Usamos la lógica de tu ejemplo (.right-panel-col) pero
+  con el nombre de tu HTML (.right-panel).
+  Le decimos que ocupe todo el espacio restante.
+*/
+.right-panel {
+  flex: 1 1 auto; /* Ocupa el espacio restante */
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+/* Estilos para el botón activo en el menú (como en tu captura)
+  Puedes usar los colores de tu header para mantener la consistencia
+*/
+.left-panel .list-group-item.active {
+  background-color: #003366; /* Color oscuro de tu header */
+  color: white;
+  border-color: #003366;
+  font-weight: 600;
+  /* Opcional: un borde para resaltarlo */
+  border-left: 4px solid #87D1E6; /* Color claro de tu header */
+}
+
+/* Estilos de tu ejemplo para labels, inputs, etc. */
+.form-group { margin-bottom: 1rem; }
+label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+  color: #4b6cb7;
+}
+.form-control {
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #d6dde8;
+}
+.button-group {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+.btn {
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* Responsive (tomado de tu ejemplo) */
+@media (max-width: 900px) {
+  .main-content { 
+    flex-direction: column; /* Apila las columnas en móvil */
+    padding: 1rem; 
+  }
+  .left-panel {
+    flex: 1 1 auto; /* Resetea el flex */
+    max-width: 100%;
+  }
+}
+
+/* ===== NUEVOS ESTILOS para vistas LEER y VALIDAR ===== */
+
+/* Estilo para la tarjeta de resultados en "Leer Etiquetas" */
+.results-card {
+  background: #fdfdfd;
+  border: 1px solid #eef4ff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+
+  h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #003366;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+  }
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem 1rem;
+  
+  strong {
+    color: #4b6cb7; // Color de los labels
+  }
+
+  span {
+    font-weight: 500;
+  }
+
+  .badge {
+    font-size: 0.85rem;
+  }
+}
+
+
+/* Estilos para las listas en "Validar Etiquetas" */
+.validation-lists-container {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1.5rem;
+
+  .list-column {
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  h5 {
+    color: #555;
+    font-weight: 600;
+  }
+}
+
+.validation-list {
+  height: 300px; /* Altura fija para la lista */
+  overflow-y: auto; /* Scroll si hay muchos items */
+  border: 1px solid #d6dde8;
+  border-radius: 8px;
+  background: #fbfdff;
+
+  .list-group-item {
+    font-family: 'Roboto Mono', monospace; // Fuente monoespaciada para seriales
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .list-group-item-warning {
+    color: #664d03;
+  }
+
+  .list-group-item-success {
+    color: #0f5132;
+    font-weight: 600;
+  }
+}
+
+/* Ajuste responsive para las listas */
+@media (max-width: 768px) {
+  .validation-lists-container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

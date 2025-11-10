@@ -126,7 +126,7 @@ export const NavigationItems: NavigationItem[] = [
           },
           {
             id: 'leer-etiquetas-item',
-            title: 'Leer Etiquetas',
+            title: 'Procesos',
             type: 'item',
             url: 'printing/readBarcode',
             breadcrumbs: false
