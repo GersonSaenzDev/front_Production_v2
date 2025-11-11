@@ -523,6 +523,7 @@ export class DashInventories {
           console.log(res.msg);
         } else if (this.isWithItemResponse(res)) {
           const updated = (res as AuditNoteResponseWithItem).msg;
+          console.log('Respuesta con item actualizado:', updated);
           if (found) {
             // Actualizar solo campos relevantes
             found.annotation = updated.annotation ?? updated.note ?? payload.note ?? found.annotation;

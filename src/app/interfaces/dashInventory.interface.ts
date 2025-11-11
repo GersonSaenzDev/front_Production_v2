@@ -263,3 +263,9 @@ export interface InsertInventoryResponse {
   msg: string;
 }
 
+export interface CheckListItem {
+  process: string;
+  quantity: number;
+  note: string;
+}
+

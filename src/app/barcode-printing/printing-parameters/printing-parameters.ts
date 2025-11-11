@@ -6,13 +6,9 @@ import { debounceTime, distinctUntilChanged, switchMap, takeUntil, catchError, f
 import { DashboardServices } from 'src/app/services/dashboard-services';
 import { PrintingLabelsService } from 'src/app/services/printingLabels-services';
 import { SharedModule } from 'src/app/theme/shared/shared.module';
-import { AdditionalDataGroup, ProcessData, ViewAddResponse } from 'src/app/interfaces/printingLabel.interfaces';
-
-interface CheckListItem {
-  process: string;
-  quantity: number;
-  note: string;
-}
+// 💡 Importamos la interfaz que ya tenías definida
+import { AdditionalDataGroup, LabelParametersRequest, ProcessData, ViewAddResponse } from 'src/app/interfaces/printingLabel.interfaces';
+import { CheckListItem } from 'src/app/interfaces/dashInventory.interface';
 
 @Component({
   selector: 'app-printing-parameters',
@@ -66,11 +62,14 @@ export class PrintingParameters implements OnInit, OnDestroy {
       productType: [false], 
       exportCountry: [''], 
 
+      // 💡 1. NUEVOS CAMPOS AÑADIDOS AL FORMULARIO
+      requiresRegleta: [false],
+      regletaPrintQuantity: [null], // Se inicia en null para el <select>
+
       // --- Campos de Etiqueta ---
       labelCode: [null, Validators.required],
       labelNote: [''],
       
-      // 💡 NUEVO: Campo de Cantidad Máxima
       maximumPrintQuantity: [55, [Validators.required, Validators.min(1), Validators.max(500)]],
 
       // --- Check List ---
@@ -85,6 +84,7 @@ export class PrintingParameters implements OnInit, OnDestroy {
 
   // --- Lógica para validación condicional ---
   setupConditionalValidators(): void {
+    // Validador de Exportación (Existente)
     this.form.get('productType')?.valueChanges.pipe(
       takeUntil(this.destroy$)
     ).subscribe(isExport => {
@@ -96,6 +96,22 @@ export class PrintingParameters implements OnInit, OnDestroy {
         countryControl?.setValue(''); 
       }
       countryControl?.updateValueAndValidity();
+    });
+
+    // 💡 2. NUEVO VALIDADOR CONDICIONAL PARA REGLETA
+    this.form.get('requiresRegleta')?.valueChanges.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(isRequired => {
+      const quantityControl = this.form.get('regletaPrintQuantity');
+      if (isRequired) {
+        // Hacemos que el <select> sea requerido
+        quantityControl?.setValidators([Validators.required]);
+      } else {
+        // Si no se requiere, limpiamos validadores y valor
+        quantityControl?.clearValidators();
+        quantityControl?.setValue(null); 
+      }
+      quantityControl?.updateValueAndValidity();
     });
   }
   
@@ -285,7 +301,7 @@ export class PrintingParameters implements OnInit, OnDestroy {
     itemGroup.showDropdown = false;
   }
   
-  // 💡 MODIFICADO: onCancel debe limpiar el nuevo campo
+  // 💡 3. onCancel MODIFICADO para limpiar los nuevos campos
   onCancel() {
     this.form.reset({
       productReference: '',
@@ -297,10 +313,14 @@ export class PrintingParameters implements OnInit, OnDestroy {
       productType: false, 
       exportCountry: '',
 
+      // 💡 Reseteo de campos de Regleta
+      requiresRegleta: false,
+      regletaPrintQuantity: null,
+
       labelCode: null,
       labelNote: '',
       
-      maximumPrintQuantity: 55, // 👈 Se resetea el nuevo campo
+      maximumPrintQuantity: 55, 
 
       productName: '',
       EAN: '',
@@ -326,7 +346,7 @@ export class PrintingParameters implements OnInit, OnDestroy {
       }));
   }
 
-  // 💡 MODIFICADO: onSubmit usa el valor del formulario
+  // 💡 4. onSubmit MODIFICADO para construir el payload correcto
   onSubmit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -335,27 +355,36 @@ export class PrintingParameters implements OnInit, OnDestroy {
 
     const filteredCheckList = this.filterCheckList();
 
-    const payload = {
+    // Usamos la interfaz LabelParametersRequest para asegurar la estructura
+    const payload: LabelParametersRequest = {
       productName: this.form.value.productName || this.selectedProduct?.productName || '',
       EAN: this.form.value.EAN || this.selectedProduct?.EAN || '',
       reference: this.form.value.reference || this.selectedProduct?.reference || this.form.value.productReference,
       codRef: this.form.value.codRef || this.selectedProduct?.codRef || this.form.value.productCode || '',
       
       destination: { 
+        // Tu JSON de ejemplo usa 'export', que coincide con 'productType'
         export: this.form.value.productType || false,
         country: this.form.value.productType ? (this.form.value.exportCountry || '') : ''
       },
 
       label: {
-        code: String(this.form.value.labelCode),
+        code: String(this.form.value.labelCode), 
         note: (this.form.value.labelNote || '').toString()
       },
       
-      // 💡 MODIFICADO: Se usa el valor del formulario
+      // 💡 Objeto 'requires' construido según el formulario
+      requires: {
+        regleta: this.form.value.requiresRegleta || false,
+        // Si no se requiere, enviamos 0. Si se requiere, enviamos el valor
+        printQuantity: this.form.value.requiresRegleta ? (this.form.value.regletaPrintQuantity || 0) : 0
+      },
+      
       maximumPrintQuantity: this.form.value.maximumPrintQuantity, 
       
+      // Ajuste: 'checkList' en lugar de 'additionalData' para el payload final
       checkList: filteredCheckList.length > 0 ? filteredCheckList : undefined
-    } as any; 
+    } as any; // Se mantiene 'as any' por si la interfaz 'destination' difiere del JSON de ejemplo
 
     this.submitting = true;
     this.alert.visible = false;
@@ -369,8 +398,17 @@ export class PrintingParameters implements OnInit, OnDestroy {
         if (res && res.ok) {
           this.alert.type = 'success';
           this.alert.message = res.msg || 'Referencia registrada exitosamente.';
-          // Reseteamos los campos de etiqueta y checklist
-          this.form.patchValue({ labelCode: null, labelNote: '', maximumPrintQuantity: 55 });
+          
+          // 💡 5. Reseteamos los campos de etiqueta, checklist y regleta
+          this.form.patchValue({ 
+            labelCode: null, 
+            labelNote: '', 
+            maximumPrintQuantity: 55,
+            
+            // 💡 Reseteo de campos de Regleta
+            requiresRegleta: false,
+            regletaPrintQuantity: null
+          });
           this.additionalDataControls.clear();
           this.addAdditionalData();
         } else {

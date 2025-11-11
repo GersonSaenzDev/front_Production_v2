@@ -193,7 +193,7 @@
                     <tbody>
                         @for (product of totalProducts; track product.productCode) {
                             <tr>
-                                <td>{{ product.productCode.slice(0, -1) }}</td>
+                                <td>{{ product.productCode }}</td>
                                 <td>{{ product.productName | uppercase }}</td>
                                 <td class="text-end text-primary f-w-600">{{ product.Producidos | number }}</td>
                                 <td class="text-end text-success">{{ product.Validos | number }}</td>

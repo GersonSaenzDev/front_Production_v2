@@ -9,6 +9,11 @@ export interface LabelDetailsRequest {
       note: string;
 }
 
+export interface LabelRequiresRequest {
+      regleta: boolean;
+      printQuantity: number;
+}
+
 export interface CountryRequest {
       national: boolean;
       country?: string;
@@ -28,6 +33,7 @@ export interface LabelParametersRequest {
       codRef: string;
       destination: CountryRequest;
       label: LabelDetailsRequest;
+      requires: LabelRequiresRequest;
       maximumPrintQuantity: number;
       additionalData?: AdditionalDataEntry[];
 }
