@@ -261,6 +261,9 @@ export interface InsertInventoryRequest {
 export interface InsertInventoryResponse {
   ok: boolean;
   msg: string;
+  // Campos opcionales que pueden venir en un error
+  validationError?: boolean;
+  duplicateBarcode?: string;
 }
 
 export interface CheckListItem {

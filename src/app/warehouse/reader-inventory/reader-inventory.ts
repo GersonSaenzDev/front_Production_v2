@@ -3,11 +3,13 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
-
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { DashInventoryServices } from 'src/app/services/dashInventory-services';
 import { InsertInventoryRequest, Product, StorageItem } from 'src/app/interfaces/dashInventory.interface';
+
+import { throwError } from 'rxjs';
 
 
 @Component({
@@ -377,6 +379,27 @@ export class InventoryReader implements OnInit {
       }
     }
   }
+  
 
+  private handleError(error: HttpErrorResponse) {
+    console.error('DashInventoryServices: Error en la petición:', error);
+
+    // 1. Revisa si el backend envió un objeto de error {ok, msg, ...}
+    //    Esto es lo que ves en tu Imagen 2 (DevTools)
+    if (error.error && typeof error.error === 'object' && error.error.msg) {
+        // Devuelve el objeto de error del backend
+        return throwError(() => error.error);
+    }
+
+    // 2. Si no, crea un objeto de error genérico que coincida con la interfaz
+    //    Esto cubrirá errores de red, 500, etc.
+    const genericErrorMessage = `Error ${error.status}: ${error.statusText}. Por favor, contacte a soporte.`;
+    
+    return throwError(() => ({
+        ok: false,
+        msg: genericErrorMessage,
+        validationError: false // o la propiedad que necesites
+    }));
+}
 
 }

@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, InsertInventoryRequest, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
+import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, InsertInventoryRequest, InsertInventoryResponse, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
 import { environment } from 'src/environments/environment';
 
 
@@ -158,8 +158,8 @@ export class DashInventoryServices {
       );
   }
 
-  getInsertInventory(payload: InsertInventoryRequest): Observable<StorageResponse> {
-    return this.http.post<StorageResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload)
+  getInsertInventory(payload: InsertInventoryRequest): Observable<InsertInventoryResponse> {
+    return this.http.post<InsertInventoryResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload)
       .pipe(
         catchError(this.handleError.bind(this))
       );
