@@ -3,11 +3,11 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { DashInventoryServices } from 'src/app/services/dashInventory-services';
-import { InsertInventoryRequest, Product, StorageItem } from 'src/app/interfaces/dashInventory.interface';
+import { Product, StorageItem } from 'src/app/interfaces/dashInventory.interface';
 
 import { throwError } from 'rxjs';
 
