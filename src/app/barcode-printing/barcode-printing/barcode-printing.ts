@@ -354,29 +354,31 @@ export class BarcodePrinting implements OnInit, OnDestroy {
   }
 
   /**
-   * @description Agrega código escaneado EAN-128 con validaciones robustas.
-   * Modificada para auto-disparo de la validación.
-   */
+ * @description Agrega código escaneado EAN-128 con validaciones robustas.
+ * Modificada para auto-disparo de la validación y orden LIFO (Last In, First Out).
+ */
   addEAN128() {
       const code = this.ean128Input.trim();
       if (!code) return;
 
       if (!this.gtinBase || this.generatedLabels.length === 0) {
-        alert('Error de estado: La información de la impresión no está cargada para validar el formato EAN-128.');
-        this.ean128Input = '';
-        this.focusScanInput();
-        return;
+          alert('Error de estado: La información de la impresión no está cargada para validar el formato EAN-128.');
+          this.ean128Input = '';
+          this.focusScanInput();
+          return;
       }
-      
-      // ... (VALIDACIONES 1, 2 y 3 de formato y GTIN se mantienen) ...
-      // (Asumo que el código de validación del GTIN y formato está presente aquí)
 
-      // Si pasa todas las validaciones preliminares...
       if (!this.validatedEAN128.some(entry => entry.code === code)) {
-        this.validatedEAN128.push({ code });
+          
+          this.validatedEAN128.unshift({ code }); 
+          
+      } else {
+          // Opcional: Puedes mostrar un mensaje pequeño si el código ya fue leído
+          console.log('El código ya ha sido escaneado');
       }
+
       this.ean128Input = ''; // Limpiar el campo
-      this.focusScanInput(); // 💡 ENFOQUE INMEDIATO PARA LA PRÓXIMA LECTURA
+      this.focusScanInput(); // Mantiene el foco para seguir escaneando rápido
   }
 
   // 💡 NUEVO: Función auxiliar para el enfoque.
@@ -474,14 +476,17 @@ export class BarcodePrinting implements OnInit, OnDestroy {
   }
 
   /**
-   * @description Permite eliminar un código EAN-128 leído por índice.
-   */
+ * @description Permite eliminar un código EAN-128 leído por índice.
+ * Modificada para devolver el foco al input de escaneo.
+ */
   removeEAN128(index: number) {
-    if (index >= 0 && index < this.validatedEAN128.length) {
-      this.validatedEAN128.splice(index, 1);
-      // Opcional: Notificar al usuario o simplemente actualizar la lista
-      console.log(`Código EAN-128 eliminado en el índice ${index}.`);
-    }
+      if (index >= 0 && index < this.validatedEAN128.length) {
+          
+          // 1. Elimina el elemento del array
+          this.validatedEAN128.splice(index, 1);
+          
+          this.focusScanInput(); 
+      }
   }
 
   
