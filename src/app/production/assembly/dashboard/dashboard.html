@@ -1,3 +1,4 @@
+<!-- app/production/assembly/dashboard/dashboard.html -->
 <div class="row">
     <div class="col-12 mb-4">
         <div class="card bg-primary-subtle text-dark overflow-hidden"> 
@@ -138,6 +139,72 @@
             </div>
         </div>
     </div> -->
+
+    <div class="card">
+    <div class="card-header bg-light-secondary text-secondary">
+        <h5>Producción Detallada por Hora</h5>
+    </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered mb-0 text-center align-middle" style="font-size: 0.85rem;">
+                    <thead class="bg-light">
+                        <tr>
+                            <th rowspan="2" class="align-middle">Producto</th>
+                            <th rowspan="2" class="align-middle text-primary">Total</th>
+                            
+                            <th colspan="8" class="text-center bg-primary-subtle text-primary border-bottom border-primary">
+                                TURNO 1 (06:00 - 13:30)
+                            </th>
+                            <th colspan="8" class="text-center bg-warning-subtle text-warning border-bottom border-warning">
+                                TURNO 2 (14:00 - 21:30)
+                            </th>
+                        </tr>
+                        <tr>
+                            @for (h of shift1Hours; track h) {
+                                <th class="bg-light-primary">{{h}}:00</th>
+                            }
+                            @for (h of shift2Hours; track h) {
+                                <th class="bg-light-warning">{{h}}:00</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (product of totalProducts; track product.productCode) {
+                            <tr>
+                                <td class="text-start">
+                                    <div class="fw-bold text-dark">{{ product.productName | uppercase }}</div>
+                                    <small class="text-muted">{{ product.productCode }}</small>
+                                </td>
+                                
+                                <td class="fw-bold f-16 text-primary bg-light">
+                                    {{ product.Producidos | number }}
+                                </td>
+
+                                @for (h of shift1Hours; track h) {
+                                    <td [class.text-muted]="!product['H'+h]" [class.fw-bold]="product['H'+h]">
+                                        {{ product['H'+h] ? (product['H'+h] | number) : '-' }}
+                                    </td>
+                                }
+
+                                @for (h of shift2Hours; track h) {
+                                    <td [class.text-muted]="!product['H'+h]" [class.fw-bold]="product['H'+h]">
+                                        {{ product['H'+h] ? (product['H'+h] | number) : '-' }}
+                                    </td>
+                                }
+                            </tr>
+                        } @empty {
+                            <tr>
+                                <td colspan="18" class="text-center py-5 text-muted">
+                                    <i class="ti ti-database-off f-30 d-block mb-2"></i>
+                                    No hay datos de producción para la fecha seleccionada.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     
     <div class="col-12 mt-4">
         <div class="card">

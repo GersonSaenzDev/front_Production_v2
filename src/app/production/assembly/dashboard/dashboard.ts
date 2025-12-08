@@ -1,3 +1,4 @@
+// app/production/assembly/dashboard/dashboard.ts
 import { Component, LOCALE_ID, inject } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es'; 
@@ -43,6 +44,10 @@ export class Dashboard {
   public timeStart: string = '06:00'; // Inicializar en el inicio del día
   public timeEnd: string = '21:30';   // Inicializar en el fin del día
 
+  // Definimos las columnas de horas para iterar en el HTML
+  public shift1Hours = ['06', '07', '08', '09', '10', '11', '12', '13'];
+  public shift2Hours = ['14', '15', '16', '17', '18', '19', '20', '21'];
+
   // Propiedad para los datos del gráfico de barras (inicializada vacía)
   public barChartData: ChartData = {
       categories: [],
@@ -57,9 +62,9 @@ export class Dashboard {
 
   constructor() {
     const todayBackendFormat = this.formatDateForBackend(new Date());
-    // Cargar datos iniciales
     this.loadDataForDate(todayBackendFormat); 
-    this.loadTopProductsData(todayBackendFormat); 
+    this.loadTopProductsData(todayBackendFormat);
+    this.loadTotalProducts(todayBackendFormat, this.timeStart, this.timeEnd);
   }
 
   // -----------------------------------------------------------
@@ -74,12 +79,8 @@ export class Dashboard {
     let month = '' + (d.getMonth() + 1);
     let day = '' + d.getDate();
     const year = d.getFullYear();
-
-    if (month.length < 2) 
-        month = '0' + month;
-    if (day.length < 2) 
-        day = '0' + day;
-
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
     return [year, month, day].join('-');
   }
 
@@ -91,10 +92,8 @@ export class Dashboard {
     let day = '' + d.getDate();
     let month = '' + (d.getMonth() + 1);
     const year = d.getFullYear();
-    
     if (month.length < 2) month = '0' + month;
     if (day.length < 2) day = '0' + day;
-
     return [day, month, year].join('/');
   }
 
@@ -105,7 +104,6 @@ export class Dashboard {
     const dateForBackend = this.formatDateForBackend(newDate); 
     this.loadDataForDate(dateForBackend);
     this.loadTopProductsData(dateForBackend); 
-    // 🎯 Recargar la tabla con la nueva fecha (manteniendo el rango horario actual)
     this.loadTotalProducts(dateForBackend, this.timeStart, this.timeEnd); 
   }
 
@@ -124,17 +122,17 @@ export class Dashboard {
   /**
    * 🎯 NUEVO MÉTODO: Carga los datos completos de producción con o sin rango horario.
    */
-  private loadTotalProducts(date: string, timeStart?: string, timeEnd?: string): void {
-    console.log(`[Servicio] Iniciando consulta de Producción Total del Día para la fecha: ${date} y rango ${timeStart}-${timeEnd}`);
+  private loadTotalProducts(date: string, timeStart: string, timeEnd: string): void {
+    console.log(`[Dashboard] Consultando horas: ${timeStart} - ${timeEnd} para ${date}`);
       
-    this.dashboardService.getTotalProductsDay(date, timeStart, timeEnd).subscribe({
+    // Usamos el nuevo método: getTotalProductsDayHours
+    this.dashboardService.getTotalProductsDayHours(date, timeStart, timeEnd).subscribe({
         next: (response: TopProductsResponse) => {
-            
-            // 🎯 ASIGNACIÓN: Asignamos el array de productos a la variable de la tabla
             this.totalProducts = response.msg; 
         },
         error: (error) => {
-            this.totalProducts = []; // Vaciar la tabla en caso de error
+            console.error('Error cargando tabla detallada', error);
+            this.totalProducts = []; 
         }
     });
   }
@@ -144,20 +142,15 @@ export class Dashboard {
    * @param date La fecha con la que se hará la consulta al backend (formato DD/MM/YYYY).
    */
   private loadDataForDate(date: string): void {
-    
     this.dashboardService.getCardMetrics(date).subscribe({
-        next: (response: CardAssemblyResponse) => { // Tipado correcto
-            
-          // 🎯 LÓGICA CLAVE: ASIGNACIÓN DE PROPIEDADES A LAS VARIABLES DE LA CLASE
+        next: (response: CardAssemblyResponse) => { 
             const metrics: AssemblyMetrics = response.msg;
             this.totalProductoTerminado = metrics.TotalReadingsRecorded;
             this.productoValidado = metrics.TotalValidUnits; 
             this.productoConError = metrics.TotalErrorMarked; 
             this.duplicados = metrics.TotalDuplicated; 
-            
         },
-        error: (error) => {
-            // Limpiar los valores en caso de error
+        error: () => {
             this.totalProductoTerminado = 0;
             this.productoValidado = 0;
             this.productoConError = 0;

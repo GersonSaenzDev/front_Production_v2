@@ -1,5 +1,4 @@
 // src/app/services/dashboard-services.ts
-
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
@@ -27,7 +26,8 @@ export class DashboardServices {
   private readonly TOP_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/topProducts`;
   private readonly TOTAL_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/totalProductsDay`;
   private readonly VIEW_REF_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewRef`;
-  private readonly VIEW_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewNews`; // Este usamos
+  private readonly VIEW_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewNews`;
+  private readonly TOTAL_PRODUCTION_HOURS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/totalProductsDayHours`;
 
   private handleError(error: any) {
     let errorMessage = 'Ocurrió un error desconocido en el servicio.';
@@ -137,5 +137,34 @@ export class DashboardServices {
                   return response;
               })
           );
-  } 
+  }
+
+  /**
+   * @description Obtiene el total de productos y su desglose por horas.
+   * @param {string} date - Fecha en formato DD/MM/YYYY.
+   * @param {string} timeStart - Hora de inicio (HH:MM).
+   * @param {string} timeEnd - Hora de fin (HH:MM).
+   */
+  getTotalProductsDayHours(date: string, timeStart: string, timeEnd: string): Observable<TopProductsResponse> {
+    
+    // Construimos el body exactamente como lo pide el ejemplo JSON
+    const body = { 
+        date: date,
+        timeStart: timeStart,
+        timeEnd: timeEnd
+    };
+
+    // Usamos el nuevo endpoint TOTAL_PRODUCTION_HOURS_ENDPOINT
+    return this.http.post<TopProductsResponse>(this.TOTAL_PRODUCTION_HOURS_ENDPOINT, body)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        map(response => {
+          // Validación de seguridad por si msg viene null
+          if (!response.msg) {
+            return { ok: response.ok, msg: [] as TopProductsItem[] };
+          }
+          return response;
+        })
+      );
+  }
 }
