@@ -129,11 +129,11 @@ export class DashInventoryServices {
  * body: { date, teamKey }
  */
   getTeamItems(date: string, payload: { teamKey: string }): Observable<TeamItemsResponse> {
-  const body = { date, ...payload };
-  return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body)
+    const body = { date, ...payload };
+    return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body)
       .pipe(
       catchError(this.handleError.bind(this))
-      );
+    );
   }
 
   getNotCompliant(date: string, payload: { teamKey: string }): Observable<NotCompliantResponse> {

@@ -1,3 +1,4 @@
+<!-- app/warehouse/dash-inventories/dash-inventories.html -->
 <!-- Encabezado y selector de fecha (mantenido) -->
 <div class="row">
   <div class="col-12 mb-4">
@@ -248,59 +249,87 @@
             <div class="col-md-6">
               <div class="mb-2 d-flex align-items-center gap-2">
                 <select class="form-select" [(ngModel)]="selectedTeamLeft" (change)="onSelectTeam('left')">
-                  <option value="">Selecciona equipo (Izq)</option>
+                  <option value="">Equipo A (Referencia)</option>
                   <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }} — {{ t.area }}</option>
                 </select>
                 <button class="btn btn-sm btn-outline-secondary" (click)="clearTeam('left')">Limpiar</button>
               </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-2 d-flex align-items-center gap-2">
+                <select class="form-select" [(ngModel)]="selectedTeamRight" (change)="onSelectTeam('right')">
+                  <option value="">Equipo B (Validación)</option>
+                  <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }} — {{ t.area }}</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" (click)="clearTeam('right')">Limpiar</button>
+              </div>
+            </div>
+          </div>
 
-              <div class="card h-100">
-                <div class="card-body">
-                  <div *ngIf="teamLeft">
-                    <h6 class="mb-1">{{ teamLeft.area || '—' }}</h6>
-                    <p class="mb-2 text-muted">Registros: <strong>{{ teamLeft.total || 0 }}</strong></p>
-                    <div class="codes-list" style="max-height:320px; overflow:auto;">
-                      <ul class="list-group list-group-flush">
-                        <li class="list-group-item" *ngFor="let c of teamLeft.codes">{{ c }}</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div *ngIf="!teamLeft" class="text-muted">Elige un equipo para ver códigos</div>
+          <div class="d-flex gap-2 mb-4">
+            <button class="btn btn-primary" (click)="compareTeams()" [disabled]="!teamLeft || !teamRight">
+              <i class="ti ti-arrows-diff me-1"></i> Ejecutar Cruce de Inventario
+            </button>
+            <button class="btn btn-outline-success" (click)="exportComparison()" *ngIf="comparisonResult">
+              <i class="ti ti-download me-1"></i> Exportar Diferencias
+            </button>
+          </div>
+
+          <div class="row" *ngIf="comparisonDetails">
+            <div class="col-md-6">
+              <div class="card border-danger">
+                <div class="card-header bg-danger text-white d-flex justify-content-between">
+                  <span>Solo en Equipo A (Faltan en B)</span>
+                  <span class="badge bg-white text-danger">{{ comparisonDetails.leftMissing.length }}</span>
+                </div>
+                <div class="table-responsive" style="max-height: 400px;">
+                  <table class="table table-sm table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Código</th>
+                        <th>Referencia</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let item of comparisonDetails.leftMissing">
+                        <td class="text-danger"><strong>{{ item.code }}</strong></td>
+                        <td><small>{{ item.referencia }}</small></td>
+                      </tr>
+                      <tr *ngIf="comparisonDetails.leftMissing.length === 0">
+                        <td colspan="2" class="text-center text-success">¡Todo coincide! No hay faltantes.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
             <div class="col-md-6">
-              <div class="mb-2 d-flex align-items-center gap-2">
-                <select class="form-select" [(ngModel)]="selectedTeamRight" (change)="onSelectTeam('right')">
-                  <option value="">Selecciona equipo (Der)</option>
-                  <option *ngFor="let t of teamOptions" [value]="t.key">{{ t.label }} — {{ t.area }}</option>
-                </select>
-                <button class="btn btn-sm btn-outline-secondary" (click)="clearTeam('right')">Limpiar</button>
-              </div>
-
-              <div class="card h-100">
-                <div class="card-body">
-                  <div *ngIf="teamRight">
-                    <h6 class="mb-1">{{ teamRight.area || '—' }}</h6>
-                    <p class="mb-2 text-muted">Registros: <strong>{{ teamRight.total || 0 }}</strong></p>
-                    <div class="codes-list" style="max-height:320px; overflow:auto;">
-                      <ul class="list-group list-group-flush">
-                        <li class="list-group-item" *ngFor="let c of teamRight.codes">{{ c }}</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div *ngIf="!teamRight" class="text-muted">Elige un equipo para ver códigos</div>
+              <div class="card border-warning">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between">
+                  <span>Solo en Equipo B (Faltan en A)</span>
+                  <span class="badge bg-dark text-white">{{ comparisonDetails.rightMissing.length }}</span>
+                </div>
+                <div class="table-responsive" style="max-height: 400px;">
+                  <table class="table table-sm table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Código</th>
+                        <th>Referencia</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let item of comparisonDetails.rightMissing">
+                        <td class="text-warning"><strong>{{ item.code }}</strong></td>
+                        <td><small>{{ item.referencia }}</small></td>
+                      </tr>
+                      <tr *ngIf="comparisonDetails.rightMissing.length === 0">
+                        <td colspan="2" class="text-center text-success">¡Todo coincide! No hay faltantes.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div class="d-flex gap-2">
-            <button class="btn btn-primary" (click)="compareTeams()">Comparar equipos</button>
-            <button class="btn btn-outline-secondary" (click)="exportComparison()">Exportar (CSV)</button>
-            <div *ngIf="comparisonResult" class="ms-3">
-              <small class="text-muted">Coincidencias: {{ comparisonResult.matchCount }}, Diferencias: {{ comparisonResult.diffCount }}</small>
             </div>
           </div>
         </div>

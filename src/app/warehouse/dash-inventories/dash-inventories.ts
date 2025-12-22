@@ -1,8 +1,11 @@
+// app/warehouse/dash-inventories/dash-inventories.ts
+
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 
 import { Component, LOCALE_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { throwError } from 'rxjs';
 import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, } from 'src/app/interfaces/dashInventory.interface';
 import { DashInventoryServices } from 'src/app/services/dashInventory-services';
 
@@ -130,6 +133,13 @@ export class DashInventories {
     this.loadAllData(dateForBackend);
   }
 
+  // 1. Añade esta nueva propiedad para almacenar los resultados detallados
+  public comparisonDetails: {
+    leftMissing: any[],
+    rightMissing: any[],
+    matches: any[]
+  } | null = null;
+
   public loadAllData(dateForBackend: string): void {
     this.loading = true;
     this.errorMessage = '';
@@ -138,6 +148,12 @@ export class DashInventories {
     // 1) Vista completa de inventarios (plano por barcode) -> llena inventoryList
     this.dashboardService.getViewInventories(dateForBackend).subscribe({
       next: (res) => {
+        if (res && res.ok === false) {
+          // Forzamos a que trate res.msg como string para el error
+          this.errorMessage = String(res.msg); 
+          this.loading = false;
+          return;
+        }
         if (res?.ok && res.msg) {
           this.inventoryList = res.msg.items.map((it: any) => {
             const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
@@ -169,7 +185,8 @@ export class DashInventories {
       },
       error: (err) => {
         console.error('Error viewInventories:', err);
-        this.errorMessage = err?.message || 'Error cargando inventarios';
+        this.errorMessage = err.message;
+        this.loading = false;
         this.inventoryList = [];
         this.filteredInventory = [];
         this.areaOptions = [];
@@ -369,28 +386,34 @@ export class DashInventories {
 
   // Selección equipo -> trae codes/area/total desde backend
   public onSelectTeam(side: 'left' | 'right'): void {
-    const teamKey = side === 'left' ? this.selectedTeamLeft : this.selectedTeamRight;
-    if (!teamKey) {
-      if (side === 'left') this.teamLeft = null; else this.teamRight = null;
-      return;
-    }
-    const dateForBackend = this.formatDateForBackend(this.selectedDate);
-    this.dashboardService.getTeamItems(dateForBackend, { teamKey }).subscribe({
-      next: (res) => {
-        if (res?.ok && res.msg) {
-          const payload = res.msg;
-          if (side === 'left') this.teamLeft = { area: payload.area, total: payload.total, codes: payload.codes.map((c: any) => c.code) };
-          else this.teamRight = { area: payload.area, total: payload.total, codes: payload.codes.map((c: any) => c.code) };
-        } else {
-          if (side === 'left') this.teamLeft = null; else this.teamRight = null;
-        }
-      },
-      error: (err) => {
-        console.error('Error getTeamItems:', err);
-        if (side === 'left') this.teamLeft = null; else this.teamRight = null;
-      }
-    });
+  const teamKey = side === 'left' ? this.selectedTeamLeft : this.selectedTeamRight;
+  
+  if (!teamKey) {
+    if (side === 'left') this.teamLeft = null; else this.teamRight = null;
+    this.comparisonDetails = null;
+    return;
   }
+
+  // Filtramos los items del inventario global que coinciden con la llave del equipo
+  const teamItems = this.inventoryList.filter(it => this.computeTeamKey(it) === teamKey);
+
+  const payload = {
+    area: teamItems.length > 0 ? teamItems[0].area : '',
+    total: teamItems.length,
+    // Guardamos el objeto completo, no solo el código, para mostrar detalles en la comparación
+    items: teamItems 
+  };
+
+  if (side === 'left') {
+    this.teamLeft = { ...payload, codes: teamItems.map(i => i.code) };
+  } else {
+    this.teamRight = { ...payload, codes: teamItems.map(i => i.code) };
+  }
+  
+  // Limpiar resultado previo al cambiar selección
+  this.comparisonResult = null;
+  this.comparisonDetails = null;
+}
 
   public clearTeam(side: 'left' | 'right'): void {
     if (side === 'left') {
@@ -404,15 +427,37 @@ export class DashInventories {
   }
 
   public compareTeams(): void {
-    if (!this.teamLeft || !this.teamRight) { this.comparisonResult = null; return; }
-    const leftSet = new Set(this.teamLeft.codes);
-    const rightSet = new Set(this.teamRight.codes);
-    let matchCount = 0;
-    leftSet.forEach(c => { if (rightSet.has(c)) matchCount++; });
-    const union = new Set([...leftSet, ...rightSet]);
-    const diffCount = union.size - matchCount;
-    this.comparisonResult = { matchCount, diffCount };
+  if (!this.teamLeft || !this.teamRight) {
+    this.comparisonResult = null;
+    return;
   }
+
+  const leftItems = (this.teamLeft as any).items;
+  const rightItems = (this.teamRight as any).items;
+
+  const leftCodes = new Set(this.teamLeft.codes);
+  const rightCodes = new Set(this.teamRight.codes);
+
+  // 1. ¿Qué tiene la Izquierda que NO tiene la Derecha?
+  const leftMissingInRight = leftItems.filter((item: any) => !rightCodes.has(item.code));
+
+  // 2. ¿Qué tiene la Derecha que NO tiene la Izquierda?
+  const rightMissingInLeft = rightItems.filter((item: any) => !leftCodes.has(item.code));
+
+  // 3. Coincidencias
+  const matches = leftItems.filter((item: any) => rightCodes.has(item.code));
+
+  this.comparisonDetails = {
+    leftMissing: leftMissingInRight,
+    rightMissing: rightMissingInLeft,
+    matches: matches
+  };
+
+  this.comparisonResult = {
+    matchCount: matches.length,
+    diffCount: leftMissingInRight.length + rightMissingInLeft.length
+  };
+}
 
   public exportComparison(): void {
     if (!this.teamLeft || !this.teamRight) return;
@@ -636,6 +681,25 @@ export class DashInventories {
 
     const dateForBackend = this.formatDateForBackend(this.selectedDate); // usa tu función existente
     this.loadNotCompliantData(dateForBackend, page, this.notCompliantPageSize);
+  }
+
+  private handleError(error: any) {
+    console.error('DashInventoryServices: Error en la petición:', error);
+    let errorMessage = 'Ocurrió un error inesperado.';
+
+    // Si el backend envió un body de error (ej: 400 Bad Request)
+    if (error.error) {
+      // Capturamos el campo "msg" exacto que enviaste: "Error de validación: Se enviaron 4 códigos..."
+      errorMessage = error.error.msg || error.error.message || errorMessage;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    return throwError(() => new Error(errorMessage));
+  }
+
+  public clearErrorMessage() {
+    this.errorMessage = '';
   }
 
 }
