@@ -98,8 +98,10 @@ export interface InventoryItem {
 }
 
 export interface ViewInventoriesData {
-  total: number;
-  items: InventoryItem[];
+  total: number;          // Total de registros (ej: 62)
+  totalPages: number;     // Total de páginas (ej: 4)
+  currentPage: number;    // Página actual
+  items: any[];           // El array de equipos/productos
 }
 
 export interface ViewInventoriesResponse {

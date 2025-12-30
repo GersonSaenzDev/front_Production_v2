@@ -116,12 +116,10 @@ export class DashInventoryServices {
    * Obtiene los códigos duplicados para una fecha dada.
    * @param date Fecha en formato 'DD/MM/YYYY'
    */
-  getViewInventories(date: string): Observable<ViewInventoriesResponse> {
-    const body = { date };
+  getViewInventories(date: string, limit: number = 100, page: number = 1): Observable<ViewInventoriesResponse> {
+    const body = { date, limit, page };
     return this.http.post<ViewInventoriesResponse>(this.GLOBALCOUNT_VIEWINVENTORIES, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-    );
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**

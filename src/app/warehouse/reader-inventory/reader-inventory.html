@@ -36,11 +36,12 @@
         id="codigoBarras"
         placeholder="Escanee o ingrese código de barras"
         inputmode="numeric"
-        pattern="[0-9]*"
         [(ngModel)]="barcodeInput"
         (keydown)="onKeyPress($event)"
-        (ngModelChange)="onBarcodeChange($event)"
-        autofocus
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
         required />
 
       <div class="button-group" style="margin-top:12px;">

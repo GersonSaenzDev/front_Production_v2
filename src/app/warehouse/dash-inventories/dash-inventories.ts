@@ -140,214 +140,65 @@ export class DashInventories {
     matches: any[]
   } | null = null;
 
-  public loadAllData(dateForBackend: string): void {
+  public async loadAllData(dateForBackend: string): Promise<void> {
     this.loading = true;
     this.errorMessage = '';
-    this.resetCounts();
+    this.inventoryList = []; // Limpiamos lista previa
 
-    // 1) Vista completa de inventarios (plano por barcode) -> llena inventoryList
-    this.dashboardService.getViewInventories(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok === false) {
-          // Forzamos a que trate res.msg como string para el error
-          this.errorMessage = String(res.msg); 
-          this.loading = false;
-          return;
-        }
-        if (res?.ok && res.msg) {
-          this.inventoryList = res.msg.items.map((it: any) => {
-            const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
-            const teamKey = `${it.area || ''}||${persons.join('|')}`;
-            return { ...it, teamKey, teamLabel: persons.length ? persons.join(', ') : (it.team || it.area || '') };
-          });
-          this.filteredInventory = [...this.inventoryList];
+    try {
+      // 1. Cargamos la primera página para saber cuántas hay en total
+      const firstPage = await this.dashboardService.getViewInventories(dateForBackend, 100, 1).toPromise();
 
-          // Construir areaOptions y teamOptions desde inventoryList
-          this.areaOptions = Array.from(new Set(this.inventoryList.map(i => i.area).filter(Boolean))).sort();
-          // teamKey: area || persons joined by '|'
-          const teamMap = new Map<string, { label: string; area?: string }>();
-          this.inventoryList.forEach(it => {
-            const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
-            const key = `${it.area || ''}||${persons.join('|')}`;
-            if (!teamMap.has(key)) {
-              const label = persons.length ? `${persons.join(', ')}` : (it.team || it.area || 'Equipo');
-              teamMap.set(key, { label, area: it.area });
+      if (firstPage?.ok && firstPage.msg) {
+        let allItems = [...firstPage.msg.items];
+        const totalPages = firstPage.msg.totalPages;
+
+        // 2. Si hay más páginas, las pedimos todas en paralelo
+        if (totalPages > 1) {
+          const remainingRequests = [];
+          for (let i = 2; i <= totalPages; i++) {
+            remainingRequests.push(this.dashboardService.getViewInventories(dateForBackend, 100, i).toPromise());
+          }
+          
+          const responses = await Promise.all(remainingRequests);
+          responses.forEach(res => {
+            if (res?.ok && res.msg) {
+              allItems = [...allItems, ...res.msg.items];
             }
           });
-          this.teamOptions = Array.from(teamMap.entries()).map(([key, v]) => ({ key, label: v.label, area: v.area }));
-
-        } else {
-          this.inventoryList = [];
-          this.filteredInventory = [];
-          this.areaOptions = [];
-          this.teamOptions = [];
         }
-      },
-      error: (err) => {
-        console.error('Error viewInventories:', err);
-        this.errorMessage = err.message;
-        this.loading = false;
-        this.inventoryList = [];
-        this.filteredInventory = [];
-        this.areaOptions = [];
-        this.teamOptions = [];
+
+        // 3. Procesamos la lista maestra de items
+        this.inventoryList = allItems.map((it: any) => {
+          const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
+          const teamKey = `${it.area || ''}||${persons.join('|')}`;
+          // Formato pedido: Area + Nombre de personas
+          const teamLabel = persons.length 
+            ? `${it.area} — ${persons.join(', ')}` 
+            : (it.area || 'Equipo sin nombre');
+
+          return { ...it, teamKey, teamLabel };
+        });
+
+        // 4. Construimos el mapa de equipos (deberían salir los 58 equipos)
+        const teamMap = new Map();
+        this.inventoryList.forEach(it => {
+          if (!teamMap.has(it.teamKey)) {
+            teamMap.set(it.teamKey, { key: it.teamKey, label: it.teamLabel, area: it.area });
+          }
+        });
+
+        this.teamOptions = Array.from(teamMap.values());
+        this.filteredInventory = [...this.inventoryList];
+        
+        console.log(`Carga completa: ${this.inventoryList.length} items en ${this.teamOptions.length} equipos.`);
       }
-    });
-
-    // 2) Storage Groups (existente)
-    this.dashboardService.getStorageGroups(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok && res.msg) {
-          this.storageGroupsData = Array.isArray(res.msg.data) ? res.msg.data : [];
-          this.productosLeidosCount = Number(res.msg.totalRecords ?? this.storageGroupsData.length ?? 0);
-          this.equiposRegistradosCount = Number(res.msg.totalGroups ?? 0);
-        } else {
-          this.storageGroupsData = [];
-          this.productosLeidosCount = 0;
-          this.equiposRegistradosCount = 0;
-        }
-      },
-      error: (err) => {
-        console.error('Error getStorageGroups:', err);
-        this.errorMessage = err?.message || 'Error cargando grupos de almacenamiento';
-        this.storageGroupsData = [];
-        this.productosLeidosCount = 0;
-        this.equiposRegistradosCount = 0;
-      }
-    });
-
-    // 3) Confirmed Count (existente)
-    this.dashboardService.getConfirmedCount(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok && Array.isArray(res.msg)) {
-          this.confirmedCountData = res.msg;
-          this.productosOkCount = this.confirmedCountData.reduce((acc, item) => acc + (Number(item.validatedTrue ?? 0) || 0), 0);
-          this.noConformesCount = this.confirmedCountData.reduce((acc, item) => acc + (Number(item.validatedFalse ?? 0) || 0), 0);
-          this.revisionesCount = this.confirmedCountData.length;
-        } else {
-          this.confirmedCountData = [];
-          this.productosOkCount = 0;
-          this.noConformesCount = 0;
-          this.revisionesCount = 0;
-        }
-      },
-      error: (err) => {
-        console.error('Error getConfirmedCount:', err);
-        this.errorMessage = err?.message || 'Error cargando conteo confirmado';
-        this.confirmedCountData = [];
-        this.productosOkCount = 0;
-        this.noConformesCount = 0;
-        this.revisionesCount = 0;
-      }
-    });
-
-    // 4) Duplicates
-    this.dashboardService.getDuplicates(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok && res.msg && Array.isArray(res.msg.data)) {
-          this.duplicatesData = res.msg.data;
-          this.duplicadosCount = this.duplicatesData.length;
-        } else {
-          this.duplicatesData = [];
-          this.duplicadosCount = 0;
-        }
-      },
-      error: (err) => {
-        console.error('Error getDuplicates:', err);
-        this.errorMessage = err?.message || 'Error cargando duplicados';
-        this.duplicatesData = [];
-        this.duplicadosCount = 0;
-      }
-    });
-
-    // 5) Global count
-    this.dashboardService.getCountGlobal(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok && res.msg) {
-          this.globalCount = Number(res.msg.total ?? 0);
-          this.validatedTrueCount = Number(res.msg.validatedTrue ?? 0);
-          this.validatedFalseCount = Number(res.msg.validatedFalse ?? 0);
-        } else {
-          this.globalCount = 0;
-          this.validatedTrueCount = 0;
-          this.validatedFalseCount = 0;
-        }
-      },
-      error: (err) => {
-        console.error('Error getCountGlobal:', err);
-        this.errorMessage = err?.message || 'Error cargando conteo global';
-        this.globalCount = 0;
-        this.validatedTrueCount = 0;
-        this.validatedFalseCount = 0;
-      }
-    });
-
-    // 6) Team count
-    this.dashboardService.getTeamCount(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok && res.msg) {
-          this.teamCount = Number(res.msg.totalTeams ?? 0);
-        } else {
-          this.teamCount = 0;
-        }
-      },
-      error: (err) => {
-        console.error('Error getTeamCount:', err);
-        this.errorMessage = err?.message || 'Error cargando conteo de equipos';
-        this.teamCount = 0;
-      }
-    });
-
-    // 7) Area count
-    this.dashboardService.getAreaCount(dateForBackend).subscribe({
-      next: (res) => {
-        if (res && res.ok && res.msg) {
-          this.areaCount = Number(res.msg.totalAreas ?? 0);
-        } else {
-          this.areaCount = 0;
-        }
-      },
-      error: (err) => {
-        console.error('Error getAreaCount:', err);
-        this.errorMessage = err?.message || 'Error cargando conteo de áreas';
-        this.areaCount = 0;
-      }
-    });
-    
-    // 8) Not Compliant
-    this.dashboardService.getNotCompliant(dateForBackend, { teamKey: 'all' }).subscribe({
-      next: (res) => {
-        if (res && res.ok && res.msg) {
-          this.notCompliantTotal = res.msg.total ?? 0;
-          this.notCompliantTotalPages = res.msg.totalPages ?? 0;
-          this.notCompliantCurrentPage = res.msg.currentPage ?? 1;
-          this.notCompliantItems = Array.isArray(res.msg.items) ? res.msg.items : [];
-
-          // Aplicar filtros locales para construir filteredNotCompliantItems
-          // Esto también asegura que la tabla use los datos recibidos
-          this.applyNotCompliantFilters();
-
-          // Si quieres que las opciones de área incluyan áreas provenientes de no conformes:
-          const areasFromNot = this.notCompliantItems.map(i => i.area).filter(Boolean);
-          this.areaOptions = Array.from(new Set([...this.areaOptions, ...areasFromNot])).sort();
-
-          // Si usas teamOptions basadas en inventoryList, no es necesario cambiarlas aquí.
-          // Forzar copia de array (ayuda a change-detection en casos extraños)
-          this.filteredNotCompliantItems = [...this.filteredNotCompliantItems];
-        } else {
-          this.resetNotCompliantData();
-        }
-      },
-      error: (err) => {
-        console.error('Error getNotCompliant:', err);
-        this.errorMessage = err?.message || 'Error cargando items no conformes';
-        this.resetNotCompliantData();
-      }
-    });
-
-    // Cuando todas las llamadas asíncronas terminen, podrías necesitar usar forkJoin; aquí simplemente levantamos loading = false
-    // con un pequeño timeout para dar tiempo a la mayoría de respuestas. Si prefieres precisión, reemplaza por forkJoin para algunas llamadas.
-    setTimeout(() => this.loading = false, 400);
+    } catch (error) {
+      this.errorMessage = "Error al obtener la lista completa de equipos.";
+      console.error(error);
+    } finally {
+      this.loading = false;
+    }
   }
 
   // Filtrado en la tabla global

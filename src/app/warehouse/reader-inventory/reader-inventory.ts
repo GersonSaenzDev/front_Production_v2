@@ -28,6 +28,7 @@ export class InventoryReader implements OnInit {
 
   // Código de barras actual
   barcodeInput: string = '';
+  private scanTimer: any;
 
   // Lista de códigos leídos
   scannedCodes: string[] = [];
@@ -95,26 +96,26 @@ export class InventoryReader implements OnInit {
     modal.close('saved');
   }
 
-  readBarcode() {
-    const code = (this.barcodeInput || '').trim();
-    if (!code) {
-      this.statusMessage = 'Por favor ingrese un código de barras.';
-      return;
-    }
+  // readBarcode() {
+  //   const code = (this.barcodeInput || '').trim();
+  //   if (!code) {
+  //     this.statusMessage = 'Por favor ingrese un código de barras.';
+  //     return;
+  //   }
 
-    if (!/^\d+$/.test(code)) {
-      this.statusMessage = 'El código de barras solo debe contener números.';
-      return;
-    }
+  //   if (!/^\d+$/.test(code)) {
+  //     this.statusMessage = 'El código de barras solo debe contener números.';
+  //     return;
+  //   }
 
-    if (!this.scannedCodes.includes(code)) {
-      this.scannedCodes.push(code);
-    }
+  //   if (!this.scannedCodes.includes(code)) {
+  //     this.scannedCodes.push(code);
+  //   }
 
-    this.fetchProductInfo(code);
+  //   this.fetchProductInfo(code);
 
-    this.barcodeInput = '';
-  }
+  //   this.barcodeInput = '';
+  // }
 
   private mapStorageItemToProduct(item: StorageItem): Product {
     return {
@@ -189,16 +190,70 @@ export class InventoryReader implements OnInit {
   }
 
   onKeyPress(event: KeyboardEvent) {
+    // Las pistolas suelen terminar con 'Enter'
     if (event.key === 'Enter') {
       event.preventDefault();
-      this.readBarcode();
+      event.stopPropagation(); // Evita que el evento suba
+      
+      // Pequeño delay para asegurar que el ngModel capturó el último carácter
+      setTimeout(() => {
+        this.readBarcode();
+      }, 50);
+      return;
     }
+
+    // OPCIONAL: Lógica de seguridad para móviles
+    // Si el usuario deja de "escribir" (la pistola deja de mandar datos) 
+    // por más de 300ms, intentamos leer.
+    if (this.scanTimer) clearTimeout(this.scanTimer);
+    
+    this.scanTimer = setTimeout(() => {
+      const currentCode = (this.barcodeInput || '').trim();
+      // Si tiene una longitud mínima razonable (ej. 10 para tus códigos de 20+)
+      if (currentCode.length >= 10) {
+        this.readBarcode();
+      }
+    }, 300); // 300ms es un tiempo seguro para esperar la ráfaga de la pistola
   }
 
-  onBarcodeChange(value: string) {
-    if (value && value.length >= 8) {
-      setTimeout(() => this.readBarcode(), 100);
+  // onBarcodeChange(value: string) {
+  //   if (value && value.length >= 8) {
+  //     setTimeout(() => this.readBarcode(), 100);
+  //   }
+  // }
+
+  readBarcode() {
+    const code = (this.barcodeInput || '').trim();
+    
+    if (!code) return;
+
+    // Si ya estamos procesando, evitamos duplicar la petición
+    if (this.loading) return;
+
+    // Validación: si el código está incompleto (ej. menos de 10 caracteres) no enviamos
+    // Ajusta este número según el largo mínimo de tus códigos reales
+    if (code.length < 5) {
+      console.warn('Código demasiado corto, posible lectura errónea');
+      return;
     }
+
+    if (!/^\d+$/.test(code)) {
+      this.statusMessage = 'El código debe contener solo números.';
+      // No limpiamos el input inmediatamente para que el usuario vea qué falló
+      return;
+    }
+
+    // Limpiar temporizadores activos
+    if (this.scanTimer) clearTimeout(this.scanTimer);
+
+    if (!this.scannedCodes.includes(code)) {
+      this.scannedCodes.push(code);
+    }
+
+    this.fetchProductInfo(code);
+    
+    // Limpieza importante
+    this.barcodeInput = '';
   }
 
   /**
