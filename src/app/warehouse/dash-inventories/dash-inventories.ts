@@ -143,23 +143,21 @@ export class DashInventories {
   public async loadAllData(dateForBackend: string): Promise<void> {
     this.loading = true;
     this.errorMessage = '';
-    this.inventoryList = []; // Limpiamos lista previa
+    this.inventoryList = [];
+    this.resetCounts(); // Limpiamos contadores antes de empezar
 
     try {
-      // 1. Cargamos la primera página para saber cuántas hay en total
       const firstPage = await this.dashboardService.getViewInventories(dateForBackend, 100, 1).toPromise();
 
       if (firstPage?.ok && firstPage.msg) {
         let allItems = [...firstPage.msg.items];
         const totalPages = firstPage.msg.totalPages;
 
-        // 2. Si hay más páginas, las pedimos todas en paralelo
         if (totalPages > 1) {
           const remainingRequests = [];
           for (let i = 2; i <= totalPages; i++) {
             remainingRequests.push(this.dashboardService.getViewInventories(dateForBackend, 100, i).toPromise());
           }
-          
           const responses = await Promise.all(remainingRequests);
           responses.forEach(res => {
             if (res?.ok && res.msg) {
@@ -168,30 +166,46 @@ export class DashInventories {
           });
         }
 
-        // 3. Procesamos la lista maestra de items
+        // --- PROCESAMIENTO DE DATOS Y CONTADORES ---
+        const teamMap = new Map();
+        const areaSet = new Set<string>();
+        let compliant = 0;
+        let nonCompliant = 0;
+        let withNotes = 0;
+
         this.inventoryList = allItems.map((it: any) => {
           const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
           const teamKey = `${it.area || ''}||${persons.join('|')}`;
-          // Formato pedido: Area + Nombre de personas
           const teamLabel = persons.length 
             ? `${it.area} — ${persons.join(', ')}` 
             : (it.area || 'Equipo sin nombre');
 
+          // Lógica de contadores
+          if (it.validate === true) compliant++;
+          if (it.validate === false) nonCompliant++;
+          if (it.area) areaSet.add(it.area);
+          if (it.annotation || it.note) withNotes++;
+
+          if (!teamMap.has(teamKey)) {
+            teamMap.set(teamKey, { key: teamKey, label: teamLabel, area: it.area });
+          }
+
           return { ...it, teamKey, teamLabel };
         });
 
-        // 4. Construimos el mapa de equipos (deberían salir los 58 equipos)
-        const teamMap = new Map();
-        this.inventoryList.forEach(it => {
-          if (!teamMap.has(it.teamKey)) {
-            teamMap.set(it.teamKey, { key: it.teamKey, label: it.teamLabel, area: it.area });
-          }
-        });
+        // Asignación de valores a las variables de la UI
+        this.globalCount = this.inventoryList.length;
+        this.validatedTrueCount = compliant;
+        this.validatedFalseCount = nonCompliant;
+        this.teamCount = teamMap.size;
+        this.areaCount = areaSet.size;
+        this.revisionesCount = nonCompliant; // Ejemplo: considerar revisiones a los no conformes
+        this.configuracionesCount = withNotes; // Registros con novedades/notas
 
         this.teamOptions = Array.from(teamMap.values());
+        this.areaOptions = Array.from(areaSet).sort(); // Poblamos el selector de áreas
         this.filteredInventory = [...this.inventoryList];
         
-        console.log(`Carga completa: ${this.inventoryList.length} items en ${this.teamOptions.length} equipos.`);
       }
     } catch (error) {
       this.errorMessage = "Error al obtener la lista completa de equipos.";
