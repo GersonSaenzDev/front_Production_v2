@@ -44,15 +44,19 @@ export class InventoryReport implements OnInit {
       this.formatDateForBackend(this.dateEnd)
     ).subscribe({
       next: (res) => {
-        if (res.ok) {
-          // Inicializamos los grupos con la propiedad de expansión en false
-          this.groupedData = res.data.map(group => ({ ...group, isExpanded: false }));
-          this.totalRefs = res.totalGrupos;
-          this.calculateGlobalTotals(res.data);
-          this.applyFilter();
-        }
+        // res.data viene del backend según tu dashboard-services.ts
+        this.groupedData = (res.data || []).map(group => ({ 
+          ...group, 
+          isExpanded: false 
+        }));
+        this.totalRefs = res.totalGrupos || this.groupedData.length;
+        this.calculateGlobalTotals(this.groupedData);
+        this.applyFilter();
       },
-      error: () => this.isLoading = false,
+      error: (err) => {
+        console.error('Error cargando inventario', err);
+        this.isLoading = false;
+      },
       complete: () => this.isLoading = false
     });
   }
@@ -66,20 +70,17 @@ export class InventoryReport implements OnInit {
   }
 
   public applyFilter(): void {
-    const term = this.searchTerm.toLowerCase();
+    const term = this.searchTerm.toLowerCase().trim();
     if (!term) {
       this.filteredGroups = [...this.groupedData];
       return;
     }
 
-    // Filtramos grupos si la referencia/producto coincide O si algún ítem interno coincide
-    this.filteredGroups = this.groupedData.filter(group => {
-      const matchHeader = group.referencia.toLowerCase().includes(term) || 
-                          group.producto.toLowerCase().includes(term);
-      const matchItems = group.items.some(item => item.barcode.includes(term));
-      
-      return matchHeader || matchItems;
-    });
+    this.filteredGroups = this.groupedData.filter(group => 
+      group.referencia.toLowerCase().includes(term) || 
+      group.producto.toLowerCase().includes(term) ||
+      group.items.some(item => item.barcode.includes(term))
+    );
   }
 
   public exportToExcel(): void {

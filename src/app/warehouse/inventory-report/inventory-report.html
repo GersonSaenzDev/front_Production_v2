@@ -1,99 +1,114 @@
-<div class="inventory-container">
+<div class="report-wrapper">
   
-  <header class="header">
-    <h2 class="header-title">Informe Final de Inventario</h2>
+  <header class="inventory-header">
+    <div class="title-section">
+      <h1>Informe Final de Inventario</h1>
+      <p>Reporte consolidado de existencias y novedades</p>
+    </div>
     
-    <div class="header-parameters">
-      <div class="form-group mb-0">
-        <label class="text-white small d-block">Fecha Inicio</label>
-        <input type="date" class="form-control" [(ngModel)]="dateIni" (ngModelChange)="loadReport()">
+    <div class="filter-params">
+      <div class="date-input-group">
+        <label>Fecha Inicio</label>
+        <input type="date" [(ngModel)]="dateIni" (ngModelChange)="loadReport()">
       </div>
-      <div class="form-group mb-0">
-        <label class="text-white small d-block">Fecha Fin</label>
-        <input type="date" class="form-control" [(ngModel)]="dateEnd" (ngModelChange)="loadReport()">
+      <div class="date-input-group">
+        <label>Fecha Fin</label>
+        <input type="date" [(ngModel)]="dateEnd" (ngModelChange)="loadReport()">
       </div>
     </div>
   </header>
 
-  <main class="main-content">
-    <div class="right-panel">
-      
-      <div class="summary-counters mb-4">
-        <div class="summary-card row-material">
-          <span class="summary-time">{{ totalRefs }}</span>
-          <span class="summary-category">Referencias Únicas</span>
-          <span class="summary-count">Agrupadas por producto</span>
-        </div>
-        <div class="summary-card row-mantenimiento">
-          <span class="summary-time">{{ totalItems }}</span>
-          <span class="summary-category">Total Conteo</span>
-          <span class="summary-count">Unidades registradas</span>
-        </div>
+  <section class="stats-grid">
+    <div class="stat-card">
+      <i class="ti ti-tags stat-icon"></i>
+      <div class="stat-content">
+        <span class="stat-value">{{ totalRefs | number }}</span>
+        <span class="stat-label">Referencias Únicas</span>
       </div>
-
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="form-group mb-0" style="width: 400px;">
-          <input 
-            type="text" 
-            class="form-control" 
-            placeholder="Buscar por referencia o producto..."
-            [(ngModel)]="searchTerm"
-            (input)="applyFilter()">
-        </div>
-        <button class="btn-excel" (click)="exportToExcel()">
-          <i class="ti ti-file-spreadsheet"></i> Descargar Excel
-        </button>
+    </div>
+    <div class="stat-card secondary">
+      <i class="ti ti-box stat-icon"></i>
+      <div class="stat-content">
+        <span class="stat-value">{{ totalItems | number }}</span>
+        <span class="stat-label">Total Unidades Capturadas</span>
       </div>
+    </div>
+  </section>
 
-      <div class="groups-list">
-        <div *ngIf="isLoading" class="text-center p-4">Cargando información...</div>
+  <div class="action-bar">
+    <div class="search-box">
+      <i class="ti ti-search"></i>
+      <input 
+        type="text" 
+        placeholder="Buscar por referencia, producto o barcode..."
+        [(ngModel)]="searchTerm"
+        (input)="applyFilter()">
+    </div>
+    <button class="btn-excel" (click)="exportToExcel()">
+      <i class="ti ti-file-spreadsheet"></i> Descargar Reporte Excel
+    </button>
+  </div>
 
-        <div class="inventory-group-item" *ngFor="let group of filteredGroups" [class.is-open]="group.isExpanded">
-          <div class="group-main-row" (click)="toggleGroup(group)">
-            <div class="info">
+  <div class="groups-list">
+    @if (isLoading) {
+      <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted fw-bold">Procesando información de inventario...</p>
+      </div>
+    } @else {
+      @for (group of filteredGroups; track group.referencia) {
+        <div class="group-item" [class.active]="group.isExpanded">
+          <div class="group-header" (click)="toggleGroup(group)">
+            <div class="main-info">
               <i class="ti ti-chevron-right arrow" [class.rotated]="group.isExpanded"></i>
-              <div class="text">
-                <span class="ref-code">{{ group.referencia }}</span>
-                <span class="prod-name">{{ group.producto }}</span>
+              <span class="ref-code">{{ group.referencia }}</span>
+              <span class="prod-name">{{ group.producto | uppercase }}</span>
+            </div>
+            <div class="group-badge">
+              <span class="count">{{ group.conteoTotal }}</span>
+              <span class="label">Items</span>
+            </div>
+          </div>
+
+          @if (group.isExpanded) {
+            <div class="group-detail">
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Barcode</th>
+                      <th>Consecutivo</th>
+                      <th>Fecha Captura</th>
+                      <th>Estado</th>
+                      <th>Novedades</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of group.items; track item.barcode) {
+                      <tr>
+                        <td><code>{{ item.barcode }}</code></td>
+                        <td>{{ item.consecutive }}</td>
+                        <td>{{ item.fechaCaptura }}</td>
+                        <td>
+                          <span class="badge" [ngClass]="item.estado === 'Conforme' ? 'bg-success' : 'bg-warning text-dark'">
+                            {{ item.estado }}
+                          </span>
+                        </td>
+                        <td>{{ item.novedades || 'Sin novedades' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div class="badge-counter">
-              <span class="num">{{ group.conteoTotal }}</span>
-              <span class="lab">Items</span>
-            </div>
-          </div>
-
-          <div class="group-detail-section" *ngIf="group.isExpanded">
-            <div class="table-responsive">
-              <table class="table mb-0">
-                <thead>
-                  <tr>
-                    <th>Barcode</th>
-                    <th>Consecutivo</th>
-                    <th>Fecha Captura</th>
-                    <th>Estado</th>
-                    <th>Novedades</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let item of group.items">
-                    <td><code>{{ item.barcode }}</code></td>
-                    <td>{{ item.consecutive }}</td>
-                    <td>{{ item.fechaCaptura }}</td>
-                    <td>
-                      <span class="badge" [ngClass]="item.estado === 'Conforme' ? 'bg-success' : 'bg-warning text-dark'">
-                        {{ item.estado }}
-                      </span>
-                    </td>
-                    <td>{{ item.novedades }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          }
         </div>
-      </div>
-
-    </div>
-  </main>
+      } @empty {
+        <div class="text-center p-5 bg-white rounded-3 shadow-sm">
+          <i class="ti ti-search-off f-30 text-muted"></i>
+          <p class="mt-3 text-muted">No se encontraron resultados para los criterios seleccionados.</p>
+        </div>
+      }
+    }
+  </div>
 </div>

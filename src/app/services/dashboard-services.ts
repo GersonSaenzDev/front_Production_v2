@@ -13,7 +13,7 @@ import {
     ProductionNewsResponse // 💡 AJUSTE: Importamos la nueva interfaz de respuesta
 } from '../interfaces/assembly.interface'; 
 import { environment } from 'src/environments/environment';
-import { InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
+import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +30,7 @@ export class DashboardServices {
   private readonly VIEW_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewNews`;
   private readonly TOTAL_PRODUCTION_HOURS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/totalProductsDayHours`;
   private readonly FINAL_INVENTORY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/finalInventoryReport`;
+  private readonly RECORDS_ERROR_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/recordsWithError`;
 
 
   private handleError(error: any) {
@@ -187,6 +188,29 @@ export class DashboardServices {
           // Si por alguna razón data viene null o undefined, inicializamos array vacío
           if (!response.data) {
             return { ...response, data: [] as InventoryGroup[] };
+          }
+          return response;
+        })
+      );
+  }
+
+  /**
+   * @description Obtiene los registros que presentan errores (duplicados, longitud inválida, etc.) para una fecha.
+   * @param {string} date - Fecha en formato 'DD/MM/YYYY'.
+   * @returns {Observable<ErrorRecordsResponse>}
+   */
+  getRecordsWithError(date: string): Observable<ErrorRecordsResponse> {
+    
+    // El backend espera la estructura { "date": "..." }
+    const body = { date };
+
+    return this.http.post<ErrorRecordsResponse>(this.RECORDS_ERROR_ENDPOINT, body)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        map(response => {
+          // Si data viene null, devolvemos un array vacío para proteger el componente
+          if (!response.data) {
+            return { ...response, data: [] as ErrorRecord[] };
           }
           return response;
         })

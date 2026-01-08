@@ -42,3 +42,25 @@ body.berry-dark .tab-content {
         }
     }
 }
+
+.shadow-hover {
+    transition: all 0.2s ease-in-out;
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+        filter: brightness(0.95);
+    }
+}
+
+// dashboard.scss
+app-bar-chart {
+    display: block;
+    width: 100%;
+    min-height: 350px; // 💡 Ajusta esto según el alto de tu gráfico
+    overflow: visible;
+}
+
+// Asegura que el contenedor de ApexCharts no colapse
+.apexcharts-canvas {
+    width: 100% !important;
+}

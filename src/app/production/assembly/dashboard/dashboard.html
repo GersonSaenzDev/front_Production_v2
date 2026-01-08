@@ -54,29 +54,31 @@
     </div>
 
     <div class="col-xl-4 col-md-12">
-        <div class="card total-income-card overflow-hidden bg-secondary-dark text-white">
-            <div class="card-body">
+        <div class="card total-income-card overflow-hidden bg-secondary-dark text-white shadow-hover mb-3" 
+            style="cursor: pointer;" 
+            (click)="openErrorModal(errorModal)"> <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="avatar avatar-lg icon m-r-5">
-                        <i class="text-white ti ti-layout-board-split f-24"></i>
+                        <i class="text-white ti ti-alert-circle f-24"></i>
                     </div>
                     <div class="ms-2">
                         <h4 class="text-white f-w-600 mb-1">{{ productoConError | number }}</h4>
-                        <p class="mb-0 opacity-50 text-sm">Producto con Error</p>
+                        <p class="mb-0 opacity-50 text-sm">Producto con Error (Ver detalles)</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card total-income-card warning overflow-hidden">
-            <div class="card-body">
+        <div class="card total-income-card warning overflow-hidden shadow-hover" 
+            style="cursor: pointer;" 
+            (click)="openErrorModal(errorModal)"> <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="avatar avatar-lg icon-warning m-r-5">
-                        <i class="text-warning ti ti-layout-board-split f-24"></i>
+                        <i class="text-warning ti ti-copy f-24"></i>
                     </div>
                     <div class="ms-2">
                         <h4 class="f-w-600 mb-1">{{ duplicados | number }}</h4>
-                        <p class="mb-0 opacity-50 text-sm">Duplicados</p>
+                        <p class="mb-0 opacity-50 text-sm">Duplicados (Ver detalles)</p>
                     </div>
                 </div>
             </div>
@@ -84,7 +86,14 @@
     </div>
 
     <div class="col-12 mt-4">
-        <app-bar-chart [chartData]="barChartData" />
+        @if (barChartData.categories.length > 0) {
+            <app-bar-chart [chartData]="barChartData" />
+        } @else {
+            <div class="text-center p-5 text-muted">
+                <i class="ti ti-chart-bar f-30 d-block mb-2"></i>
+                Cargando estadísticas de producción...
+            </div>
+        }
     </div>
 
     <!-- <div class="col-xl-4 col-md-12">
@@ -277,4 +286,55 @@
             </div>
         </div>
     </div>
+</div>
+
+<ng-template #errorModal let-modal> <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+            <i class="ti ti-alert-triangle me-2"></i> 
+            Novedades de Producción - {{ selectedDate | date:'dd/MM/yyyy' }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="modal.dismiss()"></button>
     </div>
+    <div class="modal-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Hora</th>
+                        <th>Barcode</th>
+                        <th>Producto</th>
+                        <th>Error Detectado</th>
+                        <th>Archivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (item of errorRecords; track item._id) {
+                        <tr>
+                            <td class="ps-3"><span class="badge bg-light-dark text-dark">{{ item.hour }}</span></td>
+                            <td><code>{{ item.barcode }}</code></td>
+                            <td>
+                                <strong>{{ item.productName || 'N/A' }}</strong><br>
+                                <small class="text-muted">{{ item.productCode }}</small>
+                            </td>
+                            <td>
+                                @if (item.isDuplicated) {
+                                    <span class="text-warning fw-bold">Duplicado</span>
+                                } @else {
+                                    <span class="text-danger">{{ item.errorMark }}</span>
+                                }
+                            </td>
+                            <td><small class="text-muted">{{ item.originalFile }}</small></td>
+                        </tr>
+                    } @empty {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No hay registros con errores.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="modal.close()">Cerrar</button>
+    </div>
+</ng-template>

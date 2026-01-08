@@ -296,3 +296,33 @@ export interface InventoryReportResponse {
     data: InventoryGroup[];
 }
 
+/**
+ * Representa un registro individual de producción con error
+ */
+export interface ErrorRecord {
+    _id:                string;
+    barcode:            string;
+    productCode:        string;
+    consecutiveProduct: string;
+    productName:        string;
+    processDate:        string;
+    date:               string;
+    hour:               string;
+    originalFile:       string;
+    isDuplicated:       boolean;
+    previousRecordDate: string | null;
+    referenceExists:    boolean;
+    errorMark:          string;
+    dateCreate:         string;
+    __v:                number;
+}
+
+/**
+ * Respuesta del backend para la consulta de registros con error
+ */
+export interface ErrorRecordsResponse {
+    ok:   boolean;
+    msg:  string;
+    data: ErrorRecord[];
+}
+

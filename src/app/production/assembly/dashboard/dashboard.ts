@@ -1,5 +1,5 @@
 // app/production/assembly/dashboard/dashboard.ts
-import { Component, LOCALE_ID, inject } from '@angular/core';
+import { Component, LOCALE_ID, TemplateRef, inject, ViewChild } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es'; 
 import { FormsModule } from '@angular/forms'; 
@@ -9,6 +9,8 @@ import { DashboardServices } from 'src/app/services/dashboard-services';
 import { ChartData, ChartDataResponse, CardAssemblyResponse, AssemblyMetrics, TopProductsItem, TopProductsResponse } from 'src/app/interfaces/assembly.interface';
 // import { BajajChartComponent } from '../apexchart/bajaj-chart/bajaj-chart.component';
 import { BarChartComponent } from '../apexchart/bar-chart/bar-chart.component';
+import { ErrorRecord, ErrorRecordsResponse } from 'src/app/interfaces/dashInventory.interface';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 // import { ChartDataMonthComponent } from '../apexchart/chart-data-month/chart-data-month.component';
 
 // Registrar el locale de español
@@ -21,7 +23,7 @@ registerLocaleData(localeEs, 'es');
   imports: [
     BarChartComponent, 
     SharedModule, 
-    FormsModule,    
+    FormsModule, 
   ], 
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -30,8 +32,11 @@ registerLocaleData(localeEs, 'es');
   ]
 })
 export class Dashboard {
+
+  @ViewChild(BarChartComponent) barChartComponent!: BarChartComponent;
   
-  private dashboardService = inject(DashboardServices); 
+  private dashboardService = inject(DashboardServices);
+  private modalService = inject(NgbModal);
 
   public selectedDate: string = this.formatDate(new Date());
 
@@ -40,6 +45,9 @@ export class Dashboard {
   public productoValidado: number = 0;
   public productoConError: number = 0;
   public duplicados: number = 0;
+
+  public errorRecords: ErrorRecord[] = [];
+  public isLoadingErrors: boolean = false;
 
   public timeStart: string = '06:00'; // Inicializar en el inicio del día
   public timeEnd: string = '21:30';   // Inicializar en el fin del día
@@ -65,6 +73,7 @@ export class Dashboard {
     this.loadDataForDate(todayBackendFormat); 
     this.loadTopProductsData(todayBackendFormat);
     this.loadTotalProducts(todayBackendFormat, this.timeStart, this.timeEnd);
+    this.refreshAllData(todayBackendFormat);
   }
 
   // -----------------------------------------------------------
@@ -97,14 +106,35 @@ export class Dashboard {
     return [day, month, year].join('/');
   }
 
+  private refreshAllData(date: string): void {
+    this.loadDataForDate(date); 
+    this.loadTopProductsData(date);
+    this.loadTotalProducts(date, this.timeStart, this.timeEnd);
+    this.loadErrorRecords(date);
+  }
+
   /**
    * Maneja el evento de cambio de fecha en el input y recarga todos los datos.
    */
   public onDateChange(newDate: string): void {
     const dateForBackend = this.formatDateForBackend(newDate); 
-    this.loadDataForDate(dateForBackend);
-    this.loadTopProductsData(dateForBackend); 
-    this.loadTotalProducts(dateForBackend, this.timeStart, this.timeEnd); 
+    this.refreshAllData(dateForBackend);
+  }
+
+  private loadErrorRecords(date: string): void {
+    this.isLoadingErrors = true;
+    this.dashboardService.getRecordsWithError(date).subscribe({
+      next: (response: ErrorRecordsResponse) => {
+        console.log('Datos recibidos para el modal:', response.data); // 💡 DEBUG
+        this.errorRecords = response.data || [];
+        this.isLoadingErrors = false;
+      },
+      error: (error) => {
+        console.error('Error cargando registros con errores', error);
+        this.errorRecords = [];
+        this.isLoadingErrors = false;
+      }
+    });
   }
 
   // -----------------------------------------------------------
@@ -164,17 +194,37 @@ export class Dashboard {
    * @param date La fecha con la que se hará la consulta al backend (formato DD/MM/YYYY).
    */
   private loadTopProductsData(date: string): void {
-      
-      // El servicio ya se encarga de llamar al endpoint y transformar los datos
-      this.dashboardService.getTopProductsChartData(date).subscribe({
-          next: (response: ChartDataResponse) => {
-              // Asignamos directamente el objeto ChartData
-              this.barChartData = response.msg; 
-          },
-          error: (error) => {
-              this.barChartData = { categories: [], produced: [], valid: [] };
-          }
-      });
+    // 1. Limpiamos los datos actuales para que el @if lo destruya un momento
+    this.barChartData = { categories: [], produced: [], valid: [] };
+
+    this.dashboardService.getTopProductsChartData(date).subscribe({
+        next: (response: ChartDataResponse) => {
+            // 2. Asignamos los nuevos datos
+            this.barChartData = response.msg; 
+
+            // 3. 🎯 EL TRUCO MAESTRO:
+            // Esperamos a que Angular renderice el @if y luego disparamos un resize
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                console.log('[Dashboard] Gráfico refrescado manualmente');
+            }, 200); // 200ms es suficiente para que el DOM se asiente
+        },
+        error: (error) => {
+            console.error('Error en el gráfico', error);
+            this.barChartData = { categories: [], produced: [], valid: [] };
+        }
+    });
+}
+
+  /**
+   * 🎯 NUEVO MÉTODO: Abre el modal programáticamente
+   */
+  public openErrorModal(content: TemplateRef<any>): void {
+    this.modalService.open(content, { 
+      size: 'xl', 
+      scrollable: true,
+      centered: true 
+    });
   }
 
   // IMPORTANTE: El método 'private transformToChartData' ha sido ELIMINADO ya que la lógica
