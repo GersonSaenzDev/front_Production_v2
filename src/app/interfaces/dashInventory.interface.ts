@@ -274,3 +274,25 @@ export interface CheckListItem {
   note: string;
 }
 
+export interface InventoryItem {
+    barcode: string;
+    consecutive: number;
+    fechaCaptura: string;
+    estado: string;
+    novedades: string;
+}
+
+export interface InventoryGroup {
+    conteoTotal: number;
+    referencia: string;
+    producto: string;
+    items: InventoryItem[];
+}
+
+export interface InventoryReportResponse {
+    ok: boolean;
+    msg: string;
+    totalGrupos: number;
+    data: InventoryGroup[];
+}
+

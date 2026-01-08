@@ -28,6 +28,11 @@ const routes: Routes = [
     path: 'enterInventory',
     loadComponent: () => import('./reader-inventory/reader-inventory').then((c) => c.InventoryReader)
   },
+  {
+    // Path completo: /production/productionNews
+    path: 'finalInventoryReport',
+    loadComponent: () => import('./inventory-report/inventory-report').then((c) => c.InventoryReport)
+  },
 ];
 
 @NgModule({

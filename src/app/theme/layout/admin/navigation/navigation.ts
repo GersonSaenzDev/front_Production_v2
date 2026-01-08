@@ -91,13 +91,19 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'inventories/dash',
             breadcrumbs: false
-          }
-          ,
+          },
           {
             id: 'dashboard-inventarios-item',
             title: 'Inventario Bodega',
             type: 'item',
             url: 'inventories/enterInventory',
+            breadcrumbs: false
+          },
+          {
+            id: 'informe-final-inventario-item', // ID corregido
+            title: 'Informe Final Inventario',
+            type: 'item',
+            url: 'inventories/finalInventoryReport',
             breadcrumbs: false
           }
         ]

@@ -96,27 +96,6 @@ export class InventoryReader implements OnInit {
     modal.close('saved');
   }
 
-  // readBarcode() {
-  //   const code = (this.barcodeInput || '').trim();
-  //   if (!code) {
-  //     this.statusMessage = 'Por favor ingrese un código de barras.';
-  //     return;
-  //   }
-
-  //   if (!/^\d+$/.test(code)) {
-  //     this.statusMessage = 'El código de barras solo debe contener números.';
-  //     return;
-  //   }
-
-  //   if (!this.scannedCodes.includes(code)) {
-  //     this.scannedCodes.push(code);
-  //   }
-
-  //   this.fetchProductInfo(code);
-
-  //   this.barcodeInput = '';
-  // }
-
   private mapStorageItemToProduct(item: StorageItem): Product {
     return {
       EAN: item.EAN ?? '',

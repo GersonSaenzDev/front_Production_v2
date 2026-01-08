@@ -13,6 +13,7 @@ import {
     ProductionNewsResponse // 💡 AJUSTE: Importamos la nueva interfaz de respuesta
 } from '../interfaces/assembly.interface'; 
 import { environment } from 'src/environments/environment';
+import { InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -28,6 +29,8 @@ export class DashboardServices {
   private readonly VIEW_REF_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewRef`;
   private readonly VIEW_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/viewNews`;
   private readonly TOTAL_PRODUCTION_HOURS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/totalProductsDayHours`;
+  private readonly FINAL_INVENTORY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/finalInventoryReport`;
+
 
   private handleError(error: any) {
     let errorMessage = 'Ocurrió un error desconocido en el servicio.';
@@ -162,6 +165,28 @@ export class DashboardServices {
           // Validación de seguridad por si msg viene null
           if (!response.msg) {
             return { ok: response.ok, msg: [] as TopProductsItem[] };
+          }
+          return response;
+        })
+      );
+  }
+
+  /**
+   * @description Obtiene el reporte final de inventario entre dos fechas.
+   * @param {string} dateIni - Fecha inicio 'DD/MM/YYYY'
+   * @param {string} dateEnd - Fecha fin 'DD/MM/YYYY'
+   */
+  getFinalInventoryReport(dateIni: string, dateEnd: string): Observable<InventoryReportResponse> {
+    
+    const body = { dateIni, dateEnd };
+
+    return this.http.post<InventoryReportResponse>(this.FINAL_INVENTORY_ENDPOINT, body)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        map(response => {
+          // Si por alguna razón data viene null o undefined, inicializamos array vacío
+          if (!response.data) {
+            return { ...response, data: [] as InventoryGroup[] };
           }
           return response;
         })
