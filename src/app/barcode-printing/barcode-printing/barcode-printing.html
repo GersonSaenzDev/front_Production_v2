@@ -6,7 +6,7 @@
 
   <div class="main-content">
     <div class="layout-row">
-            <aside class="left-panel-col">
+      <aside class="left-panel-col">
         <div class="panel-card">
           <div class="panel-header">
             <h2>Parámetros de Impresión</h2>
@@ -87,11 +87,11 @@
               <button type="button" class="btn btn-secondary" (click)="clearForm()">Limpiar</button>
               <button type="button" class="btn btn-primary" (click)="generateLabels()" [disabled]="!selectedReference || !quantity || quantity <= 0">Generar Impresión</button>
             </div>
-            <button class="btn btn-info" [disabled]="!allCreated" (click)="validateLabels(validationModalContent)">Validar</button>
-          </div>
+            </div>
         </div>
       </aside>
-                  <main class="right-panel-col">
+
+      <main class="right-panel-col">
         <div class="panel-card">
           <div class="panel-header">
             <h2>Etiquetas Generadas <small class="muted">({{ generatedLabels.length }})</small></h2>
@@ -110,13 +110,18 @@
                     (click)="sendLabelsToPrinting()" 
                     [disabled]="printedFromDB"
                   >
-                      {{ printedFromDB ? 'Reimprimir Etiquetas' : 'Marcar como Creados' }}
-                    </button>
-                    <!-- <button class="btn btn-info" [disabled]="!allCreated" (click)="validateLabels(validationModalContent)">Validar</button> -->
-                  <ng-template #validationModalContent let-modal>
-                  </ng-template>
-
+                    {{ printedFromDB ? 'Reimprimir Etiquetas' : 'Marcar como Creados' }}
+                  </button>
+                  
+                  <button 
+                    class="btn btn-info" 
+                    [disabled]="!allCreated" 
+                    (click)="validateLabels(validationModalContent)"
+                  >
+                    Validar
+                  </button>
                 </div>
+                
                 <div class="right-actions">
                   <span class="status-info">Estado: 
                     <strong *ngIf="!printedFromDB" class="text-danger">Pendiente</strong>
@@ -178,37 +183,42 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Códigos Leídos: <strong [class.text-success]="validatedEAN128.length === generatedLabels.length">{{ validatedEAN128.length }}</strong></h5>
-            <span class="badge bg-info text-dark">
-                Faltan: {{ generatedLabels.length - validatedEAN128.length > 0 ? generatedLabels.length - validatedEAN128.length : 0 }}
+            <h5 class="mb-0">
+                Códigos Leídos: 
+                <strong [ngClass]="{
+                    'text-success': validatedEAN128.length === barcodesFromDB.length,
+                    'text-danger': validatedEAN128.length > barcodesFromDB.length,
+                    'text-warning': validatedEAN128.length < barcodesFromDB.length && validatedEAN128.length > 0
+                }">
+                    {{ validatedEAN128.length }} / {{ barcodesFromDB.length }}
+                </strong>
+            </h5>
+            
+            <span class="badge" [ngClass]="validatedEAN128.length === barcodesFromDB.length ? 'bg-success' : 'bg-info'">
+                {{ validatedEAN128.length === barcodesFromDB.length ? 'Completado' : 'Faltan: ' + (barcodesFromDB.length - validatedEAN128.length) }}
             </span>
         </div>
-
-        <div class="list-group codes-read-list" style="max-height: 250px; overflow-y: auto;">
-            <div class="list-group-item d-flex justify-content-between align-items-center"
-                *ngFor="let entry of validatedEAN128; let i = index">
-                <span class="text-truncate code-text">{{ entry.code }}</span>
-                
-                <button class="btn btn-sm btn-outline-danger ms-3" 
-                        (click)="removeEAN128(i); scanInput.focus()">
-                    [Borrar]
-                </button>
-            </div>
-            <div *ngIf="validatedEAN128.length === 0" class="list-group-item text-center text-muted">
-                Escanee códigos para empezar.
-            </div>
-        </div>
-
-        <hr>
+        
+        <ul class="list-group codes-read-list mb-3" *ngIf="validatedEAN128.length > 0">
+           <li class="list-group-item d-flex justify-content-between align-items-center" 
+               *ngFor="let item of validatedEAN128; let i = index">
+               <span class="code-text">{{ item.code }}</span>
+               <button class="btn btn-sm btn-outline-danger" (click)="removeEAN128(i)" title="Eliminar">
+                   <i class="fa fa-trash"></i> X
+               </button>
+           </li>
+        </ul>
 
         <div class="d-grid gap-2 mb-3">
             <button 
                 class="btn btn-success btn-lg" 
-                [disabled]="validatedEAN128.length < generatedLabels.length"
+                [disabled]="validatedEAN128.length !== barcodesFromDB.length || loading"
                 (click)="processFinalValidation(modal)">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
                 Procesar Validación Final
             </button>
         </div>
+
         <div class="d-grid">
             <button class="btn btn-danger" type="button" (click)="clearModalInputs()">
                 Limpiar Lecturas
@@ -219,6 +229,3 @@
         <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cerrar')">Cerrar</button>
     </div>
 </ng-template>
-
-
-

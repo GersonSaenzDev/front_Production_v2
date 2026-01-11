@@ -22,7 +22,8 @@ export class PrintingLabelsService {
     private readonly LABEL_PARAMETERS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/labelParameters`; 
     private readonly CURRENT_CONSECUTIVE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/currentConsecutive`; 
     private readonly LABEL_PRINTING_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/labelPrinting`; 
-    private readonly VIEW_ADD_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/viewAdd`; 
+    private readonly VIEW_ADD_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/viewAdd`;
+    private readonly BARCODE_READING_SCAN_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/printing/barcodeReadingScan`;
 
     private handleError(error: any) {
         let errorMessage = 'Ocurrió un error desconocido en el servicio.';
@@ -92,6 +93,18 @@ export class PrintingLabelsService {
         return this.http.post<ViewAddResponse>(this.VIEW_ADD_ENDPOINT, body)
             .pipe(
                 // Manejo de errores común
+                catchError(this.handleError.bind(this)),
+            );
+    }
+    
+    /**
+     * @description Envía la validación de lectura de etiquetas mediante POST.
+     * @param body Estructura que contiene el ID y el objeto labels.LabelValidation
+     * @returns Observable con la respuesta del backend (ok, msg, data)
+     */
+    postBarcodeReadingScan(body: any): Observable<any> {
+        return this.http.post<any>(this.BARCODE_READING_SCAN_ENDPOINT, body)
+            .pipe(
                 catchError(this.handleError.bind(this)),
             );
     }

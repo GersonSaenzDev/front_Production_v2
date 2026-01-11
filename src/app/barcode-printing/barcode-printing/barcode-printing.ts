@@ -1,6 +1,6 @@
 // /app/barcode-printing/barcode-printing/barcode-printing.ts
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 
@@ -17,6 +17,7 @@ import {
   PrintedValidationInfo, 
   ProductReference, 
   ReadValidationInfo } from '../../interfaces/printingLabel.interfaces';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-barcode-printing',
@@ -28,8 +29,8 @@ import {
 export class BarcodePrinting implements OnInit, OnDestroy {
   private printingLabelsService = inject(PrintingLabelsService);
   private modalService = inject(NgbModal);
-
-  // inputs & state
+  private toastr = inject(ToastrService);
+  // Propiedades de estado
   selectedReference = '';
   productName = '';
   EAN = '';
@@ -37,34 +38,23 @@ export class BarcodePrinting implements OnInit, OnDestroy {
   labelCode = '';
   quantity: number | null = null;
   quantityInvalid = false;
-
   loading = false;
   showDropdown = false;
   predictiveList: ProductReference[] = [];
-
   generatedLabels: GeneratedLabel[] = [];
-  // **Estado Central**
-  printedFromDB = false; // 💡 Indica que la impresión fue **Registrada** en DB (Activa Validación)
-  idDocumentDB = '';     // Guarda el ID del documento creado
-  barcodesFromDB: string[] = []; // Códigos EAN-128 completos obtenidos del backend
-  allCreated = false; // Mantenemos por compatibilidad con el HTML original (aunque usaremos printedFromDB)
-  
-  // **Parámetros de Validación de GTIN (EAN-128)**
-  gtinBase = ''; // e.g., '0107706060011170'
-  gtinLength = 16; // IA '01' (2 digitos) + GTIN-14 (14 digitos)
-  serialIA = '21'; // IA para el Número de Serie/Consecutivo
-
+  printedFromDB = false;
+  idDocumentDB = '';
+  barcodesFromDB: string[] = [];
+  allCreated = false;
+  gtinLength = 16;
+  serialIA = '21';
+  gtinBase = '';
   errorMessage = '';
   printingLoading = false;
-
-  // === modal de validación ===
-  ean13Input: string = '';
-  ean128Input: string = '';
-  validatedEAN13: BarcodeEntry[] = [];
+  ean128Input = '';
   validatedEAN128: BarcodeEntry[] = [];
-  private activeModal: any; // Para guardar la referencia del modal y poder cerrarlo
+  activeModal: any;
 
-  // RxJS
   private input$ = new Subject<string>();
   private destroy$ = new Subject<void>();
 
@@ -154,6 +144,28 @@ export class BarcodePrinting implements OnInit, OnDestroy {
     this.labelCode = item.label?.number ?? '';
     this.predictiveList = [];
     this.showDropdown = false;
+  }
+
+  private initSearchSubscription() {
+    this.input$.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(value => {
+        if (!value || value.trim().length < 3) return of(null);
+        this.loading = true;
+        return this.printingLabelsService.postCurrentConsecutive({ reference: value.trim() } as any).pipe(
+          catchError(() => {
+            this.loading = false;
+            return of(null);
+          })
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(res => {
+      this.loading = false;
+      this.predictiveList = res?.msg || [];
+      this.showDropdown = this.predictiveList.length > 0;
+    });
   }
 
   generateLabels() {
@@ -342,43 +354,37 @@ export class BarcodePrinting implements OnInit, OnDestroy {
     // Nota: Esto requeriría usar @ViewChild en el componente, pero lo dejamos simple por ahora.
   }
 
-  addEAN13() {
-      const code = this.ean13Input.trim();
-      if (code) {
-          // Verificar si ya fue escaneado (opcional pero recomendado)
-          if (!this.validatedEAN13.some(entry => entry.code === code)) {
-              this.validatedEAN13.push({ code });
-          }
-          this.ean13Input = ''; // Limpiar el campo
-      }
-  }
-
   /**
- * @description Agrega código escaneado EAN-128 con validaciones robustas.
- * Modificada para auto-disparo de la validación y orden LIFO (Last In, First Out).
- */
+   * @description Agrega código con validación de integridad y feedback visual rápido.
+   */
   addEAN128() {
-      const code = this.ean128Input.trim();
-      if (!code) return;
+    const code = this.ean128Input.trim();
+    if (!code) return;
 
-      if (!this.gtinBase || this.generatedLabels.length === 0) {
-          alert('Error de estado: La información de la impresión no está cargada para validar el formato EAN-128.');
-          this.ean128Input = '';
-          this.focusScanInput();
-          return;
-      }
+    // VALIDACIÓN: ¿El código es parte de lo impreso?
+    if (!this.barcodesFromDB.includes(code)) {
+      this.toastr.error(`El código [${code}] no pertenece a este lote.`, 'Error de Integridad', {
+        timeOut: 4000,
+        progressBar: true
+      });
+      this.ean128Input = '';
+      this.focusScanInput();
+      return;
+    }
 
-      if (!this.validatedEAN128.some(entry => entry.code === code)) {
-          
-          this.validatedEAN128.unshift({ code }); 
-          
-      } else {
-          // Opcional: Puedes mostrar un mensaje pequeño si el código ya fue leído
-          console.log('El código ya ha sido escaneado');
-      }
+    // VALIDACIÓN: ¿Duplicado?
+    if (this.validatedEAN128.some(e => e.code === code)) {
+      this.toastr.warning('Este código ya fue escaneado.', 'Duplicado');
+      this.ean128Input = '';
+      this.focusScanInput();
+      return;
+    }
 
-      this.ean128Input = ''; // Limpiar el campo
-      this.focusScanInput(); // Mantiene el foco para seguir escaneando rápido
+    // Si es correcto, agregar a la lista
+    this.validatedEAN128.unshift({ code });
+    this.toastr.success('Lectura aceptada', 'Éxito', { timeOut: 1000 });
+    this.ean128Input = '';
+    this.focusScanInput();
   }
 
   // 💡 NUEVO: Función auxiliar para el enfoque.
@@ -407,73 +413,49 @@ export class BarcodePrinting implements OnInit, OnDestroy {
     }
   }
 
-
   /**
-   * @description Compara los códigos escaneados con los códigos registrados en la DB (PrintedBarcode128).
-   * Actualiza el estado de las etiquetas a 'validated', 'missing' o 'error'.
+   * @description Sincronización final con el backend.
    */
-  processFinalValidation(modal: any): void {
-      if (!this.printedFromDB || this.generatedLabels.length === 0) {
-          alert('Error de estado: No hay etiquetas registradas para validar.');
-          return;
-      }
-      
-      this.errorMessage = '';
-      
-      // Mapeo de códigos escaneados para búsqueda rápida
-      // Usamos Set para marcar los códigos escaneados y rastrear los sobrantes/errores
-      const scannedCodes = new Set(this.validatedEAN128.map(e => e.code));
-      
-      const newGeneratedLabels: GeneratedLabel[] = [];
-      let missingCount = 0;
-      let validCount = 0;
-      
-      // 1. Iterar sobre las etiquetas GENERADAS (Fuente de la verdad)
-      for (const label of this.generatedLabels) {
-          // El código de la etiqueta generada (ej: '251100022')
-          const baseCode = label.number; 
-          
-          // Construimos el código EAN-128 completo esperado (ej: '01077...21251100022')
-          // Esto es más seguro que usar find, aunque el 'find' anterior funcionaba si los consecutivos son únicos al final
-          const expectedFullCode = this.barcodesFromDB.find(code => 
-            code.endsWith(this.serialIA + baseCode)
-          );
+  processFinalValidation(modal: any) {
+    if (this.validatedEAN128.length !== this.barcodesFromDB.length) {
+      this.toastr.warning('Cantidad de etiquetas incompleta.', 'Validación Pendiente');
+      return;
+    }
 
-          if (!expectedFullCode) {
-              // Error interno: El código generado no tiene un EAN-128 asociado en la DB (no debería pasar)
-              newGeneratedLabels.push({ ...label, status: 'error' });
-              continue;
+    this.loading = true;
+    const payload = {
+      id: this.idDocumentDB,
+      labels: {
+        LabelValidation: {
+          barcodeReadEAN128: {
+            barcodes: this.validatedEAN128.map(i => ({ code: i.code, status: "Activo" })),
+            validation: {
+              readDate: new Date().toLocaleString(),
+              countLabelRead: this.validatedEAN128.length,
+              validated: true
+            }
           }
-
-          if (scannedCodes.has(expectedFullCode)) {
-              // Coincidencia exacta: Estado 'validated' (Leído)
-              newGeneratedLabels.push({ ...label, status: 'validated' });
-              scannedCodes.delete(expectedFullCode); // Quitar de los escaneados para rastrear errores
-              validCount++;
-          } else {
-              // No fue escaneada: Estado 'missing' (Faltante)
-              newGeneratedLabels.push({ ...label, status: 'missing' });
-              missingCount++;
-          }
+        }
       }
+    };
 
-      this.generatedLabels = newGeneratedLabels;
-
-      // 2. Comprobar códigos escaneados que no coincidieron con NINGUNA etiqueta generada (Códigos con ERROR/Inválidos)
-      const errorCount = scannedCodes.size;
-      
-      if (missingCount === 0 && errorCount === 0) {
-          alert('¡Validación exitosa! Todos los códigos han sido leídos y coinciden.');
-          // Aquí iría la llamada al backend para marcar el documento como 'validated' y guardar los códigos leídos
-          this.activeModal.close('Validación Procesada');
-          this.activeModal = null;
-      } else {
-          alert(`Validación completada. Códigos Leídos: ${validCount}, Faltantes: ${missingCount}, Códigos Inválidos/Sobrantes: ${errorCount}. Revise la lista.`);
-          
-          // Mantenemos el modal abierto si hay errores/faltantes para que el usuario revise la lista y los datos escaneados
-          this.activeModal.dismiss('Validación Procesada con Fallas');
+    this.printingLabelsService.postBarcodeReadingScan(payload).subscribe({
+      next: (res) => {
+        this.loading = false;
+        if (res.ok) {
+          this.toastr.success(`Referencia: ${res.data.codRef} - Validada.`, 'Sincronización Exitosa');
+          this.generatedLabels = this.generatedLabels.map(l => ({ ...l, status: 'validated' }));
+          modal.close();
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.toastr.error(err.message, 'Error de Servidor');
       }
+    });
   }
+                                   
+  
 
   /**
  * @description Permite eliminar un código EAN-128 leído por índice.
@@ -487,7 +469,5 @@ export class BarcodePrinting implements OnInit, OnDestroy {
           
           this.focusScanInput(); 
       }
-  }
-
-  
+  }  
 }
