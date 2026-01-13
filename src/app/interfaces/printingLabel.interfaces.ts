@@ -174,6 +174,14 @@ export interface LabelData {
     id: string;
 }
 
+export interface LabelDatas {
+  serial: string;
+  productName: string;
+  reference: string;
+  status: string;
+  createdAt: Date;
+}
+
 export interface LabelParametersResponse {
     ok: boolean;
     msg: string; // Mensaje de éxito/error, por ejemplo: "Etiqueta registrada exitosamente"
@@ -311,4 +319,112 @@ export interface AdditionalDataGroup extends FormGroup {
       quantity: AbstractControl; // <-- Nuevo
       note: AbstractControl;     // <-- Antes decía 'value' o no existía
   };
+}
+
+// Interface para la solicitud de reimpresión
+export interface ReprintLabelRequest {
+    code:           string;
+    note:           string;
+    personReprints: string;
+    ReturnLabelOld: boolean;
+}
+
+// Interface para la respuesta detallada
+export interface ReprintLabelResponse {
+    ok:   boolean;
+    msg:  string;
+    data: ReprintData;
+}
+
+export interface ReprintData {
+    labels:      LabelsInfo;
+    productName: string;
+    EAN:         string;
+    reference:   string;
+    codRef:      string;
+    status:      string;
+    createUser:  string;
+    dateCreate:  string;
+}
+
+export interface LabelsInfo {
+    LabelValidation:          LabelValidation;
+    quantityLabels:           number;
+    consecutiveStart:         string;
+    consecutiveEnd:           string;
+    personReceivesProduction: string;
+    DeliveryDate:             string;
+    note:                     string;
+    reprints:                 ReprintHistory[];
+}
+
+export interface LabelValidation {
+    PrintedBarcode13:           BarcodeSection;
+    PrintedBarcode128:          BarcodeSection;
+    barcodeReadEAN13:           BarcodeSection;
+    barcodeReadEAN128:          BarcodeSection;
+    barcodeReadProductionEAN13: BarcodeSection;
+}
+
+export interface BarcodeSection {
+    barcodes:    BarcodeDetail[];
+    validation?: ValidationStatus;
+}
+
+export interface BarcodeDetail {
+    code:   string;
+    status: string;
+}
+
+export interface ValidationStatus {
+    printedDate?:    string;
+    readDate?:       string;
+    LabelCount?:     number;
+    countLabelRead?: number;
+    validated:       boolean;
+}
+
+export interface ReprintHistory {
+    code:           string;
+    note:           string;
+    ReturnLabelOld: boolean;
+    reprintDate:    string;
+    reprintUser:    string;
+}
+
+// Estructura para la petición (Request)
+export interface VoidLabelRequest {
+  code: string;
+  note: string;
+  personReprints: string;
+  ReturnLabelOld: boolean;
+}
+
+// Estructura para los datos internos del registro (Data)
+export interface VoidLabelData {
+  productName: string;
+  EAN: string;
+  reference: string;
+  codRef: string;
+  barcode: string;
+  physicalReturn: string; // "SI" o "NO" desde el backend
+  note: string;
+  status: string;
+  createUser: string;
+  dateCreate: string;
+  labels: {
+    entries: Array<{
+      code: string;
+      status: string;
+    }>;
+    note: string;
+  };
+  uid: string;
+}
+
+// Estructura de la respuesta completa (Response)
+export interface VoidLabelResponse {
+  ok: boolean;
+  msg: string;
+  data?: VoidLabelData; // Opcional porque en error no viene data
 }

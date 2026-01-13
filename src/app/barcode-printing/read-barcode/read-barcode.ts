@@ -1,227 +1,220 @@
 // src/app/barcode-printing/read-barcode/read-barcode.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-// 1. Importar AbstractControl para la función genérica
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { debounceTime, filter } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+import { PrintingLabelsService } from '../../services/printingLabels-services';
+import { LabelDatas, ReprintLabelRequest, VoidLabelRequest } from '../../interfaces/printingLabel.interfaces';
 
 type ActiveView = 'reimprimir' | 'anular' | 'leer' | 'validar';
 
-// Interface de ejemplo para los datos de una etiqueta
-interface LabelData {
-  serial: string;
-  productName: string;
-  reference: string;
-  status: 'Creada' | 'Impresa' | 'Validada' | 'Anulada';
-  createdAt: Date;
-}
+
 
 @Component({
   selector: 'app-read-barcode',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule
-  ],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './read-barcode.html',
   styleUrl: './read-barcode.scss'
 })
-export class ReadBarcode implements OnInit { // Implementar OnInit
+export class ReadBarcode implements OnInit {
 
   private fb = inject(FormBuilder);
+  private printingService = inject(PrintingLabelsService);
+
   activeView: ActiveView = 'reimprimir';
 
-  // --- Formularios ---
+  // Formularios
   reprintForm: FormGroup;
   cancelForm: FormGroup;
   readForm: FormGroup;
   validationForm: FormGroup;
-  
-  // --- Listas de Seriales ---
+
+  // Listas de Seriales
   serialsToReprint: string[] = [];
-  serialsToCancel: string[] = []; // <--- NUEVO array para anular
+  serialsToCancel: string[] = [];
 
-  // --- Estado para "Leer Etiquetas" ---
-  readResult: LabelData | null = null;
-  isLoadingRead: boolean = false;
-  readError: string | null = null;
-
-  // --- Estado para "Validar Etiquetas" ---
+  // Estados
+  isLoading = false;
+  serverMessage: { type: 'success' | 'danger', text: string } | null = null;
+  readResult: LabelDatas | null = null;
   pendingLabels: string[] = [];
   validatedLabels: string[] = [];
-  isLoadingValidation: boolean = false;
-  validationError: string | null = null;
-
 
   constructor() {
-    // 1. Formulario REIMPRIMIR
     this.reprintForm = this.fb.group({
-      serialEntry: [''], // Input para escanear
-      reason: ['', [Validators.required, Validators.minLength(5)]]
+      serialEntry: [''],
+      reason: ['', [Validators.required, Validators.minLength(5)]],
+      personReprints: ['', [Validators.required]],
+      ReturnLabelOld: [true, [Validators.required]]
     });
 
-    // 2. Formulario ANULAR (ahora igual que reimprimir)
     this.cancelForm = this.fb.group({
-      serialEntry: [''], // <--- CAMBIO: Input para escanear
+      serialEntry: [''],
       reason: ['', [Validators.required, Validators.minLength(10)]]
     });
 
-    // 3. Formulario LEER
-    this.readForm = this.fb.group({
-      serial: ['', Validators.required]
-    });
+    this.readForm = this.fb.group({ serial: ['', Validators.required] });
+    this.validationForm = this.fb.group({ serialToValidate: ['', Validators.required] });
 
-    // 4. Formulario VALIDAR
-    this.validationForm = this.fb.group({
-      serialToValidate: ['', Validators.required]
+    this.cancelForm = this.fb.group({
+      serialEntry: [''],
+      reason: ['', [Validators.required, Validators.minLength(10)]],
+      personReprints: ['', [Validators.required]],
+      ReturnLabelOld: [true, [Validators.required]],
+      fastCancel: [false]
     });
   }
 
   ngOnInit() {
-    // 3. Configurar los listeners de escaneo para AMBAS vistas
-    this.setupScanListener(
-      this.reprintForm.get('serialEntry')!, 
-      this.serialsToReprint
-    );
-    
-    this.setupScanListener(
-      this.cancelForm.get('serialEntry')!, 
-      this.serialsToCancel
-    );
+    this.setupScanListener(this.reprintForm.get('serialEntry')!, this.serialsToReprint);
+    this.setupScanListener(this.cancelForm.get('serialEntry')!, this.serialsToCancel);
   }
 
-  // 4. NUEVA FUNCIÓN GENÉRICA Y ÓPTIMA
   setupScanListener(control: AbstractControl, targetArray: string[]) {
     control.valueChanges.pipe(
-      debounceTime(100), // Espera 100ms sin teclear
+      debounceTime(80), // Reducimos de 150 a 80ms para mayor agilidad con escáneres
       filter(value => !!value && value.trim().length > 0)
     ).subscribe(serial => {
-      const trimmedSerial = serial.trim();
+      const trimmed = serial.trim();
       
-      // Añadir a la lista solo si no existe
-      if (!targetArray.includes(trimmedSerial)) {
-        targetArray.unshift(trimmedSerial); // Añade al inicio
+      if (this.activeView === 'anular' && this.cancelForm.get('fastCancel')?.value) {
+        this.handleFastCancel(trimmed);
+      } else {
+        // Modo Manual: Lo agregamos a la lista para el botón "Procesar"
+        if (!targetArray.includes(trimmed)) {
+          targetArray.unshift(trimmed);
+        }
       }
       
-      // Limpiar el input sin disparar un nuevo valueChange
+      // Limpiamos el input después de procesar el valor
       control.patchValue('', { emitEvent: false });
     });
   }
-  
-  setView(view: ActiveView) {
-    this.activeView = view;
-    
-    // Resetear formularios
-    this.reprintForm.reset();
-    this.cancelForm.reset();
-    this.readForm.reset();
-    this.validationForm.reset();
-    
-    // 5. Resetear AMBAS listas de escaneo
-    this.serialsToReprint = [];
-    this.serialsToCancel = [];
-    
-    // Resetear otros estados
-    this.readResult = null;
-    this.readError = null;
-    this.pendingLabels = [];
-    this.validatedLabels = [];
-    this.validationError = null;
 
-    if (view === 'validar') {
-      this.onFetchPending();
+  handleFastCancel(serial: string) {
+    // Validamos que los campos obligatorios tengan datos válidos antes de proceder
+    const { reason, personReprints, ReturnLabelOld } = this.cancelForm.value;
+    
+    // Verificamos validez manual de los campos necesarios
+    if (this.cancelForm.get('reason')?.invalid || this.cancelForm.get('personReprints')?.invalid) {
+      this.serverMessage = { 
+        type: 'danger', 
+        text: '⚠️ Campos incompletos: Debe ingresar el Responsable y un Motivo válido (mín. 10 carac.) antes de escanear.' 
+      };
+      return;
     }
+
+    this.isLoading = true;
+    this.serverMessage = null;
+
+    const body: VoidLabelRequest = {
+      code: serial,
+      note: reason,
+      personReprints: personReprints,
+      ReturnLabelOld: ReturnLabelOld
+    };
+
+    this.printingService.labelRemove(body).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        this.serverMessage = { type: 'success', text: `Etiqueta ${serial} anulada correctamente.` };
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.serverMessage = { type: 'danger', text: err.message };
+      }
+    });
   }
 
-  // 6. NUEVA FUNCIÓN GENÉRICA para quitar serial
+  setView(view: ActiveView) {
+    this.activeView = view;
+    this.serverMessage = null;
+    this.reprintForm.reset({ ReturnLabelOld: true });
+    this.cancelForm.reset();
+    this.serialsToReprint = [];
+    this.serialsToCancel = [];
+  }
+
   removeSerial(list: string[], index: number) {
     list.splice(index, 1);
   }
 
-  // --- Lógica de Submits ---
+  // --- SUBMITS ---
 
   onReimprimirSubmit() {
     if (this.reprintForm.invalid || this.serialsToReprint.length === 0) return;
-    
-    const reason: string = this.reprintForm.value.reason;
-    console.log('Reimprimiendo etiquetas:', this.serialsToReprint);
-    console.log('Motivo:', reason);
-    
-    this.reprintForm.reset();
-    this.serialsToReprint = [];
+
+    this.isLoading = true;
+    this.serverMessage = null;
+
+    const { reason, personReprints, ReturnLabelOld } = this.reprintForm.value;
+
+    // Se crea una petición por cada serial escaneado
+    const requests = this.serialsToReprint.map(serial => {
+      const body: ReprintLabelRequest = {
+        code: serial,
+        note: reason,
+        personReprints: personReprints,
+        ReturnLabelOld: ReturnLabelOld
+      };
+      return this.printingService.reprintLabel(body);
+    });
+
+    forkJoin(requests).subscribe({
+      next: (responses) => {
+        this.isLoading = false;
+        this.serverMessage = { type: 'success', text: `${responses.length} etiquetas reimpresas con éxito.` };
+        this.serialsToReprint = [];
+        this.reprintForm.reset({ ReturnLabelOld: true });
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.serverMessage = { type: 'danger', text: err.message };
+      }
+    });
   }
 
-  // 7. ACTUALIZADO onAnularSubmit
   onAnularSubmit() {
+    // Validamos que el formulario sea correcto y que existan seriales escaneados
     if (this.cancelForm.invalid || this.serialsToCancel.length === 0) return;
 
-    const reason: string = this.cancelForm.value.reason;
-    console.log('Anulando etiquetas:', this.serialsToCancel);
-    console.log('Motivo:', reason);
+    this.isLoading = true;
+    this.serverMessage = null;
 
-    this.cancelForm.reset();
-    this.serialsToCancel = [];
-  }
+    const { reason, personReprints, ReturnLabelOld } = this.cancelForm.value;
 
-  onReadSubmit() {
-    if (this.readForm.invalid) return;
-    
-    const serial = this.readForm.value.serial;
-    this.isLoadingRead = true;
-    this.readResult = null;
-    this.readError = null;
-    console.log('Leyendo etiqueta:', serial);
+    // Creamos un array de peticiones usando el servicio de anulación
+    const requests = this.serialsToCancel.map(serial => {
+      const body = {
+        code: serial,
+        note: reason,
+        personReprints: personReprints,
+        ReturnLabelOld: ReturnLabelOld
+      };
+      return this.printingService.labelRemove(body);
+    });
 
-    setTimeout(() => {
-      this.isLoadingRead = false;
-      if (serial === '12345') {
-        this.readResult = {
-          serial: '12345',
-          productName: 'Estufa de Piso 30" Silver',
-          reference: 'AB-123-PL',
-          status: 'Impresa',
-          createdAt: new Date()
+    // Ejecutamos todas las peticiones en paralelo
+    forkJoin(requests).subscribe({
+      next: (responses) => {
+        this.isLoading = false;
+        this.serverMessage = { 
+          type: 'success', 
+          text: `${responses.length} etiquetas anuladas exitosamente.` 
         };
-      } else {
-        this.readError = `Serial "${serial}" no encontrado.`;
+        // Limpiamos la lista y el formulario
+        this.serialsToCancel = [];
+        this.cancelForm.reset({ ReturnLabelOld: true });
+      },
+      error: (err) => {
+        this.isLoading = false;
+        // El mensaje de error viene del manejador de errores de tu servicio
+        this.serverMessage = { type: 'danger', text: err.message };
       }
-      this.readForm.reset();
-    }, 1000);
+    });
   }
 
-  onFetchPending() {
-    this.isLoadingValidation = true;
-    this.pendingLabels = [];
-    this.validatedLabels = [];
-    this.validationError = null;
-    console.log('Buscando etiquetas pendientes de validación...');
-
-    setTimeout(() => {
-      this.isLoadingValidation = false;
-      this.pendingLabels = [
-        'SERIAL-001', 'SERIAL-002', 'SERIAL-003', 'SERIAL-004', 'SERIAL-005'
-      ];
-    }, 1200);
-  }
-
-  onValidateScan() {
-    if (this.validationForm.invalid) return;
-    
-    const scannedSerial = this.validationForm.value.serialToValidate;
-    this.validationError = null;
-
-    const index = this.pendingLabels.indexOf(scannedSerial);
-
-    if (index > -1) {
-      const validated = this.pendingLabels.splice(index, 1)[0];
-      this.validatedLabels.unshift(validated);
-      console.log(`Serial ${scannedSerial} validado con éxito.`);
-    } else if (this.validatedLabels.includes(scannedSerial)) {
-      this.validationError = `El serial "${scannedSerial}" ya fue validado en esta sesión.`;
-    } else {
-      this.validationError = `El serial "${scannedSerial}" no está en la lista de pendientes.`;
-    }
-    
-    this.validationForm.reset();
-  }
+  
 }

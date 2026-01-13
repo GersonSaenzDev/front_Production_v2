@@ -281,6 +281,7 @@ export class BarcodePrinting implements OnInit, OnDestroy {
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: (response: LabelPrintingResponse) => {
+              console.log('Respuesta del backend tras registrar impresión:', response.data);
               this.printingLoading = false;
               if (response.ok) {
                 
@@ -319,7 +320,7 @@ export class BarcodePrinting implements OnInit, OnDestroy {
                 console.error('Error al registrar la impresión:', err);
             }
         });
-  }
+  } 
 
   validateLabels(content: any) { 
       if (!this.printedFromDB || this.generatedLabels.length === 0) {
