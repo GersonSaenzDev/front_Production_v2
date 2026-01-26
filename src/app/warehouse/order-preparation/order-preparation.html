@@ -1,0 +1,104 @@
+<div class="main-container">
+  
+  <header class="blue-header">
+    <div class="header-content">
+      <div class="info">
+        <h2>Validación de pedidos</h2>
+        <p>Reporte consolidado para el cargue y validación de productos de salida.</p>
+      </div>
+    </div>
+
+    <div class="stats-container" *ngIf="orderData">
+      <div class="stat-card">
+        <span class="val">{{ orderData.barcode.length }}</span>
+        <span class="label">Items Totales</span>
+      </div>
+      <div class="stat-card">
+        <span class="val">{{ orderData.loadingOrder }}</span>
+        <span class="label">Nro. Orden</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="modern-card">
+    <div class="card-header-gray">Cargue de archivo de preparación (.sal)</div>
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-3">
+        <input 
+          type="file" 
+          class="form-control w-50" 
+          accept=".sal" 
+          (change)="onFileSelected($event)" 
+        />
+        <button 
+          class="btn-primary-modern" 
+          (click)="uploadFile()" 
+          [disabled]="!selectedFile || loading">
+          <span>{{ loading ? 'Procesando...' : 'Cargar Archivo' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modern-card" *ngIf="orderData">
+    <div class="card-header-gray d-flex justify-content-between align-items-center">
+      <span>Detalles de la Orden: {{ orderData.authorization }}</span>
+      <input type="text" class="input-modern" placeholder="Filtrar por código..." style="width: 250px;">
+    </div>
+    
+    <div class="table-container">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>Código de Barras</th>
+            <th>Estado Cargue</th>
+            <th style="width: 400px;">Acciones de Intervención</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of orderData.barcode">
+            <td><strong>{{ item.code }}</strong></td>
+            <td>
+              <span class="badge-status" [ngClass]="item.loadBarcode ? 'ok' : 'pending'">
+                {{ item.loadBarcode ? 'CARGADO' : 'PENDIENTE' }}
+              </span>
+            </td>
+            <td>
+              <div class="d-flex gap-2 align-items-center">
+                <button 
+                  class="btn-primary-modern btn-sm" 
+                  style="padding: 6px 12px; background-color: #10b981;"
+                  (click)="markAsLoaded(item)" 
+                  [disabled]="item.loadBarcode || loading">
+                  Confirmar
+                </button>
+                
+                <input 
+                  type="text" 
+                  class="input-modern" 
+                  placeholder="Nuevo ítem..." 
+                  style="width: 140px; height: 35px;"
+                  [disabled]="item.loadBarcode || loading"
+                  #newCode
+                  (input)="0"
+                  (keyup.enter)="newCode.value.length === 27 ? replaceCode(item, newCode.value) : null; newCode.value = ''">
+                
+                <button 
+                  class="btn-primary-modern btn-sm" 
+                  style="padding: 6px 12px; background-color: #64748b;"
+                  (click)="replaceCode(item, newCode.value); newCode.value = ''" 
+                  [disabled]="item.loadBarcode || loading || newCode.value.length !== 27">
+                  <span>{{ loading ? '...' : 'Reemplazar' }}</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="orderData.barcode.length === 0" class="p-4 text-center text-muted">
+      No hay códigos de barras pendientes en esta orden.
+    </div>
+  </div>
+</div>

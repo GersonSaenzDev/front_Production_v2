@@ -73,6 +73,13 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'registro-novedades-item',
+            title: 'Alistamiento Pedidos',
+            type: 'item',
+            url: 'inventories/orderPreparation',
+            breadcrumbs: false
+          },
+          {
+            id: 'registro-novedades-item',
             title: 'Registro Novedades',
             type: 'item',
             url: 'production/wineryNews',

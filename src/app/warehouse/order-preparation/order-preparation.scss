@@ -1,0 +1,149 @@
+/* src/app/warehouse/order-preparation/order-preparation.scss */
+
+/* CONTENEDOR PRINCIPAL */
+.main-container {
+  padding: 24px;
+  background-color: #f3f4f6;
+  min-height: 100vh;
+}
+
+/* HEADER AZUL TIPO DASHBOARD */
+.blue-header {
+  background: linear-gradient(90deg, #0b3c6f 0%, #072a4f 100%);
+  color: #ffffff;
+  padding: 32px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    .info {
+      h2 {
+        font-size: 26px;
+        font-weight: 700;
+        margin: 0;
+      }
+      p {
+        font-size: 14px;
+        opacity: 0.8;
+        margin-top: 8px;
+        max-width: 600px;
+      }
+    }
+  }
+
+  /* RESUMEN DE DATOS (Badges) */
+  .stats-container {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 20px;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .val {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .label {
+        font-size: 12px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+}
+
+/* TARJETAS (CARDS) */
+.modern-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  overflow: hidden;
+
+  .card-header-gray {
+    background-color: #f8fafc;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .card-body {
+    padding: 24px;
+  }
+}
+
+/* TABLA MEJORADA */
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead th {
+    text-align: left;
+    padding: 12px 16px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  tbody td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    vertical-align: middle;
+  }
+
+  tbody tr:hover {
+    background-color: #f8fafc;
+  }
+}
+
+/* BOTONES Y ENTRADAS */
+.input-modern {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border 0.2s;
+  &:focus { border-color: #0b3c6f; }
+}
+
+.btn-primary-modern {
+  background-color: #0b3c6f;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  &:hover { background-color: #082d54; }
+  &:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+}
+
+/* ESTADOS */
+.badge-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  &.ok { background: #dcfce7; color: #15803d; }
+  &.pending { background: #fee2e2; color: #b91c1c; }
+}

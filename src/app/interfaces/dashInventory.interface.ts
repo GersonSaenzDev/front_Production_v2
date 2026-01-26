@@ -326,3 +326,76 @@ export interface ErrorRecordsResponse {
     data: ErrorRecord[];
 }
 
+export interface BarcodeOrder {
+  code: string;
+  loadBarcode: boolean;
+  labelPrintingControl: boolean;
+  codeRead: boolean;
+  _id: string;
+}
+
+export interface UpdateOrderResponse {
+  ok: boolean;
+  msg: string;
+  totalRegistros: number;
+  data: {
+    loadingOrder: string;
+    authorization: string;
+    barcode: BarcodeOrder[];
+    dateCreate: string;
+    _id: string;
+  };
+}
+
+export interface Barcode {
+  code: string;
+  loadBarcode: boolean;
+  labelPrintingControl: boolean;
+  codeRead: boolean;
+}
+
+export interface ViewOrderData {
+  _id: string;
+  loadingOrder: string;
+  authorization: string;
+  barcode: Barcode[];
+  dateCreate: string;
+}
+
+export interface ViewOrderResponse {
+  ok: boolean;
+  msg: string;
+  totalPendientes: number;
+  data: ViewOrderData;
+}
+
+// Interface para el cuerpo de la petición (payload)
+export interface UpdateBarcodeRequest {
+  _id: string;
+  code: string;
+  loadBarcode?: boolean;
+  codeRead?: boolean;
+}
+
+// Interface para la respuesta del servidor
+export interface UpdateBarcodeResponse {
+  msg: string; // O el nombre del campo que devuelva tu backend, ej: "barcode Actualizado correctamente"
+}
+
+export interface Barcode {
+  _id: string;          // Agregamos esta línea para corregir el error ts(2339)
+  code: string;
+  loadBarcode: boolean;
+  // ... cualquier otra propiedad que devuelva tu API (ej. description, etc.)
+}
+
+export interface ViewOrderData {
+  authorization: string;
+  loadingOrder: string;
+  barcode: Barcode[];   // Aquí se usa la interfaz que acabamos de actualizar
+}
+
+export interface ViewOrderResponse {
+  ok: boolean;
+  data: ViewOrderData;
+}

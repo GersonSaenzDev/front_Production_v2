@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, InsertInventoryRequest, InsertInventoryResponse, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, ViewInventoriesResponse } from '../interfaces/dashInventory.interface';
+import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, InsertInventoryRequest, InsertInventoryResponse, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, UpdateBarcodeRequest, UpdateBarcodeResponse, UpdateOrderResponse, ViewInventoriesResponse, ViewOrderResponse } from '../interfaces/dashInventory.interface';
 import { environment } from 'src/environments/environment';
 
 
@@ -28,6 +28,13 @@ export class DashInventoryServices {
   private readonly GLOBALCOUNT_AUDITNOTE = `${this.BASE_URL}${this.BASE_API}/storage/auditNote`;
   private readonly GLOBALCOUNT_STORAGE = `${this.BASE_URL}${this.BASE_API}/storage`;
   private readonly GLOBALCOUNT_INSERTINVENTORY = `${this.BASE_URL}${this.BASE_API}/storage/insertInventory`;
+  private readonly UPDATE_ORDER_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/orderPreparation`;
+  private readonly VIEW_ORDER_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/viewOrder`;
+  private readonly UPDATE_ORDER_ITEMS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/updateOrderItems`;
+  private readonly UPDATE_BARCODE_READ_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/updateBarcodeReadController`;
+
+
+
 
   private handleError(error: any) {
     console.error('DashInventoryServices: Error en la petición:', error);
@@ -158,6 +165,61 @@ export class DashInventoryServices {
 
   getInsertInventory(payload: InsertInventoryRequest): Observable<InsertInventoryResponse> {
     return this.http.post<InsertInventoryResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
+
+  /**
+   * Sube un archivo .sal para actualizar la preparación de la orden.
+   * @param file Archivo obtenido del input type="file"
+   */
+  updateOrder(file: File): Observable<UpdateOrderResponse> {
+    // 1. Creamos el objeto FormData
+    const formData = new FormData();
+    
+    // 2. Agregamos el archivo con el nombre 'orderPreparation' que pide el backend
+    formData.append('orderPreparation', file);
+
+    // 3. Realizamos la petición POST
+    return this.http.post<UpdateOrderResponse>(this.UPDATE_ORDER_ENDPOINT, formData)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
+
+  /**
+   * Obtiene la última preparación de la orden (solo pendientes).
+   * @returns Observable con la información de la orden y sus códigos de barras.
+   */
+  viewOrder(): Observable<ViewOrderResponse> {
+    // 1. Realizamos la petición GET
+    // No necesitamos FormData aquí ya que es una consulta simple
+    return this.http.get<ViewOrderResponse>(this.VIEW_ORDER_ENDPOINT)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
+
+  /**
+   * Actualiza los items de la orden.
+   * @param payload Objeto con _id, code y codeRead
+   * @returns Mensaje de confirmación: "barcode Actualizado correctamente"
+   */
+  updateOrderItems(payload: UpdateBarcodeRequest): Observable<UpdateBarcodeResponse> {
+    return this.http.post<UpdateBarcodeResponse>(this.UPDATE_ORDER_ITEMS_ENDPOINT, payload)
+      .pipe(
+        catchError(this.handleError.bind(this))
+      );
+  }
+
+  /**
+   * Actualiza el controlador de lectura de código de barras.
+   * @param payload Objeto con _id, code y codeRead
+   * @returns Mensaje de confirmación: "Barcode Cambiado Correctamente"
+   */
+  updateBarcodeReadController(payload: UpdateBarcodeRequest): Observable<UpdateBarcodeResponse> {
+    return this.http.post<UpdateBarcodeResponse>(this.UPDATE_BARCODE_READ_ENDPOINT, payload)
       .pipe(
         catchError(this.handleError.bind(this))
       );
