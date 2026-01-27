@@ -147,3 +147,51 @@
   &.ok { background: #dcfce7; color: #15803d; }
   &.pending { background: #fee2e2; color: #b91c1c; }
 }
+
+/* Actualiza o añade estas reglas en tu archivo SCSS */
+
+.stats-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  width: 100%;
+
+  .btn-excel {
+    margin-left: auto; /* Empuja el botón al extremo derecho */
+    background-color: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espacio entre icono y texto */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+    svg {
+      flex-shrink: 0;
+      // Color blanco para el trazo del SVG
+      stroke: #ffffff; 
+    }
+
+    &:hover {
+      background-color: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+    }
+  }
+}

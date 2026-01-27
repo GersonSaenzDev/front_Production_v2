@@ -20,7 +20,7 @@ export const NavigationItems: NavigationItem[] = [
     id: 'dashboard-group',
     title: 'Panel de Control',
     type: 'group',
-    icon: 'ti ti-building-factory-2',
+    icon: 'ti ti-layout-dashboard', // Icono de tablero principal
     children: [
       {
         id: 'dashboard-default',
@@ -28,8 +28,50 @@ export const NavigationItems: NavigationItem[] = [
         type: 'item',
         classes: 'nav-item',
         url: '/production',
-        icon: 'ti ti-building-factory',
+        icon: 'ti ti-chart-bar',
         breadcrumbs: false
+      }
+    ]
+  },
+  {
+    id: 'planeacion-group', // Cambiado para ser único
+    title: 'Planeación',
+    type: 'group',
+    icon: 'ti ti-calendar-stats', // Icono de planificación
+    children: [
+      {
+        id: 'cargue-collapse',
+        title: 'Cargue',
+        type: 'collapse',
+        icon: 'ti ti-truck-loading', // Icono de carga/logística
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'planeacion-produccion-item',
+            title: 'Planeacion Producción',
+            type: 'item',
+            url: 'production/productionNews',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'dashboard-planeacion-collapse',
+        title: 'Dashboard Planeación',
+        type: 'collapse',
+        icon: 'ti ti-presentation-analytics', // Icono de análisis
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'alistamiento-pedidos-planeacion',
+            title: 'Alistamiento Pedidos',
+            type: 'item',
+            url: 'inventories/orderPreparation',
+            breadcrumbs: false
+          }
+        ]
       }
     ]
   },
@@ -37,13 +79,13 @@ export const NavigationItems: NavigationItem[] = [
     id: 'produccion-group',
     title: 'Producción',
     type: 'group',
-    icon: 'icon-navigation',
+    icon: 'ti ti-settings-automation', // Icono de procesos industriales
     children: [
       {
         id: 'ensamble-collapse',
         title: 'Ensamble',
         type: 'collapse',
-        icon: 'ti ti-brand-codesandbox',
+        icon: 'ti ti-tools', // Icono de herramientas/ensamble
         classes: 'nav-item',
         isMainParent: true,
         children: [
@@ -55,7 +97,7 @@ export const NavigationItems: NavigationItem[] = [
             breadcrumbs: true
           },
           {
-            id: 'novedades-produccion-item',
+            id: 'visualizar-novedades-item',
             title: 'Visualizar Novedades',
             type: 'item',
             url: 'production/viewNews',
@@ -72,21 +114,21 @@ export const NavigationItems: NavigationItem[] = [
         isMainParent: true,
         children: [
           {
-            id: 'registro-novedades-item',
+            id: 'alistamiento-pedidos-item',
             title: 'Alistamiento Pedidos',
             type: 'item',
             url: 'inventories/orderPreparation',
             breadcrumbs: false
           },
           {
-            id: 'registro-novedades-item',
+            id: 'registro-novedades-bodega-item',
             title: 'Registro Novedades',
             type: 'item',
             url: 'production/wineryNews',
             breadcrumbs: false
           },
           {
-            id: 'ver-novedades-item',
+            id: 'ver-novedades-bodega-item',
             title: 'Ver Novedades',
             type: 'item',
             url: 'inventories/checkNews',
@@ -100,14 +142,14 @@ export const NavigationItems: NavigationItem[] = [
             breadcrumbs: false
           },
           {
-            id: 'dashboard-inventarios-item',
+            id: 'inventario-bodega-item',
             title: 'Inventario Bodega',
             type: 'item',
             url: 'inventories/enterInventory',
             breadcrumbs: false
           },
           {
-            id: 'informe-final-inventario-item', // ID corregido
+            id: 'informe-final-inventario-item',
             title: 'Informe Final Inventario',
             type: 'item',
             url: 'inventories/finalInventoryReport',
@@ -119,33 +161,33 @@ export const NavigationItems: NavigationItem[] = [
         id: 'etiquetas-collapse',
         title: 'Generar Etiquetas',
         type: 'collapse',
-        icon: 'ti ti-vocabulary',
+        icon: 'ti ti-barcode', // Icono específico de código de barras
         classes: 'nav-item',
         isMainParent: true,
         children: [
           {
-            id: 'impresion-etiquetas-item',
+            id: 'control-impresion-item',
             title: 'Control Impresion',
             type: 'item',
             url: 'printing/dash',
             breadcrumbs: false
           },
           {
-            id: 'impresion-etiquetas-item',
+            id: 'parametros-etiquetas-item',
             title: 'Parametros Etiquetas',
             type: 'item',
             url: 'printing/barcodeParameters',
             breadcrumbs: false
           },
           {
-            id: 'impresion-etiquetas-item',
+            id: 'impresion-etiquetas-real-item',
             title: 'Impresion Etiquetas',
             type: 'item',
             url: 'printing/barcodePrinting',
             breadcrumbs: false
           },
           {
-            id: 'leer-etiquetas-item',
+            id: 'leer-etiquetas-procesos-item',
             title: 'Procesos',
             type: 'item',
             url: 'printing/readBarcode',

@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { DashInventoryServices } from 'src/app/services/dashInventory-services';
 import { Barcode, UpdateBarcodeRequest, ViewOrderData } from 'src/app/interfaces/dashInventory.interface';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-order-preparation',
@@ -135,5 +136,32 @@ export class OrderPreparation implements OnInit {
         alert('No se pudo reemplazar el código: ' + err.message);
       }
     });
+  }
+
+  exportToExcel(): void {
+    if (!this.orderData || !this.orderData.barcode.length) {
+      alert('No hay datos para exportar');
+      return;
+    }
+
+    // 1. Preparamos los datos: solo queremos el código de barras y quizás el estado
+    const dataToExport = this.orderData.barcode.map(item => {
+      return {
+        'CÓDIGO DE BARRAS': item.code,
+        'ESTADO': item.loadBarcode ? 'CARGADO' : 'PENDIENTE'
+      };
+    });
+
+    // 2. Creamos una "hoja de trabajo" (Worksheet) a partir de nuestro JSON
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // 3. Creamos un "libro de trabajo" (Workbook)
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Códigos de Barras');
+
+    // 4. Generamos el archivo y disparamos la descarga
+    // El nombre del archivo incluirá el número de orden para que sea fácil de identificar
+    const fileName = `Orden_${this.orderData.loadingOrder}_Barcodes.xlsx`;
+    XLSX.writeFile(workbook, fileName);
   }
 }
