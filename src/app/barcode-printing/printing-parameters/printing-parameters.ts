@@ -1,6 +1,6 @@
 // /app/barcode-printing/printing-parameters/printing-parameters.ts
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormArray, AbstractControl } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormArray } from '@angular/forms';
 import { Subject, of, } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, catchError, finalize } from 'rxjs/operators';
 import { DashboardServices } from 'src/app/services/dashboard-services';
