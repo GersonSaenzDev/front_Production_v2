@@ -24,6 +24,10 @@ const routes: Routes = [
         path: 'printing',
         loadChildren: () => import('./barcode-printing/barcode-printing-module').then((m) => m.BarcodePrintingModule)
       },
+      {
+        path: 'clientHome',
+        loadChildren: () => import('./client-home/client-home-module').then((m) => m.ClientHomeModule)
+      },
     ]
   },
   

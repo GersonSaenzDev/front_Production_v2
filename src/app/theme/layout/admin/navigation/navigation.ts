@@ -158,6 +158,24 @@ export const NavigationItems: NavigationItem[] = [
         ]
       },
       {
+        id: 'clientHome-collapse',
+        title: 'Casa Cliente',
+        type: 'collapse',
+        icon: 'ti ti-home-2', // <--- Icono más descriptivo para Casa Cliente
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'alistamiento-pedidos-item',
+            title: 'Control Pedidos',
+            type: 'item',
+            url: 'clientHome/orderControl',
+            icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+            breadcrumbs: false
+          },
+        ]
+      },
+      {
         id: 'etiquetas-collapse',
         title: 'Generar Etiquetas',
         type: 'collapse',

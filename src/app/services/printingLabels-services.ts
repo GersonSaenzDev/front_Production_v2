@@ -17,7 +17,7 @@ import {
   VoidLabelRequest,
   VoidLabelResponse
 } from '../interfaces/printingLabel.interfaces';
-import { CurrentConsecutiveResponse } from './currentConsecutive.interface';
+import { CurrentConsecutiveResponse } from '../interfaces/currentConsecutive.interface';
 
 @Injectable({
   providedIn: 'root'

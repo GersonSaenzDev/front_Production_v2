@@ -1,0 +1,298 @@
+<!-- app/client-home/order-control/order-control.html -->
+<div class="main-container">
+  <header class="dashboard-header">
+    <div class="title-group">
+        <h1>Control de Pedidos</h1>
+        <p><i class="ti ti-settings-automation"></i>Casa Cliente Indusel</p>
+    </div>
+    
+    <div class="header-controls">
+        <div class="control-wrapper">
+        <div class="date-group">
+            <div class="input-field">
+                <label>FECHA INICIO</label>
+                <input type="date" [(ngModel)]="dateRange.start">
+            </div>
+            <div class="input-field">
+                <label>FECHA FIN</label>
+                <input type="date" [(ngModel)]="dateRange.end">
+            </div>
+        </div>
+        <button class="btn-refresh-modern" title="Actualizar Datos">
+            <i class="ti ti-refresh"></i>
+        </button>
+        </div>
+    </div>
+    </header>
+
+  <section class="action-grid">
+  
+    <div class="glass-card upload-section">
+        <div class="card-header">
+        <i class="ti ti-cloud-upload"></i>
+        <span>Carga de Archivos</span>
+        </div>
+        <div class="card-body">
+        <div class="modern-form-group">
+            <label>CLIENTE RETAIL</label>
+            <div class="input-wrapper">
+            <i class="ti ti-building-store"></i>
+            <select [(ngModel)]="selectedClient" class="modern-input">
+                <option value="" disabled selected>Seleccione el cliente...</option>
+                <option *ngFor="let c of clients" [value]="c">{{c}}</option>
+            </select>
+            </div>
+        </div>
+        
+        <div class="drop-zone" [class.disabled]="!selectedClient" [class.file-selected]="selectedFileName">
+              <input type="file" id="file" hidden [disabled]="!selectedClient" (change)="onFileSelected($event)">
+              <label for="file">
+                <ng-container *ngIf="!selectedFileName">
+                  <i class="ti ti-file-import"></i>
+                  <span>Arrastra o selecciona el archivo</span>
+                </ng-container>
+                <ng-container *ngIf="selectedFileName">
+                  <i class="ti ti-circle-check-filled text-success"></i>
+                  <span class="file-name-display">{{ selectedFileName }}</span>
+                  <small class="change-file">Click para cambiar</small>
+                </ng-container>
+              </label>
+          </div>
+          <div class="upload-actions">
+            <button class="btn-modern btn-primary w-100" 
+                    [disabled]="!selectedFile || !selectedClient"
+                    (click)="uploadOrder()">
+                <i class="ti ti-upload"></i> Procesar Archivo
+            </button>
+        </div>
+        </div>
+    </div>
+
+    <div class="glass-card search-section">
+        <div class="card-header">
+        <i class="ti ti-search"></i>
+        <span>Búsqueda Inteligente</span>
+        </div>
+        <div class="card-body">
+        <div class="modern-form-group">
+            <label>FILTRAR INFORMACIÓN</label>
+            <div class="input-wrapper">
+            <i class="ti ti-search"></i>
+            <input type="text" 
+                    [(ngModel)]="searchQuery" 
+                    (input)="onSearch()" 
+                    class="modern-input" 
+                    placeholder="Buscar por OC, Guía o Nombre...">
+            </div>
+        </div>
+        
+        <div class="quick-info-box">
+            <div class="info-item">
+            <span class="label">Registros:</span>
+            <span class="value">{{filteredOrders.length}}</span>
+            </div>
+            <div class="info-item">
+            <i class="ti ti-filter"></i>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    </section>
+
+  <section class="table-container glass-card">
+    <table class="modern-table">
+        <thead>
+        <tr>
+            <th style="width: 25%;">Cliente / Almacén</th>
+            <th style="width: 20%;">Identificadores</th>
+            <th style="width: 20%;">Destino</th>
+            <th style="width: 15%;">Estado Operativo</th>
+            <th style="width: 20%;" class="text-center">Acciones</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let order of paginatedOrders" class="table-row">
+            <td>
+            <div class="client-cell">
+                <span class="client-badge" [attr.data-store]="order.store">{{order.store}}</span>
+                <span class="client-name">{{order.clientName}}</span>
+            </div>
+            </td>
+
+            <td>
+            <div class="ids-cell">
+                <div class="id-item">
+                <span class="label">OC TIENDA:</span>
+                <span class="value">{{order.storePurchaseOrder}}</span>
+                </div>
+                <div class="id-item">
+                <span class="label">INDUSEL:</span>
+                <span class="value secondary">{{order.induselOrder}}</span>
+                </div>
+            </div>
+            </td>
+
+            <td>
+            <div class="location-cell">
+                <i class="ti ti-map-pin"></i>
+                <span>{{order.city}}</span>
+            </div>
+            </td>
+
+            <td>
+            <span class="status-pill" [attr.data-status]="order.status">
+                {{order.status}}
+            </span>
+            </td>
+
+            <td class="text-center">
+                <div class="actions-group">
+                    <button class="btn-action view" (click)="openDetails(order)" title="Ver Detalles">
+                        <i class="ti ti-eye"></i>
+                    </button>
+                    <button class="btn-action add" (click)="openFlow(order)" title="Agregar flujo">
+                        <i class="ti ti-plus"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        </tbody>
+        <footer class="table-footer-modern">
+            <div class="footer-settings">
+                <span class="label-caps">MOSTRAR</span>
+                <div class="select-premium-wrapper">
+                <select [(ngModel)]="pageSize" (change)="changePageSize()" class="select-premium">
+                    <option *ngFor="let size of pageSizeOptions" [value]="size">{{size}}</option>
+                </select>
+                <i class="ti ti-chevron-down"></i>
+                </div>
+                <span class="label-caps">DE {{filteredOrders.length}}</span>
+            </div>
+
+            <div class="footer-center-group">
+                <p class="status-text">
+                Mostrando <span class="highlight">{{startEntry}} – {{endEntry}}</span>
+                <span class="muted">de resultados</span>
+                </p>
+
+                <nav class="pagination-controls">
+                <button class="control-btn" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" title="Anterior">
+                    <i class="ti ti-chevron-left"></i>
+                </button>
+                
+                <div class="page-info">
+                    <span class="muted">Página</span>
+                    <span class="page-number-active">{{currentPage}}</span>
+                    <span class="muted">de {{totalPages}}</span>
+                </div>
+
+                <button class="control-btn" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Siguiente">
+                    <i class="ti ti-chevron-right"></i>
+                </button>
+                </nav>
+            </div>
+        </footer>
+    </table>
+
+    </section>
+</div>
+
+<!-- MODALES -->
+
+<div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetails()">
+    <div class="modal-content glass-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="ti ti-info-circle"></i> Expediente del Pedido</h3>
+            <button class="close-btn" (click)="closeDetails()">&times;</button>
+        </div>
+        
+        <div class="modal-body" *ngIf="selectedOrder">
+            <div class="detail-container">
+                
+                <section class="detail-section">
+                    <h4><i class="ti ti-user"></i> Datos del Cliente</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item"><strong>Nombre:</strong> {{selectedOrder.clientName}}</div>
+                        <div class="detail-item"><strong>Identificación:</strong> {{selectedOrder.clientIdentification}}</div>
+                        <div class="detail-item"><strong>Teléfonos:</strong> {{selectedOrder.phones}}</div>
+                        <div class="detail-item"><strong>Dirección:</strong> {{selectedOrder.address}}</div>
+                        <div class="detail-item"><strong>Ciudad:</strong> {{selectedOrder.city}}</div>
+                    </div>
+                </section>
+
+                <hr class="divider">
+
+                <section class="detail-section">
+                    <h4><i class="ti ti-shopping-cart"></i> Información de Compra</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item"><strong>Almacén:</strong> {{selectedOrder.store}} (N° {{selectedOrder.storeNumber}})</div>
+                        <div class="detail-item"><strong>OC Tienda:</strong> {{selectedOrder.storePurchaseOrder}}</div>
+                        <div class="detail-item"><strong>EAN:</strong> {{selectedOrder.ean}}</div>
+                        <div class="detail-item"><strong>Referencia:</strong> {{selectedOrder.reference}}</div>
+                        <div class="detail-item"><strong>Cantidad:</strong> {{selectedOrder.quantity}} unidad(es)</div>
+                        <div class="detail-item"><strong>Fecha Venta:</strong> {{selectedOrder.saleDate || 'N/A'}}</div>
+                    </div>
+                </section>
+
+                <hr class="divider">
+
+                <section class="detail-section">
+                    <h4><i class="ti ti-truck"></i> Seguimiento y Sistema</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item"><strong>Estado General:</strong> 
+                            <span class="status-pill" [attr.data-status]="selectedOrder.status">{{selectedOrder.status}}</span>
+                        </div>
+                        <div class="detail-item"><strong>Estado Entrega:</strong> {{selectedOrder.deliveryStatus}}</div>
+                        <div class="detail-item"><strong>Recepción Archivo:</strong> {{selectedOrder.fileReceptionDate}}</div>
+                        <div class="detail-item"><strong>Última Actualización:</strong> {{selectedOrder.dateUpdated}}</div>
+                        <div class="detail-item"><strong>Usuario Actualizó:</strong> {{selectedOrder.userUpdated}}</div>
+                        
+                    </div>
+                </section>
+
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-modern btn-secondary" (click)="closeDetails()">
+                <i class="ti ti-x"></i> Cerrar Expediente
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showFlowModal" (click)="closeFlow()">
+    <div class="modal-content glass-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="ti ti-git-branch"></i> Registrar Flujo Operativo</h3>
+            <button class="close-btn" (click)="closeFlow()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-subtitle">Actualizando pedido: <b>{{selectedOrder?.induselOrder}}</b></p>
+            
+            <form (ngSubmit)="saveFlow()" class="modern-form">
+                <div class="form-group">
+                    <label>Etapa del Proceso</label>
+                    <select [(ngModel)]="flowData.etapa" name="etapa" class="modern-input">
+                        <option value="picking">Picking / Alistamiento</option>
+                        <option value="packing">Packing / Empaque</option>
+                        <option value="despacho">Despachado a Transportadora</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Responsable</label>
+                    <input type="text" [(ngModel)]="flowData.operario" name="operario" class="modern-input" placeholder="Nombre del operario">
+                </div>
+                <div class="form-group">
+                    <label>Observaciones</label>
+                    <textarea [(ngModel)]="flowData.observaciones" name="obs" class="modern-input" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" (click)="closeFlow()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
