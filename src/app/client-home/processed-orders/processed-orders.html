@@ -1,0 +1,39 @@
+<div class="main-container">
+    <header class="dashboard-header">
+        <div class="title-group">
+            <h1>Control de Pedidos Procesados</h1>
+            <p><i class="ti ti-settings-automation"></i>Casa Cliente Indusel</p>
+        </div>
+        
+        <div class="header-controls">
+            <div class="control-wrapper">
+            <div class="date-group">
+                <div class="input-field">
+                    <label>FECHA INICIO</label>
+                    <input type="date" [(ngModel)]="dateRange.start">
+                </div>
+                <div class="input-field">
+                    <label>FECHA FIN</label>
+                    <input type="date" [(ngModel)]="dateRange.end">
+                </div>
+            </div>
+            <button class="btn-refresh-modern" title="Actualizar Datos">
+                <i class="ti ti-refresh"></i>
+            </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- pogamos las tareas que aqui vamos a controlar,
+     Visualizarcion de Ordenes procesadas
+     debemos determinar de la base cuales son los estados Finales de las Ordenes -->
+        <div class="content-area">
+            <h2>Visualización de Ordenes Procesadas</h2>
+            <p>Aquí se mostrarán las órdenes procesadas dentro del rango de fechas seleccionado.</p>
+
+            <p> * Debemos Saber los Estados de las Órdenes Procesadas, que Mostraremos</p>
+        </div>
+            <!-- Aquí iría la tabla o lista de órdenes procesadas -->
+
+
+</div>

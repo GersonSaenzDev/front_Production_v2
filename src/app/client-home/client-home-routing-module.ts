@@ -13,6 +13,10 @@ const routes: Routes = [
         },
       ]
     },
+    {
+      path: 'processedOrders',
+      loadComponent: () => import('./processed-orders/processed-orders').then((c) => c.ProcessedOrders)
+    },
     // {
     //   // Path completo: /production/productionNews
     //   path: 'configInventories',

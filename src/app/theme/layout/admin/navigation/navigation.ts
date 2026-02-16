@@ -170,7 +170,15 @@ export const NavigationItems: NavigationItem[] = [
             title: 'Control Pedidos',
             type: 'item',
             url: 'clientHome/orderControl',
-            icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+            breadcrumbs: false
+          },
+          {
+            id: 'pedidos-procesados-item',
+            title: 'Pedidos Procesados',
+            type: 'item',
+            url: 'clientHome/processedOrders',
+            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
           },
         ]
