@@ -49,3 +49,20 @@ export interface OrderLoadingResponse {
     errors: string[];
   };
 }
+
+export interface FlowData {
+  status: string;
+  transporter?: string;
+  vehiclePlate?: string;
+  guideNumber?: string;
+  deliveredSerial?: string; // Lo capturamos como string y luego lo procesamos
+  userUpdated: string;
+  note: string;
+}
+
+export interface DeliveryStatus {
+  value: string;
+  label: string;
+  color: string;
+  icon: string;
+}

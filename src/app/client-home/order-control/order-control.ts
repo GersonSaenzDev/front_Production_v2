@@ -2,7 +2,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { OrderTracking } from '../../interfaces/order-tracking.interface';
+import { DeliveryStatus, FlowData, OrderTracking } from '../../interfaces/order-tracking.interface';
 
 // Servicios
 import { ToastrService } from 'ngx-toastr';
@@ -42,11 +42,37 @@ export class OrderControl implements OnInit {
   filteredOrders: OrderTracking[] = [];
   clients = ['Sao', 'Easy', 'Exito', 'Cencosud', 'Falabella', 'Soelco', 'ElectroJaponesa', 'Trazacencosud' ];
 
+  // 2. Mock de Estados de Entrega (según imagen image_513b5f.png)
+  public readonly DELIVERY_STATUSES: DeliveryStatus[] = [
+    { value: 'ENTREGADO', label: 'Entregado Sin Novedad', color: '#10b981', icon: '🟢' },
+    { value: 'EN RUTA', label: 'En Ruta al Cliente', color: '#facc15', icon: '🟡' },
+    { value: 'NOVEDAD CLIENTE', label: 'Novedad Atribuida al Cliente', color: '#fb923c', icon: '🟠' },
+    { value: 'CANCELADO', label: 'Cancelado (Confirmar Correo)', color: '#ef4444', icon: '🔴' },
+    { value: 'INVENTARIO', label: 'Producto Agotado en Seccional', color: '#06b6d4', icon: '🔵' },
+    { value: 'PENDIENTE ENTREGA', label: 'Pendiente de Entrega (Otras razones)', color: '#8b5cf6', icon: '🟣' },
+    { value: 'ENTREGADO/CLIENTE', label: 'Entregado (Incump. Cliente)', color: '#ec4899', icon: '🌸' },
+    { value: 'ENTREGADO/TIENDA', label: 'Entregado (Incump. Tienda)', color: '#f43f5e', icon: '🏮' },
+    { value: 'ENTREGADO/TRANSPORTADOR', label: 'Entregado (Incump. Transportador)', color: '#d97706', icon: '📦' },
+    { value: 'ENTREGADO/INVENTARIO', label: 'Entregado (Incump. Producto Agotado)', color: '#4b5563', icon: '🌑' },
+    { value: 'ENTREGADO/SECCIONAL', label: 'Entregado a Seccional', color: '#65a30d', icon: '🌿' },
+    { value: 'ENTREGADO/RUTA', label: 'Entregado (Incump. Frecuencia Ruta)', color: '#a855f7', icon: '🛤️' },
+    { value: 'DESPACHO OPORTUNO', label: 'Despacho en Tiempos', color: '#0d9488', icon: '✨' },
+    { value: 'AVERIA', label: 'Producto Averiado por Transportadora', color: '#6b7280', icon: '⚠️' }
+  ];
+
   // --- Control de Modales ---
   showDetailsModal: boolean = false;
   showFlowModal: boolean = false;
   selectedOrder: OrderTracking | null = null;
-  flowData = { etapa: '', observaciones: '', operario: '' };
+  flowData: FlowData = {
+    status: 'INGRESADO', // Valor por defecto
+    transporter: '',
+    vehiclePlate: '',
+    guideNumber: '',
+    deliveredSerial: '',
+    userUpdated: '',
+    note: ''
+  };
 
   ngOnInit() {
     this.loadOrders();
@@ -168,28 +194,67 @@ export class OrderControl implements OnInit {
    * @description Guarda la información del flujo/etapa de la orden.
    * Por ahora maneja la lógica local y notifica al usuario.
    */
-  saveFlow() {
-    if (!this.selectedOrder) return;
+  // --- Función Guardar Corregida ---
+    saveFlow() {
+    if (!this.selectedOrder?._id) return;
 
-    // Log para depuración (según tu requerimiento de mantener mocks)
-    console.log('Guardando flujo para:', {
-      ordenIndusel: this.selectedOrder.induselOrder,
-      datos: this.flowData
+    // Preparamos el payload exacto para Mongoose
+    const updatePayload = {
+      status: this.flowData.status,
+      userUpdated: this.flowData.userUpdated,
+      dateUpdated: new Date().toLocaleString(),
+      transporter: this.flowData.transporter.toUpperCase(),
+      vehiclePlate: this.flowData.vehiclePlate,
+      guideNumber: this.flowData.guideNumber,
+      // Convertimos seriales a Array de strings
+      deliveredSerial: this.flowData.deliveredSerial 
+        ? this.flowData.deliveredSerial.split(',').map(s => s.trim()).filter(s => s !== '')
+        : [],
+      // Nueva observación para el array del Schema
+      newObservation: {
+        note: this.flowData.note,
+        userUpdated: this.flowData.userUpdated,
+        dateUpdated: new Date().toISOString()
+      }
+    };
+
+    // Usamos 'orderService' sin guion bajo
+    this.orderService.updateOrder(this.selectedOrder._id, updatePayload).subscribe({
+      next: (resp) => {
+        this.closeFlow();
+        this.loadOrders(); // Recarga la tabla
+        this.resetFlowForm();
+      },
+      error: (err) => console.error('Error al actualizar:', err)
     });
-
-    // Notificación de éxito con Toastr
-    this.toastr.success(
-      `Flujo actualizado para la orden ${this.selectedOrder.induselOrder}`, 
-      'Proceso Guardado'
-    );
-
-    // Cerramos el modal y limpiamos el formulario
-    this.closeFlow();
   }
 
   openDetails(order: OrderTracking) { this.selectedOrder = order; this.showDetailsModal = true; }
   closeDetails() { this.showDetailsModal = false; this.selectedOrder = null; }
   openFlow(order: OrderTracking) { this.selectedOrder = order; this.showFlowModal = true; }
   closeFlow() { this.showFlowModal = false; this.resetFlowForm(); }
-  resetFlowForm() { this.flowData = { etapa: '', observaciones: '', operario: '' }; }
+  resetFlowForm() {
+    this.flowData = { status: '', userUpdated: '', transporter: '', vehiclePlate: '', guideNumber: '', deliveredSerial: '', note: '' };
+  }
+
+  // --- Lógica para la Máscara de Placa ---
+  onPlateInput(event: any) {
+    // 1. Solo permitimos letras y números, convertimos a Mayúsculas
+    let value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    // 2. Lógica de la máscara AAA-123
+    if (value.length > 3) {
+        // Insertamos el guion después del tercer carácter
+        value = `${value.slice(0, 3)}-${value.slice(3, 6)}`;
+    }
+
+    // 3. Actualizamos el modelo (limitado a 7 caracteres incluyendo el guion)
+    this.flowData.vehiclePlate = value.slice(0, 7);
+  }
+
+  // Obtener el color del estado seleccionado para el feedback visual
+  getSelectedStatusColor(): string {
+    const selected = this.DELIVERY_STATUSES.find(s => s.value === this.flowData.status);
+    return selected ? selected.color : 'transparent';
+  }
 }

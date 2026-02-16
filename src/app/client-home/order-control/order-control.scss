@@ -496,3 +496,188 @@
     .footer-spacer { display: none; }
   }
 }
+
+/* --- 2. OPTIMIZACIÓN DE TABLA (ELIMINAR ESPACIO ROJO) --- */
+.modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    table-layout: fixed; /* Fuerza el control de las columnas */
+
+    thead tr, .table-row {
+        display: grid;
+        /* Ajuste imperativo: Definimos anchos fijos mínimos para evitar el hueco central */
+        grid-template-columns: 
+            minmax(250px, 1.5fr) /* Cliente */
+            minmax(180px, 1.2fr) /* Identificadores (Pegado al cliente) */
+            minmax(140px, 1fr)   /* Destino */
+            minmax(130px, 0.8fr) /* Estado */
+            minmax(100px, 0.6fr);/* Acciones */
+        gap: 10px;
+        align-items: center;
+        padding: 0 1.5rem;
+    }
+
+    .table-row {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        transition: all 0.2s;
+        
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 51, 102, 0.08);
+        }
+    }
+}
+
+/* --- 3. MODAL PREMIUM (CORRECCIÓN DE ESTILOS PERDIDOS) --- */
+.modal-content.glass-card.wide-modal {
+    max-width: 850px;
+    width: 95%;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+
+    .modal-header {
+        background: var(--primary-blue);
+        padding: 1.2rem 2rem;
+        color: white;
+        
+        .header-title h3 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+        .modal-subtitle { opacity: 0.8; font-size: 0.85rem; }
+    }
+}
+
+.modern-form {
+    .form-section {
+        background: var(--bg-light);
+        border: 1px solid var(--border-color);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.2rem;
+
+        h4 {
+            color: var(--primary-blue);
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            i { color: var(--accent-cyan); }
+        }
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        &.three-cols { grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    .form-group {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* RESET DE ESTILOS NATIVOS */
+        .modern-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            background: white;
+            color: var(--text-main);
+            transition: all 0.2s;
+            appearance: none; /* Quita el estilo por defecto de Safari/Chrome */
+
+            &:focus {
+                outline: none;
+                border-color: var(--accent-cyan);
+                box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.1);
+            }
+
+            &.plate-mask {
+                font-family: 'Inter', monospace;
+                font-weight: 700;
+                text-align: center;
+                letter-spacing: 1px;
+            }
+        }
+    }
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 1rem;
+}
+
+/* --- 4. RESPONSIVIDAD --- */
+@media (max-width: 1366px) {
+    .modern-table {
+        thead tr, .table-row {
+            grid-template-columns: 1.3fr 1.1fr 1fr 0.8fr 0.6fr;
+            padding: 0 1rem;
+            gap: 8px;
+        }
+    }
+}
+
+.custom-select {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--primary-blue);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23003366' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px !important;
+
+    option {
+        padding: 10px;
+        font-weight: 500;
+    }
+}
+
+.status-indicator {
+    margin-top: 8px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+/* Reemplaza múltiples reglas por esta única */
+.status-preview {
+    margin-top: 10px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: inline-block;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+/* Optimiza fuentes y sombras */
+.glass-card {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Usa valores simples */
+}
