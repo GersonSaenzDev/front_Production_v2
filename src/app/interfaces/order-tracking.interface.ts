@@ -20,7 +20,19 @@ export interface OrderTracking {
   storeNumber: string;
   userUpdated: string;
   validationAutomatically: boolean;
-  // Campos opcionales que vienen en el JSON
+
+  // --- NUEVOS CAMPOS DE LOGÍSTICA (ARRAYS PARA HISTORIAL) ---
+  guideNumber?: string[];        // Array de guías
+  transporter?: string[];        // Array de transportadoras
+  vehiclePlate?: string[];       // Array de placas
+  shippingCost?: string[];       // Array de costos
+  warehouseExitDate?: string[];  // Array de fechas de salida
+  
+  // Observaciones estructuradas
+  processControlObservations?: ObservationItem[];
+  dispatchOfObservations?: ObservationItem[];
+
+  // Otros campos opcionales
   saleDate?: string;
   saleValue?: number;
   cost?: number;
@@ -58,6 +70,16 @@ export interface FlowData {
   deliveredSerial?: string; // Lo capturamos como string y luego lo procesamos
   userUpdated: string;
   note: string;
+  // --- AGREGA ESTOS CAMPOS NUEVOS ---
+  induselOrder?: string;
+  induselPurchaseOrder?: string;
+  warehouseDispatchId?: string;
+  warehouseExitDate?: string;
+  dispatchObservations?: string;
+
+  shippingCost: string;
+  processNote: string;
+  dispatchNote: string;
 }
 
 export interface DeliveryStatus {
@@ -65,4 +87,36 @@ export interface DeliveryStatus {
   label: string;
   color: string;
   icon: string;
+  
+}
+
+// Estructura para las notas/observaciones
+export interface ObservationItem {
+    note: string;
+    userUpdated: string;
+    dateUpdated: string;
+    _id?: string; // El backend lo genera automáticamente
+}
+
+// Payload que enviamos al servidor
+export interface OrderUpdatePayload {
+    id: string;
+    deliveryStatus: string;
+    userUpdated: string;
+    address: string;
+    newTransporter: string;
+    newVehiclePlate: string;
+    newGuideNumber: string;
+    newShippingCost: string;
+    newWarehouseExitDate: string;
+    deliveredSerial: string[];
+    processControlObservations: ObservationItem[];
+    dispatchOfObservations: ObservationItem[];
+}
+
+// Estructura de la respuesta del servidor (Response)
+export interface OrderUpdateResponse {
+    ok: boolean;
+    msg: string;
+    data: any; // Aquí vendría el objeto OrderTracking completo actualizado
 }

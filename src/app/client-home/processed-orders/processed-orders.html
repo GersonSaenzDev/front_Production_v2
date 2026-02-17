@@ -2,38 +2,149 @@
     <header class="dashboard-header">
         <div class="title-group">
             <h1>Control de Pedidos Procesados</h1>
-            <p><i class="ti ti-settings-automation"></i>Casa Cliente Indusel</p>
+            <p><i class="ti ti-history"></i> Historial de Entregas Casa Cliente</p>
         </div>
         
         <div class="header-controls">
             <div class="control-wrapper">
-            <div class="date-group">
-                <div class="input-field">
-                    <label>FECHA INICIO</label>
-                    <input type="date" [(ngModel)]="dateRange.start">
+                <div class="date-group">
+                    <div class="input-field">
+                        <label>DESDE</label>
+                        <input type="date" [(ngModel)]="dateRange.start">
+                    </div>
+                    <div class="input-field">
+                        <label>HASTA</label>
+                        <input type="date" [(ngModel)]="dateRange.end">
+                    </div>
                 </div>
-                <div class="input-field">
-                    <label>FECHA FIN</label>
-                    <input type="date" [(ngModel)]="dateRange.end">
-                </div>
-            </div>
-            <button class="btn-refresh-modern" title="Actualizar Datos">
-                <i class="ti ti-refresh"></i>
-            </button>
+                <button class="btn-refresh-modern" (click)="loadProcessedOrders()" title="Sincronizar">
+                    <i class="ti ti-refresh"></i>
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- pogamos las tareas que aqui vamos a controlar,
-     Visualizarcion de Ordenes procesadas
-     debemos determinar de la base cuales son los estados Finales de las Ordenes -->
-        <div class="content-area">
-            <h2>Visualización de Ordenes Procesadas</h2>
-            <p>Aquí se mostrarán las órdenes procesadas dentro del rango de fechas seleccionado.</p>
-
-            <p> * Debemos Saber los Estados de las Órdenes Procesadas, que Mostraremos</p>
+    <section class="action-grid">
+        <div class="glass-card search-section full-width">
+            <div class="card-header">
+                <i class="ti ti-search"></i>
+                <span>Búsqueda Inteligente</span>
+            </div>
+            <div class="card-body">
+                <div class="input-wrapper">
+                    <i class="ti ti-filter"></i>
+                    <input type="text" 
+                           [(ngModel)]="searchQuery" 
+                           (input)="onSearch()" 
+                           class="modern-input" 
+                           placeholder="Filtrar por Cliente, OC, Ciudad o Estado de Entrega...">
+                </div>
+            </div>
         </div>
-            <!-- Aquí iría la tabla o lista de órdenes procesadas -->
+    </section>
 
+    <section class="table-container glass-card">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Cliente / Almacén</th>
+                    <th>Identificadores</th>
+                    <th>Estado de Entrega</th>
+                    <th>Intentos</th>
+                    <th class="text-center">Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let order of paginatedOrders" class="table-row">
+                    <td>
+                        <div class="client-cell">
+                            <span class="client-badge" [attr.data-store]="order.store">{{order.store}}</span>
+                            <span class="client-name">{{order.clientName}}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="ids-cell">
+                            <small class="muted">OC: {{order.storePurchaseOrder}}</small>
+                            <small class="muted">Ciudad: {{order.city}}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-pill" [attr.data-status]="order.deliveryStatus">
+                            {{order.deliveryStatus}}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="attempts-badge">
+                            <i class="ti ti-truck-return"></i>
+                            {{ order.guideNumber?.length || 0 }}
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn-action view" (click)="openDetails(order)">
+                            <i class="ti ti-file-text"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
+        <footer class="table-footer-modern">
+            <div class="footer-settings">
+                <select [(ngModel)]="pageSize" (change)="changePageSize()" class="select-premium">
+                    <option *ngFor="let size of pageSizeOptions" [value]="size">{{size}}</option>
+                </select>
+                <span class="label-caps">de {{filteredOrders.length}} registros</span>
+            </div>
+            <div class="pagination-controls">
+                <button class="control-btn" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+                    <i class="ti ti-chevron-left"></i>
+                </button>
+                <span class="page-info">Página {{currentPage}} de {{totalPages}}</span>
+                <button class="control-btn" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+                    <i class="ti ti-chevron-right"></i>
+                </button>
+            </div>
+        </footer>
+    </section>
+</div>
+
+<div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetails()">
+    <div class="modal-content glass-card wide-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="ti ti-id-badge-2"></i> Expediente Final de Orden</h3>
+            <button class="close-btn" (click)="closeDetails()">&times;</button>
+        </div>
+        <div class="modal-body" *ngIf="selectedOrder">
+            <div class="detail-grid-v2">
+                <div class="detail-box">
+                    <h5><i class="ti ti-user-check"></i> Información del Cliente</h5>
+                    <p><strong>Nombre:</strong> {{selectedOrder.clientName}}</p>
+                    <p><strong>Dirección:</strong> {{selectedOrder.address}}</p>
+                    <p><strong>Ciudad:</strong> {{selectedOrder.city}}</p>
+                    <p><strong>Teléfonos:</strong> {{selectedOrder.phones}}</p>
+                </div>
+
+                <div class="detail-box highlight">
+                    <h5><i class="ti ti-sum"></i> Resumen de Costos</h5>
+                    <p><strong>Total Fletes:</strong> {{ getTotalShippingCost(selectedOrder.shippingCost) | currency:'USD':'symbol':'1.0-0' }}</p>
+                    <p><strong>N° Intentos:</strong> {{ selectedOrder.guideNumber?.length }}</p>
+                    <p><strong>Última Actualización:</strong> {{selectedOrder.dateUpdated}}</p>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <h5><i class="ti ti-list-check"></i> Trazabilidad de Intentos de Entrega</h5>
+                <div class="timeline-container">
+                    <div *ngFor="let guide of selectedOrder.guideNumber; let i = index" class="timeline-item">
+                        <div class="timeline-marker">{{ i + 1 }}</div>
+                        <div class="timeline-content">
+                            <p><strong>Guía:</strong> {{ guide || 'N/A' }} | <strong>Transporte:</strong> {{ selectedOrder.transporter?.[i] }}</p>
+                            <p><strong>Vehículo:</strong> {{ selectedOrder.vehiclePlate?.[i] }} | <strong>Fecha Salida:</strong> {{ selectedOrder.warehouseExitDate?.[i] }}</p>
+                            <p class="cost-text">Costo de este tramo: {{ selectedOrder.shippingCost?.[i] | currency }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

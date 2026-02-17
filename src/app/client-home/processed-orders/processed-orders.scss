@@ -1,6 +1,5 @@
-/* app/client-home/order-control/order-control.scss */
+/* app/client-home/processed-orders/processed-orders.scss */
 
-// --- 1. VARIABLES Y BASE ---
 :host {
     --primary-blue: #003366;
     --secondary-blue: #004d99;
@@ -9,6 +8,7 @@
     --text-muted: #64748b;
     --border-color: #e2e8f0;
     --bg-light: #f8fafc;
+    --success-green: #10b981;
 }
 
 .main-container {
@@ -35,649 +35,175 @@
         p { margin: 0; opacity: 0.85; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
     }
 
-    .header-controls {
+    .header-controls .control-wrapper {
         display: flex;
         align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 15px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(4px);
 
-        .control-wrapper {
+        .date-group {
             display: flex;
-            align-items: center; // Balance visual
-            gap: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px 15px;
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(4px);
-
-            .date-group {
+            gap: 12px;
+            .input-field {
                 display: flex;
-                gap: 12px;
-
-                .input-field {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 5px;
-
-                    label { font-size: 0.65rem; font-weight: 800; color: rgba(255, 255, 255, 0.9); letter-spacing: 0.8px; }
-                    input {
-                        background: white; border: none; border-radius: 8px;
-                        padding: 7px 10px; font-size: 0.85rem; color: var(--primary-blue);
-                        width: 135px; outline: none; transition: 0.2s;
-                        &:focus { box-shadow: 0 0 0 2px var(--accent-cyan); }
-                    }
+                flex-direction: column;
+                gap: 5px;
+                label { font-size: 0.65rem; font-weight: 800; color: rgba(255, 255, 255, 0.9); }
+                input {
+                    background: white; border: none; border-radius: 8px;
+                    padding: 7px 10px; font-size: 0.85rem; color: var(--primary-blue);
+                    width: 135px; outline: none;
                 }
             }
+        }
 
-            .btn-refresh-modern {
-                background: var(--accent-cyan); color: white; border: none;
-                width: 40px; height: 40px; border-radius: 10px;
-                cursor: pointer; display: flex; align-items: center; justify-content: center;
-                box-shadow: 0 4px 10px rgba(0, 210, 255, 0.3);
-                transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                
-                &:hover { background: white; color: var(--primary-blue); transform: rotate(180deg) scale(1.1); }
-                &:active { transform: scale(0.9); }
-            }
+        .btn-refresh-modern {
+            background: var(--accent-cyan); color: white; border: none;
+            width: 40px; height: 40px; border-radius: 10px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease;
+            &:hover { background: white; color: var(--primary-blue); transform: rotate(180deg); }
         }
     }
 }
 
-// --- 3. ACCIONES Y FORMULARIOS ---
+// --- 3. BÚSQUEDA INTELIGENTE ---
 .action-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
     margin-bottom: 2rem;
+    .full-width { width: 100%; }
 }
 
 .glass-card {
-    background: white;
-    border-radius: 12px;
+    background: white; border-radius: 12px; padding: 1.5rem;
     box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    padding: 1.5rem;
-
+    
     .card-header {
         display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem;
-        color: #002b5c; font-weight: 600; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;
+        color: var(--primary-blue); font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;
     }
-}
 
-.modern-form-group {
-    margin-bottom: 1.5rem;
-    label { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 5px; }
-    
     .input-wrapper {
         position: relative;
-        i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
         .modern-input {
-            width: 100%; padding: 10px 10px 10px 38px; background: var(--bg-light);
-            border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 0.9rem;
-            &:focus { outline: none; border-color: var(--secondary-blue); background: white; }
+            width: 100%; padding: 12px 15px 12px 45px; background: var(--bg-light);
+            border: 1.5px solid var(--border-color); border-radius: 10px;
+            &:focus { outline: none; border-color: var(--accent-cyan); background: white; }
         }
     }
 }
 
-// --- 4. TABLA Y ESTADOS ---
+// --- 4. TABLA DE PROCESADOS (COLUMNAS AJUSTADAS) ---
 .modern-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 10px;
-    margin-top: -10px;
-
-    thead th {
-        padding: 12px 15px; font-size: 0.7rem; font-weight: 800;
-        color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;
-    }
-
-    .table-row {
-        background: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        transition: all 0.2s ease;
-
-        td {
-            padding: 16px 15px; vertical-align: middle;
-            border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
-
-            &:first-child { border-left: 1px solid #f1f5f9; border-radius: 10px 0 0 10px; }
-            &:last-child { border-right: 1px solid #f1f5f9; border-radius: 0 10px 10px 0; }
-        }
-
-        &:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.05); background: var(--bg-light); }
-    }
-}
-
-// Celdas Especiales
-.client-cell {
-    display: flex; align-items: center; gap: 12px;
-    /* --- COLORES DINÁMICOS PARA CLIENTES (BADGES) --- */
-.client-badge {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-
-    // Configuración de colores por atributo data-store
-    &[data-store="SAO"]             { background: #fee2e2; color: #991b1b; } // Rojo
-    &[data-store="OLIMPICA"]        { background: #ff4f4f; color: #ffffff; } // Rojo
-    &[data-store="EASY"]            { background: #f37777; color: #f7e713; } // Naranja/Ambar
-    &[data-store="EXITO"]           { background: #faf875; color: #000000; } // Amarillo
-    &[data-store="CENCOSUD"]        { background: #badef7; color: #0e8ee4; } // Azul Cielo
-    &[data-store="FALABELLA"]       { background: #84db33; color: #ffffff; } // Verde
-    &[data-store="SOELCO"]          { background: #f3e8ff; color: #6b21a8; } // Morado
-    &[data-store="ELECTROJAPONESA"] { background: #ffe4e6; color: #9f1239; } // Rosa/Rojo
-}
-    .client-name { font-weight: 600; color: var(--text-main); font-size: 0.85rem; }
-}
-
-.status-pill {
-    padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-    &[data-status="PENDIENTE"], &[data-status="INGRESADO"] { background: #fff7ed; color: #c2410c; }
-    &[data-status="PROCESADO"] { background: #f0fdf4; color: #15803d; }
-    &[data-status="EN RUTA"] { background: #eff6ff; color: #1d4ed8; }
-}
-
-.actions-group {
-    display: flex; justify-content: center; gap: 10px;
-    .btn-action {
-        width: 34px; height: 34px; border-radius: 8px; border: none;
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; transition: 0.2s; background: #f1f5f9; color: var(--text-muted);
-        &:hover { transform: scale(1.1); }
-        &.view:hover { background: var(--secondary-blue); color: white; }
-        &.add:hover { background: #10b981; color: white; }
-    }
-}
-
-// paginación
-.table-footer-modern {
-  display: flex;
-  align-items: center;
-  justify-content: space-between; // Separa el bloque izquierdo del grupo central
-  padding: 1.25rem 2.5rem;
-  background: #ffffff;
-  border-top: 1px solid #f1f5f9;
-  border-radius: 0 0 16px 16px;
-  width: 100%;
-  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.01);
-
-  // --- 1. Bloque Izquierdo (Fijo) ---
-  .footer-settings {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 0 0 auto; // No crece, se queda a la izquierda
-  }
-
-  // --- 2. Grupo Central (Centrado) ---
-  .footer-center-group {
-    display: flex;
-    align-items: center;
-    gap: 3rem; // Espacio amplio entre el texto y los botones
-    flex: 1; // Toma el resto del espacio
-    justify-content: center; // Centra el contenido horizontalmente
-    margin-left: 2rem; // Margen de seguridad para no pegarse a la izquierda en pantallas pequeñas
-  }
-
-  // --- Estilos de Componentes ---
-
-  // Etiquetas en mayúsculas
-  .label-caps {
-    font-size: 0.65rem;
-    font-weight: 800;
-    color: #94a3b8;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  // Selector Premium
-  .select-premium-wrapper {
-    position: relative;
-    .select-premium {
-      appearance: none;
-      background: #f8fafc;
-      border: 1.5px solid #e2e8f0;
-      padding: 6px 32px 6px 14px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #003366;
-      cursor: pointer;
-      transition: all 0.2s;
-      &:hover { border-color: #00d2ff; }
-      &:focus { outline: none; border-color: #00d2ff; background: #ffffff; }
-    }
-    i {
-      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-      color: #64748b; font-size: 0.8rem; pointer-events: none;
-    }
-  }
-
-  // Texto de Estado
-  .status-text {
-    font-size: 0.85rem;
-    color: #475569;
-    white-space: nowrap; // Evita saltos de línea
-    .highlight { color: #003366; font-weight: 700; margin: 0 4px; }
-    .muted { color: #94a3b8; font-weight: 400; }
-  }
-
-  // Controles de Navegación
-  .pagination-controls {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-
-    .control-btn {
-      width: 36px; height: 36px;
-      border-radius: 10px; border: 1px solid #e2e8f0;
-      background: #ffffff; color: #003366;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      
-      &:hover:not(:disabled) {
-        background: #003366; color: #ffffff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
-      }
-      &:disabled { opacity: 0.4; cursor: not-allowed; background: #f8fafc; }
-      i { font-size: 1rem; }
-    }
-
-    .page-info {
-      display: flex; align-items: center; gap: 8px; font-size: 0.85rem;
-      .muted { color: #64748b; font-weight: 500; }
-      .page-number-active {
-        background: #003366; color: #ffffff;
-        padding: 4px 12px; border-radius: 6px;
-        font-weight: 700; min-width: 32px; text-align: center;
-      }
-    }
-  }
-}
-
-// Estilo extra para el botón Cerrar del modal que mencionaste
-.modal-footer {
-    padding: 1.5rem 2rem;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: flex-end;
-    
-    .btn-modern-close {
-        padding: 0.8rem 2.5rem;
-        background: #002b5c;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: 0.3s;
-        box-shadow: 0 4px 10px rgba(0, 43, 92, 0.2);
-
-        &:hover {
-            background: #004d99;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 43, 92, 0.3);
-        }
-    }
-}
-
-// --- 6. MODALES (SISTEMA SOFISTICADO) ---
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px);
-    display: flex; justify-content: center; align-items: center;
-    z-index: 1100; animation: fadeIn 0.3s ease;
-}
-
-.modal-content.glass-card {
-    width: 95%; max-width: 1000px; max-height: 90vh;
-    background: #ffffff; border-radius: 20px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    display: flex; flex-direction: column; overflow: hidden;
-    animation: modalAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-
-    .modal-header {
-        padding: 1.5rem 2rem; background: var(--primary-blue); color: white;
-        display: flex; justify-content: space-between; align-items: center;
-        h3 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
-        .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-    }
-
-    .modal-body {
-        padding: 2rem; overflow-y: auto;
-        .detail-container { display: flex; flex-direction: column; gap: 1.5rem; }
-    }
-
-    .modal-footer {
-        padding: 1.5rem 2rem; border-top: 1px solid var(--border-color);
-        display: flex; justify-content: flex-end; background: white;
-    }
-}
-
-// Secciones Internas del Modal
-.detail-section {
-    background: var(--bg-light); border-radius: 12px; padding: 1.5rem;
-    border: 1px solid var(--border-color);
-
-    h4 {
-        color: var(--text-main); font-weight: 700; font-size: 1rem;
-        border-bottom: 2px solid #3b82f6; display: inline-block;
-        padding-bottom: 4px; margin-bottom: 1.2rem; text-transform: uppercase;
-    }
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.5rem;
-
-    .detail-item {
-        font-size: 0.9rem; color: var(--text-main);
-        strong { display: block; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; margin-bottom: 4px; }
-    }
-}
-
-// --- 7. BOTONES MODERNOS ---
-.btn-modern {
-    display: flex; align-items: center; gap: 0.5rem;
-    padding: 0.75rem 2rem; font-size: 0.95rem; font-weight: 600;
-    border-radius: 10px; cursor: pointer; transition: all 0.2s; border: none;
-
-    &.btn-secondary {
-        background: #f1f5f9; color: #475569; border: 1px solid var(--border-color);
-        &:hover { background: #e2e8f0; transform: translateY(-2px); }
-    }
-
-    &.btn-primary {
-        background: var(--primary-blue); color: white;
-        &:hover { background: var(--secondary-blue); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    }
-}
-
-// --- 8. ANIMACIONES Y OTROS ---
-@keyframes modalAppear {
-    from { opacity: 0; transform: scale(0.9) translateY(30px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.divider { border: 0; border-top: 1px solid rgba(0,0,0,0.05); margin: 0.5rem 0; }
-
-.drop-zone.file-selected {
-    border: 2px dashed #10b981; background: #f0fdf4;
-    .file-name-display { font-weight: 700; color: #065f46; margin: 8px 0; display: block; }
-}
-
-/* Estilos para el nuevo botón de carga */
-.upload-actions {
-  margin-top: 1rem;
-  
-  .w-100 { width: 100%; }
-  
-  .btn-modern {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 0.8rem;
-    font-size: 0.9rem;
-    
-    i { font-size: 1.2rem; }
-    
-    &:disabled {
-      background: #e2e8f0;
-      color: #94a3b8;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
-  }
-}
-
-/* REFACTORIZACIÓN DEL FOOTER PARA EVITAR SOLAPAMIENTOS */
-.table-footer-modern {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr; // Tres columnas: Izquierda, Centro, Derecha (espaciador)
-  align-items: center;
-  padding: 1.5rem 2rem;
-  background: #ffffff;
-  border-top: 1px solid #f1f5f9;
-  border-radius: 0 0 16px 16px;
-  gap: 2rem;
-
-  .footer-settings {
-    justify-self: start;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .footer-center-group {
-    justify-self: center;
-    display: flex;
-    align-items: center;
-    gap: 2.5rem;
-  }
-
-  .footer-spacer {
-    justify-self: end;
-  }
-
-  // Ajustes de texto para evitar que se vea apeñuzcado
-  .status-text {
-    font-size: 0.8rem;
-    .muted { font-size: 0.75rem; }
-  }
-
-  .pagination-controls {
-    .page-info {
-      gap: 6px;
-      .muted { font-size: 0.75rem; }
-    }
-  }
-}
-
-/* Media Query para pantallas pequeñas */
-@media (max-width: 1100px) {
-  .table-footer-modern {
-    grid-template-columns: 1fr; // En pantallas chicas, apilamos los elementos
-    justify-items: center;
-    gap: 1.5rem;
-    
-    .footer-center-group {
-      flex-direction: column;
-      gap: 1rem;
-    }
-    
-    .footer-spacer { display: none; }
-  }
-}
-
-/* --- 2. OPTIMIZACIÓN DE TABLA (ELIMINAR ESPACIO ROJO) --- */
-.modern-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 8px;
-    table-layout: fixed; /* Fuerza el control de las columnas */
+    width: 100%; border-collapse: separate; border-spacing: 0 8px;
 
     thead tr, .table-row {
         display: grid;
-        /* Ajuste imperativo: Definimos anchos fijos mínimos para evitar el hueco central */
-        grid-template-columns: 
-            minmax(250px, 1.5fr) /* Cliente */
-            minmax(180px, 1.2fr) /* Identificadores (Pegado al cliente) */
-            minmax(140px, 1fr)   /* Destino */
-            minmax(130px, 0.8fr) /* Estado */
-            minmax(100px, 0.6fr);/* Acciones */
-        gap: 10px;
-        align-items: center;
-        padding: 0 1.5rem;
+        // Ajuste para 5 columnas: Cliente, Ids, Estado, Intentos, Acciones
+        grid-template-columns: 1.5fr 1.2fr 1fr 0.6fr 0.5fr;
+        gap: 15px; align-items: center; padding: 0 1.5rem;
+    }
+
+    thead th {
+        font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; padding-bottom: 10px;
     }
 
     .table-row {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        transition: all 0.2s;
-        
-        &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 51, 102, 0.08);
+        background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        transition: 0.2s;
+        td { padding: 1.2rem 0; border: none; }
+        &:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,51,102,0.08); }
+    }
+}
+
+// --- 5. ESTADOS Y BADGES ---
+.client-badge {
+    padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
+    &[data-store="OLIMPICA"] { background: #ff4f4f; color: white; }
+    &[data-store="EXITO"] { background: #faf875; color: black; }
+    &[data-store="EASY"] { background: #f37777; color: #f7e713; }
+}
+
+.status-pill {
+    padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+    &[data-status="ENTREGADO/TIENDA"] { background: #f0fdf4; color: #166534; }
+    &[data-status="NOVEDAD CLIENTE"] { background: #fffbeb; color: #92400e; }
+    &[data-status="PENDIENTE ENTREGA"] { background: #fff1f2; color: #9f1239; }
+}
+
+.attempts-badge {
+    display: flex; align-items: center; gap: 8px; background: #f1f5f9;
+    padding: 5px 12px; border-radius: 8px; font-weight: 700; color: var(--primary-blue);
+}
+
+// --- 6. PAGINADOR (REPARADO) ---
+.table-footer-modern {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; padding: 1.5rem 2rem; background: white;
+    border-top: 1px solid #f1f5f9; border-radius: 0 0 16px 16px;
+
+    .footer-settings {
+        display: flex; align-items: center; gap: 10px;
+        .select-premium {
+            padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: 700;
+        }
+    }
+
+    .pagination-controls {
+        display: flex; align-items: center; gap: 15px;
+        .control-btn {
+            width: 35px; height: 35px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: white; cursor: pointer;
+            &:hover:not(:disabled) { background: var(--primary-blue); color: white; }
+            &:disabled { opacity: 0.3; }
         }
     }
 }
 
-/* --- 3. MODAL PREMIUM (CORRECCIÓN DE ESTILOS PERDIDOS) --- */
-.modal-content.glass-card.wide-modal {
-    max-width: 850px;
-    width: 95%;
-    background: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+// --- 7. MODAL Y TIMELINE ---
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 2000;
+}
 
+.wide-modal {
+    width: 90%; max-width: 900px; max-height: 85vh; overflow-y: auto;
     .modal-header {
-        background: var(--primary-blue);
-        padding: 1.2rem 2rem;
-        color: white;
-        
-        .header-title h3 { margin: 0; font-size: 1.2rem; font-weight: 700; }
-        .modal-subtitle { opacity: 0.8; font-size: 0.85rem; }
+        background: var(--primary-blue); color: white; padding: 1.2rem 2rem;
+        display: flex; justify-content: space-between; align-items: center;
+        h3 { margin: 0; font-size: 1.1rem; }
+        .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+    }
+    .modal-body { padding: 2rem; }
+}
+
+.detail-grid-v2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;
+    .detail-box {
+        padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-light);
+        h5 { color: var(--primary-blue); margin-bottom: 10px; font-weight: 700; }
+        &.highlight { border-left: 4px solid var(--accent-cyan); }
     }
 }
 
-.modern-form {
-    .form-section {
-        background: var(--bg-light);
-        border: 1px solid var(--border-color);
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 1.2rem;
-
-        h4 {
-            color: var(--primary-blue);
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            margin-bottom: 1.2rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            i { color: var(--accent-cyan); }
+.timeline-container {
+    .timeline-item {
+        display: flex; gap: 15px; margin-bottom: 15px; position: relative;
+        .timeline-marker {
+            width: 28px; height: 28px; border-radius: 50%; background: var(--primary-blue);
+            color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; z-index: 2;
+        }
+        .timeline-content {
+            background: white; border: 1px solid var(--border-color); padding: 10px 15px; border-radius: 10px; flex: 1;
+            p { margin: 0; font-size: 0.85rem; }
+            .cost-text { color: var(--success-green); font-weight: 700; margin-top: 5px; }
+        }
+        &:not(:last-child)::after {
+            content: ''; position: absolute; left: 14px; top: 28px; width: 2px; height: calc(100% - 13px); background: var(--border-color);
         }
     }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-        &.three-cols { grid-template-columns: 1fr 1fr 1fr; }
-    }
-
-    .form-group {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-
-        label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        /* RESET DE ESTILOS NATIVOS */
-        .modern-input {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1.5px solid var(--border-color);
-            border-radius: 10px;
-            font-size: 0.9rem;
-            background: white;
-            color: var(--text-main);
-            transition: all 0.2s;
-            appearance: none; /* Quita el estilo por defecto de Safari/Chrome */
-
-            &:focus {
-                outline: none;
-                border-color: var(--accent-cyan);
-                box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.1);
-            }
-
-            &.plate-mask {
-                font-family: 'Inter', monospace;
-                font-weight: 700;
-                text-align: center;
-                letter-spacing: 1px;
-            }
-        }
-    }
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 1rem;
-}
-
-/* --- 4. RESPONSIVIDAD --- */
-@media (max-width: 1366px) {
-    .modern-table {
-        thead tr, .table-row {
-            grid-template-columns: 1.3fr 1.1fr 1fr 0.8fr 0.6fr;
-            padding: 0 1rem;
-            gap: 8px;
-        }
-    }
-}
-
-.custom-select {
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--primary-blue);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23003366' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 16px;
-    padding-right: 40px !important;
-
-    option {
-        padding: 10px;
-        font-weight: 500;
-    }
-}
-
-.status-indicator {
-    margin-top: 8px;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: white;
-    text-transform: uppercase;
-    display: inline-block;
-    transition: all 0.3s ease;
-}
-
-/* Reemplaza múltiples reglas por esta única */
-.status-preview {
-    margin-top: 10px;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    display: inline-block;
-    text-transform: uppercase;
-    transition: all 0.3s ease;
-}
-
-/* Optimiza fuentes y sombras */
-.glass-card {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Usa valores simples */
 }

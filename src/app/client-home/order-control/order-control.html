@@ -123,12 +123,12 @@
             <td>
             <div class="ids-cell">
                 <div class="id-item">
-                <span class="label">OC TIENDA:</span>
+                <span class="label">OC TIENDA: </span>
                 <span class="value">{{order.storePurchaseOrder}}</span>
                 </div>
                 <div class="id-item">
-                <span class="label">INDUSEL:</span>
-                <span class="value secondary">{{order.induselOrder}}</span>
+                <span class="label"><strong>Recepcion: </strong></span>
+                <span class="value secondary">{{order.fileReceptionDate}}</span>
                 </div>
             </div>
             </td>
@@ -270,46 +270,34 @@
                 <i class="ti ti-git-fork"></i>
                 <div>
                     <h3>Flujo Operativo Casa Cliente</h3>
-                    <span class="modal-subtitle">Actualizando Orden: <b>{{selectedOrder?.induselOrder || selectedOrder?.storePurchaseOrder}}</b></span>
+                    <span class="modal-subtitle">
+                        Orden: <b>{{selectedOrder?.storePurchaseOrder}}</b> | 
+                        Cliente: <b>{{selectedOrder?.clientName}}</b>
+                    </span>
                 </div>
             </div>
             <button class="close-btn" (click)="closeFlow()">&times;</button>
         </div>
 
         <div class="modal-body">
-            <form (ngSubmit)="saveFlow()" #flowForm="ngForm" class="modern-form">
+            <form (ngSubmit)="saveOrderFlow()" #flowForm="ngForm" class="modern-form">
                 
                 <div class="form-section">
                     <h4><i class="ti ti-settings-automation"></i> CONTROL DE PROCESO</h4>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Estado Actual</label>
-                            <div class="form-group">
-                                <div class="input-wrapper">
-                                    <select [(ngModel)]="flowData.status" name="status" class="modern-input custom-select" required #statusModel="ngModel">
-                                        <option value="" disabled selected>Seleccione el estado de la entrega...</option>
-                                        <option *ngFor="let status of DELIVERY_STATUSES" [value]="status.value">
-                                            {{ status.icon }} {{ status.label }}
-                                        </option>
-                                    </select>
-                                    
-                                    <div class="status-indicator" *ngIf="flowData.status" 
-                                        [style.background-color]="getSelectedStatusColor()">
-                                        Estado seleccionado: {{ flowData.status }}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="valid-icon" *ngIf="statusModel.valid && statusModel.touched">
-                                <i class="ti ti-circle-check-filled"></i>
-                            </div>
+                            <select [(ngModel)]="flowData.status" name="status" class="modern-input" required>
+                                <option value="" disabled selected>Seleccione estado...</option>
+                                <option *ngFor="let status of DELIVERY_STATUSES" [value]="status.value">
+                                    {{ status.icon }} {{ status.label }}
+                                </option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Operario Responsable</label>
                             <input type="text" [(ngModel)]="flowData.userUpdated" name="userUpdated" 
-                                   class="modern-input" placeholder="Nombre completo" required #userModel="ngModel">
-                            <div class="valid-icon" *ngIf="userModel.valid && userModel.touched">
-                                <i class="ti ti-circle-check-filled"></i>
-                            </div>
+                                   class="modern-input" placeholder="Nombre completo" required>
                         </div>
                     </div>
                 </div>
@@ -319,25 +307,44 @@
                     <div class="form-row three-cols">
                         <div class="form-group">
                             <label>Transportadora</label>
-                            <input type="text" [(ngModel)]="flowData.transporter" name="transporter" 
-                                class="modern-input" placeholder="Datos Transportadora">
+                            <input type="text" [(ngModel)]="flowData.transporter" name="transporter" class="modern-input">
                         </div>
                         <div class="form-group">
                             <label>Placa Vehículo</label>
-                            <div class="input-wrapper">
-                                <input type="text" 
-                                    [ngModel]="flowData.vehiclePlate" 
-                                    (input)="onPlateInput($event)" 
-                                    name="vehiclePlate"
-                                    class="modern-input plate-mask" 
-                                    placeholder="ABC-123"
-                                    maxlength="7">
-                            </div>
+                            <input type="text" [ngModel]="flowData.vehiclePlate" (input)="onPlateInput($event)" 
+                                   name="vehiclePlate" class="modern-input" maxlength="7">
                         </div>
                         <div class="form-group">
                             <label>Número de Guía</label>
-                            <input type="text" [(ngModel)]="flowData.guideNumber" name="guideNumber" 
-                                class="modern-input" placeholder="# Guía">
+                            <input type="text" [(ngModel)]="flowData.guideNumber" name="guideNumber" class="modern-input">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Costo de Envío</label>
+                            <input type="text" [(ngModel)]="flowData.shippingCost" name="shippingCost" 
+                                   class="modern-input" placeholder="Ej: 45000">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Salida Almacén</label>
+                            <input type="date" [(ngModel)]="flowData.warehouseExitDate" name="warehouseExitDate" class="modern-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4><i class="ti ti-clipboard-check"></i> OBSERVACIONES DETALLADAS</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nota Control de Proceso</label>
+                            <textarea [(ngModel)]="flowData.processNote" name="processNote" 
+                                      class="modern-input" rows="2" placeholder="Novedades de calidad..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Nota de Despacho / Logística</label>
+                            <textarea [(ngModel)]="flowData.dispatchNote" name="dispatchNote" 
+                                      class="modern-input" rows="2" placeholder="Novedades del transporte..."></textarea>
                         </div>
                     </div>
                 </div>
@@ -345,23 +352,16 @@
                 <div class="form-section">
                     <h4><i class="ti ti-scanned"></i> TRAZABILIDAD</h4>
                     <div class="form-group">
-                        <label>Seriales Entregados (EAN)</label>
+                        <label>Seriales Entregados (Separados por coma)</label>
                         <input type="text" [(ngModel)]="flowData.deliveredSerial" name="deliveredSerial" 
-                               class="modern-input" placeholder="Separa seriales por coma (,)">
-                    </div>
-                    <div class="form-group">
-                        <label>Notas / Observaciones del Movimiento</label>
-                        <textarea [(ngModel)]="flowData.note" name="note" class="modern-input" 
-                                  rows="2" placeholder="Novedades encontradas..."></textarea>
+                               class="modern-input" placeholder="Ej: 7706..., 7708...">
                     </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-modern btn-secondary" (click)="closeFlow()">
-                        <i class="ti ti-x"></i> Cancelar
-                    </button>
+                    <button type="button" class="btn-modern btn-secondary" (click)="closeFlow()">Cancelar</button>
                     <button type="submit" class="btn-modern btn-primary" [disabled]="!flowForm.valid">
-                        <i class="ti ti-device-floppy"></i> Finalizar Registro
+                        Finalizar Registro
                     </button>
                 </div>
             </form>

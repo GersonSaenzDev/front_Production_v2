@@ -8,7 +8,9 @@ import { catchError, map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { 
     OrderTrackingResponse, 
-    OrderLoadingResponse 
+    OrderLoadingResponse, 
+    OrderUpdatePayload,
+    OrderUpdateResponse
 } from '../interfaces/order-tracking.interface';
 
 @Injectable({
@@ -26,7 +28,7 @@ export class OrderTrackingService {
     private readonly LOADING_URL   = `${this.ENDPOINT}/orderLoading`;
     private readonly TRACKING_URL  = `${this.ENDPOINT}/viewOrderTracking`;
     private readonly PROCESSED_URL = `${this.ENDPOINT}/viewProcessedTrackings`;
-    private readonly UPDATE_URL = `${this.ENDPOINT}/updateOrder`;
+    private readonly UPDATE_URL = `${this.ENDPOINT}/orderUpdate`;
 
     /**
      * @description Manejo centralizado de errores HTTP.
@@ -100,18 +102,17 @@ export class OrderTrackingService {
     }
 
     /**
-     * @description Actualiza el flujo operativo de una orden específica.
-     * @param id ID del documento en MongoDB
-     * @param payload Datos a actualizar (status, transporter, plate, observations, etc.)
+     * @description Envía la actualización completa del flujo de la orden (POST)
+     * @param payload Objeto con los datos de logística y observaciones
      */
-    updateOrder(id: string, payload: any): Observable<any> {
-        // Construimos la URL con el ID (Ej: .../updateOrder/699108fc...)
-        const url = `${this.UPDATE_URL}/${id}`;
-
-        // Usamos PATCH para actualizaciones parciales, ideal para Mongoose
-        return this.http.patch<any>(url, payload)
+    postOrderUpdate(payload: OrderUpdatePayload): Observable<OrderUpdateResponse> {
+        return this.http.post<OrderUpdateResponse>(this.UPDATE_URL, payload)
             .pipe(
-                catchError(this.handleError.bind(this))
+                catchError(this.handleError.bind(this)),
+                map(res => {
+                    console.log('ORDER UPDATE: Respuesta del servidor:', res.msg);
+                    return res;
+                })
             );
     }
 }
