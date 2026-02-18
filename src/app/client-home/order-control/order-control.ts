@@ -56,8 +56,8 @@ export class OrderControl implements OnInit {
     { value: 'ENTREGADO_TRANSPORTADOR', label: 'Entregado (Incump. Transportador)', color: '#d97706', icon: '📦' },
     { value: 'ENTREGADO_RUTA', label: 'Entregado (Incump. Frecuencia Ruta)', color: '#a855f7', icon: '🛤️' },
     { value: 'ENTREGADO_INVENTARIO', label: 'Entregado (Incump. Producto Agotado)', color: '#4b5563', icon: '🌑' },
-    { value: 'DESPACHADO_AGOTADO', label: 'Despachado (Trans. Producto Agotado)', color: '#4b5563', icon: '🌑' },
     { value: 'ENTREGADO_SECCIONAL', label: 'Despachado desde Seccional', color: '#65a30d', icon: '🌿' },
+    { value: 'DESPACHADO_AGOTADO', label: 'Despachado (Trans. Producto Agotado)', color: '#4b5563', icon: '🌑' },
     { value: 'DESPACHO_OPORTUNO', label: 'Despacho en Tiempos', color: '#0d9488', icon: '✨' },
     { value: 'AVERIA_TRANSPORTADOR', label: 'Producto Averiado por Transportadora', color: '#6b7280', icon: '⚠️' }
   ];
@@ -77,6 +77,7 @@ export class OrderControl implements OnInit {
     deliveryStatus: '',
     userUpdated: '',
     induselOrder: '',
+    warehouseDispatchId: '',
     transporter: '',
     vehiclePlate: '',
     guideNumber: '',
@@ -252,11 +253,13 @@ export class OrderControl implements OnInit {
         deliveryStatus: this.flowData.status,
         userUpdated: this.flowData.userUpdated,
         induselOrder: this.flowData.induselOrder,
+        warehouseDispatchId: this.flowData.warehouseDispatchId,
+        warehouseExitDate: this.flowData.warehouseExitDate,
         address: order.address || '', 
-        newTransporter: this.flowData.transporter.toUpperCase(),
-        newVehiclePlate: this.flowData.vehiclePlate,
-        newGuideNumber: this.flowData.guideNumber,
-        newShippingCost: this.flowData.shippingCost,
+        transporter: this.flowData.transporter.toUpperCase(),
+        vehiclePlate: this.flowData.vehiclePlate,
+        guideNumber: this.flowData.guideNumber,
+        shippingCost: this.flowData.shippingCost,
         newWarehouseExitDate: this.flowData.warehouseExitDate,
         // Manejo de seriales
         deliveredSerial: this.flowData.deliveredSerial 

@@ -246,7 +246,9 @@
                         <div class="detail-item"><strong>Estado Entrega:</strong> {{selectedOrder.deliveryStatus}}</div>
                         <div class="detail-item"><strong>Recepción Archivo:</strong> {{selectedOrder.fileReceptionDate}}</div>
                         <div class="detail-item"><strong>Última Actualización:</strong> {{selectedOrder.dateUpdated}}</div>
-                        <div class="detail-item"><strong>Usuario Actualizó:</strong> {{selectedOrder.userUpdated}}</div>
+                        <div class="detail-item"><strong>Placa:</strong> {{selectedOrder.vehiclePlate[0]}}</div>
+                        <div class="detail-item"><strong>Orden Indusel:</strong> {{selectedOrder.induselOrder}}</div>
+                        <div class="detail-item"><strong>Salida Bodega:</strong> {{selectedOrder.warehouseExitDate}}</div>
                         
                     </div>
                 </section>
@@ -312,6 +314,17 @@
                             <small class="text-error" *ngIf="isInduselRequired() && induselModel.invalid && induselModel.touched">
                                 La orden Indusel es obligatoria para este estado.
                             </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Salida de Bodega</label>
+                            <input type="text" [(ngModel)]="flowData.warehouseDispatchId" name="warehouseDispatchId" 
+                                   class="modern-input" placeholder="Número de despacho de bodega">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Fecha Salida de Bodega</label>
+                            <input type="date" [(ngModel)]="flowData.warehouseExitDate" name="warehouseExitDate" class="modern-input">
                         </div>
                     </div>
                 </div>

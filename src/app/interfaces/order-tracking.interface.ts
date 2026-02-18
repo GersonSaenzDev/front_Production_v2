@@ -105,11 +105,13 @@ export interface OrderUpdatePayload {
     deliveryStatus: string;
     userUpdated: string;
     induselOrder: string;
+    warehouseDispatchId: string;
+    warehouseExitDate: string;
     address: string;
-    newTransporter: string;
-    newVehiclePlate: string;
-    newGuideNumber: string;
-    newShippingCost: string;
+    transporter: string;
+    vehiclePlate: string;
+    guideNumber: string;
+    shippingCost: string;
     newWarehouseExitDate: string;
     deliveredSerial: string[];
     processControlObservations: ObservationItem[];
