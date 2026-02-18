@@ -207,3 +207,282 @@
         }
     }
 }
+
+.modern-form {
+    .form-group {
+        margin-bottom: 1.5rem;
+        position: relative;
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            transition: color 0.3s ease;
+        }
+
+        // Estilos para el texto de ayuda/error
+        .text-error {
+            color: var(--error-red);
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            animation: fadeIn 0.3s ease;
+
+            &::before {
+                content: '⚠️';
+                font-size: 0.8rem;
+            }
+        }
+
+        // Validación visual del Input
+        .modern-input {
+            &.ng-invalid.ng-touched {
+                border-color: var(--error-red) !important;
+                background-color: #fffafb;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+            }
+
+            &:focus {
+                &.ng-invalid.ng-touched {
+                    border-color: var(--error-red);
+                }
+            }
+        }
+
+        .counter-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+
+            .char-counter {
+                font-size: 0.75rem;
+                font-weight: 700;
+                padding: 2px 8px;
+                border-radius: 4px;
+                background: var(--bg-light);
+                transition: all 0.3s ease;
+
+                &.under-limit {
+                    color: var(--error-red);
+                    border: 1px solid rgba(239, 68, 68, 0.2);
+                }
+
+                &.over-limit {
+                    color: var(--success-green);
+                    background: #f0fdf4;
+                    border: 1px solid rgba(16, 185, 129, 0.2);
+                }
+            }
+        }
+
+        .text-success {
+            color: var(--success-green);
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+// Estilo para el asterisco obligatorio
+.text-danger {
+    color: var(--error-red);
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+.quick-note-section {
+    margin-top: 3rem;
+    
+    .section-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 2rem;
+        box-shadow: 0 15px 35px rgba(0, 51, 102, 0.08);
+        transition: transform 0.3s ease;
+        
+        &.premium-border {
+            border: 1px solid #e2e8f0;
+            border-top: 5px solid var(--primary-blue);
+        }
+    }
+
+    .full-width-group {
+        width: 100%;
+        margin: 0;
+
+        .wide-textarea {
+            width: 100% !important; // Fuerza el ancho completo del modal
+            min-height: 120px;
+            padding: 1.2rem;
+            border-radius: 14px;
+            background: #fcfdfe;
+            border: 2px solid #f1f5f9;
+            font-size: 1rem;
+            resize: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+            &:focus {
+                background: #fff;
+                border-color: var(--accent-cyan);
+                box-shadow: 0 8px 20px rgba(0, 210, 255, 0.08);
+                outline: none;
+            }
+        }
+    }
+
+    .action-bar-premium {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+    }
+
+    /* --- BOTÓN SOFISTICADO --- */
+    .btn-sophisticated {
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+        color: white;
+        border: none;
+        padding: 14px 32px;
+        border-radius: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 20px rgba(0, 51, 102, 0.2);
+        transition: all 0.3s ease;
+
+        .btn-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+        }
+
+        &:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 51, 102, 0.3);
+            filter: brightness(1.1);
+        }
+
+        &:active:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        &:disabled {
+            background: #cbd5e1;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    }
+
+    /* --- OTROS DETALLES --- */
+    .counter-badge {
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        &.is-waiting { background: #fff1f2; color: #be123c; }
+        &.is-ready { background: #f0fdf4; color: #15803d; border: 1px solid rgba(21, 128, 61, 0.1); }
+    }
+
+    .helper-text-premium {
+        font-size: 0.8rem;
+        color: #be123c;
+        margin-top: 12px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+}
+
+// Animación de rotación para el icono de carga
+.rotate {
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.btn-detail-modern {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--primary-blue);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 5px rgba(0, 51, 102, 0.05);
+
+    i {
+        font-size: 1.1rem;
+        color: var(--accent-cyan); // El icono resalta en cyan
+        transition: transform 0.3s ease;
+    }
+
+    span {
+        letter-spacing: 0.3px;
+    }
+
+    &:hover {
+        background: var(--primary-blue);
+        color: white;
+        border-color: var(--primary-blue);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0, 51, 102, 0.2);
+
+        i {
+            color: var(--accent-cyan);
+            transform: scale(1.1);
+        }
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+// Opcional: Si prefieres un botón circular minimalista (Solo Icono)
+.btn-action.view {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: none;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    
+    i { font-size: 1.2rem; }
+
+    &:hover {
+        background: linear-gradient(135deg, var(--accent-cyan), var(--secondary-blue));
+        color: white;
+        transform: rotate(15deg) scale(1.1);
+        box-shadow: 0 5px 15px rgba(0, 210, 255, 0.3);
+    }
+}

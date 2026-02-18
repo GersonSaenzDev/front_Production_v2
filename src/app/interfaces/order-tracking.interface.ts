@@ -64,6 +64,7 @@ export interface OrderLoadingResponse {
 
 export interface FlowData {
   status: string;
+  deliveryStatus: string;
   transporter?: string;
   vehiclePlate?: string;
   guideNumber?: string;
@@ -103,6 +104,7 @@ export interface OrderUpdatePayload {
     id: string;
     deliveryStatus: string;
     userUpdated: string;
+    induselOrder: string;
     address: string;
     newTransporter: string;
     newVehiclePlate: string;

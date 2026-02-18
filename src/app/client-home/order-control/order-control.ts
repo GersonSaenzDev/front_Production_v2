@@ -45,29 +45,37 @@ export class OrderControl implements OnInit {
   // 2. Mock de Estados de Entrega (según imagen image_513b5f.png)
   public readonly DELIVERY_STATUSES: DeliveryStatus[] = [
     { value: 'ENTREGADO', label: 'Entregado Sin Novedad', color: '#10b981', icon: '🟢' },
-    { value: 'EN RUTA', label: 'En Ruta al Cliente', color: '#facc15', icon: '🟡' },
+    { value: 'EN_RUTA', label: 'En Ruta al Cliente', color: '#facc15', icon: '🟡' },
     { value: 'NOVEDAD', label: 'Novedad', color: '#fb923c', icon: '🟠' },
     { value: 'CANCELADO', label: 'Cancelado (Confirmar Correo)', color: '#ef4444', icon: '🔴' },
-    { value: 'INVENTARIO', label: 'Producto Agotado', color: '#06b6d4', icon: '🔵' },
-    { value: 'PENDIENTE ENTREGA', label: 'Pendiente de Entrega (Otras razones)', color: '#8b5cf6', icon: '🟣' },
-    { value: 'ENTREGADO/CLIENTE', label: 'Entregado (Incump. Cliente)', color: '#ec4899', icon: '🌸' },
-    { value: 'ENTREGADO/TIENDA', label: 'Entregado (Incump. Tienda)', color: '#f43f5e', icon: '🏮' },
-    { value: 'ENTREGADO/TRANSPORTADOR', label: 'Entregado (Incump. Transportador)', color: '#d97706', icon: '📦' },
-    { value: 'ENTREGADO/RUTA', label: 'Entregado (Incump. Frecuencia Ruta)', color: '#a855f7', icon: '🛤️' },
-    { value: 'ENTREGADO/INVENTARIO', label: 'Entregado (Incump. Producto Agotado)', color: '#4b5563', icon: '🌑' },
-    { value: 'DESPACHADO/AGOTADO', label: 'Despachado (Trans. Producto Agotado)', color: '#4b5563', icon: '🌑' },
-    { value: 'ENTREGADO/SECCIONAL', label: 'Despachado desde Seccional', color: '#65a30d', icon: '🌿' },
-    { value: 'DESPACHO OPORTUNO', label: 'Despacho en Tiempos', color: '#0d9488', icon: '✨' },
-    { value: 'AVERIA', label: 'Producto Averiado por Transportadora', color: '#6b7280', icon: '⚠️' }
+    { value: 'PRODUCTO_AGOTADO', label: 'Producto Agotado', color: '#06b6d4', icon: '🔵' },
+    { value: 'PENDIENTE_ENTREGA', label: 'Pendiente de Entrega (Otras razones)', color: '#8b5cf6', icon: '🟣' },
+    { value: 'ENTREGADO_CLIENTE', label: 'Entregado (Incump. Cliente)', color: '#ec4899', icon: '🌸' },
+    { value: 'ENTREGADO_TIENDA', label: 'Entregado (Incump. Tienda)', color: '#f43f5e', icon: '🏮' },
+    { value: 'ENTREGADO_TRANSPORTADOR', label: 'Entregado (Incump. Transportador)', color: '#d97706', icon: '📦' },
+    { value: 'ENTREGADO_RUTA', label: 'Entregado (Incump. Frecuencia Ruta)', color: '#a855f7', icon: '🛤️' },
+    { value: 'ENTREGADO_INVENTARIO', label: 'Entregado (Incump. Producto Agotado)', color: '#4b5563', icon: '🌑' },
+    { value: 'DESPACHADO_AGOTADO', label: 'Despachado (Trans. Producto Agotado)', color: '#4b5563', icon: '🌑' },
+    { value: 'ENTREGADO_SECCIONAL', label: 'Despachado desde Seccional', color: '#65a30d', icon: '🌿' },
+    { value: 'DESPACHO_OPORTUNO', label: 'Despacho en Tiempos', color: '#0d9488', icon: '✨' },
+    { value: 'AVERIA_TRANSPORTADOR', label: 'Producto Averiado por Transportadora', color: '#6b7280', icon: '⚠️' }
   ];
+
+  public readonly INDUSEL_REQUIRED_STATUSES = [
+  'ENTREGADO', 'CANCELADO', 'ENTREGADO_CLIENTE', 
+  'ENTREGADO_TIENDA', 'ENTREGADO_TRANSPORTADOR', 
+  'ENTREGADO_RUTA', 'ENTREGADO_INVENTARIO', 'AVERIA_TRANSPORTADOR'
+];
 
   // --- Control de Modales ---
   showDetailsModal: boolean = false;
   showFlowModal: boolean = false;
   selectedOrder: OrderTracking | null = null;
   flowData: FlowData = {
-    status: 'INGRESADO',
+    status: '',
+    deliveryStatus: '',
     userUpdated: '',
+    induselOrder: '',
     transporter: '',
     vehiclePlate: '',
     guideNumber: '',
@@ -173,6 +181,7 @@ export class OrderControl implements OnInit {
         const city = (o.city || '').toLowerCase();
         const address = (o.address || '').toLowerCase();
         const oc = (o.storePurchaseOrder || '').toLowerCase();
+        const eo = (o.deliveryStatus || '').toLowerCase();
         
         // Campos que suelen ser números o identificadores (convertidos a string)
         const id = (o.clientIdentification || '').toString().toLowerCase();
@@ -185,6 +194,7 @@ export class OrderControl implements OnInit {
                city.includes(query) ||
                address.includes(query) ||
                oc.includes(query) ||
+               eo.includes(query) ||
                id.includes(query) ||
                ean.includes(query) ||
                phones.includes(query);
@@ -240,6 +250,7 @@ export class OrderControl implements OnInit {
         id: order._id, // El ID va DENTRO del objeto
         deliveryStatus: this.flowData.status,
         userUpdated: this.flowData.userUpdated,
+        induselOrder: this.flowData.induselOrder,
         address: order.address || '', 
         newTransporter: this.flowData.transporter.toUpperCase(),
         newVehiclePlate: this.flowData.vehiclePlate,
@@ -294,7 +305,7 @@ export class OrderControl implements OnInit {
   closeFlow() { this.showFlowModal = false; this.resetFlowForm(); }
   resetFlowForm() {
     this.flowData = { 
-      status: '', userUpdated: '', transporter: '', vehiclePlate: '', 
+      status: '', deliveryStatus: '',userUpdated: '', transporter: '', vehiclePlate: '', 
       guideNumber: '', deliveredSerial: '', note: '', 
       shippingCost: '', warehouseExitDate: '', processNote: '', dispatchNote: '' 
     };
@@ -319,6 +330,11 @@ export class OrderControl implements OnInit {
   getSelectedStatusColor(): string {
     const selected = this.DELIVERY_STATUSES.find(s => s.value === this.flowData.status);
     return selected ? selected.color : 'transparent';
+  }
+
+  // Función auxiliar para verificar la condición en el HTML
+  isInduselRequired(): boolean {
+    return this.INDUSEL_REQUIRED_STATUSES.includes(this.flowData.status);
   }
 
   

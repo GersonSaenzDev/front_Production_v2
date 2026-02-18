@@ -80,8 +80,9 @@
                         </div>
                     </td>
                     <td class="text-center">
-                        <button class="btn-action view" (click)="openDetails(order)">
-                            <i class="ti ti-file-text"></i>
+                        <button class="btn-detail-modern" (click)="openDetails(order)" title="Ver Expediente">
+                            <i class="ti ti-eye-check"></i>
+                            <span>Detalles</span>
                         </button>
                     </td>
                 </tr>
@@ -110,10 +111,12 @@
 
 <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetails()">
     <div class="modal-content glass-card wide-modal" (click)="$event.stopPropagation()">
+        
         <div class="modal-header">
             <h3><i class="ti ti-id-badge-2"></i> Expediente Final de Orden</h3>
             <button class="close-btn" (click)="closeDetails()">&times;</button>
         </div>
+
         <div class="modal-body" *ngIf="selectedOrder">
             <div class="detail-grid-v2">
                 <div class="detail-box">
@@ -141,6 +144,45 @@
                             <p><strong>Guía:</strong> {{ guide || 'N/A' }} | <strong>Transporte:</strong> {{ selectedOrder.transporter?.[i] }}</p>
                             <p><strong>Vehículo:</strong> {{ selectedOrder.vehiclePlate?.[i] }} | <strong>Fecha Salida:</strong> {{ selectedOrder.warehouseExitDate?.[i] }}</p>
                             <p class="cost-text">Costo de este tramo: {{ selectedOrder.shippingCost?.[i] | currency }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-note-section">
+                <div class="section-card premium-border">
+                    <div class="card-header-simple">
+                        <h5><i class="ti ti-message-2-plus"></i> Agregar Observación de Control</h5>
+                        <span class="badge-info">Cierre de Expediente</span>
+                    </div>
+
+                    <div class="modern-form">
+                        <div class="form-group full-width-group">
+                            <textarea [(ngModel)]="quickNote" 
+                                      class="modern-input wide-textarea" 
+                                      rows="4" 
+                                      placeholder="Escriba aquí los detalles finales o aclaraciones sobre el servicio prestado..."></textarea>
+                            
+                            <div class="action-bar-premium">
+                                <div class="counter-badge" [ngClass]="quickNote.length < 15 ? 'is-waiting' : 'is-ready'">
+                                    <i class="ti" [ngClass]="quickNote.length < 15 ? 'ti-clock' : 'ti-circle-check'"></i>
+                                    {{ quickNote.length }} / 15 caracteres
+                                </div>
+
+                                <button type="button" 
+                                        class="btn-sophisticated" 
+                                        (click)="saveQuickNote()"
+                                        [disabled]="quickNote.length < 15 || isSaving">
+                                    <span class="btn-content">
+                                        <i class="ti" [ngClass]="isSaving ? 'ti-loader rotate' : 'ti-cloud-upload'"></i> 
+                                        {{ isSaving ? 'Guardando...' : 'Actualizar Expediente' }}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <p class="helper-text-premium" *ngIf="quickNote.length > 0 && quickNote.length < 15">
+                                <i class="ti ti-alert-triangle"></i> Faltan <b>{{ 15 - quickNote.length }}</b> caracteres para validar el cambio.
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -36,6 +36,9 @@ export class ProcessedOrders implements OnInit {
   filteredOrders: OrderTracking[] = [];
   paginatedOrders: OrderTracking[] = [];
 
+  public quickNote: string = '';
+  public isSaving: boolean = false;
+
   ngOnInit() {
     this.loadProcessedOrders();
   }
@@ -133,5 +136,81 @@ export class ProcessedOrders implements OnInit {
   getTotalShippingCost(costs: string[] | undefined): number {
     if (!costs) return 0;
     return costs.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
+  }
+
+  /**
+   * @description Guarda una observación rápida desde el Expediente Final
+   * Reutiliza el servicio postOrderUpdate enviando solo la nueva nota.
+   */
+  saveQuickNote() {
+    const order = this.selectedOrder;
+    
+    if (!order || !order._id) {
+      this.toastr.error('No se ha podido identificar la orden', 'Error');
+      return;
+    }
+
+    // Validación de longitud mínima para asegurar calidad en la información
+    if (this.quickNote.trim().length < 10) {
+      this.toastr.warning('La nota debe tener al menos 10 caracteres', 'Nota muy corta');
+      return;
+    }
+
+    this.isSaving = true;
+
+    // Construimos el payload optimizado
+    const payload: any = {
+        id: order._id,
+        deliveryStatus: order.deliveryStatus, // Mantenemos el que ya tiene
+        userUpdated: 'GESTION_EXPEDIENTE',    // Identificador de la acción
+        processControlObservations: [
+            {
+                note: this.quickNote.toUpperCase(),
+                userUpdated: 'USUARIO_SISTEMA', // Aquí puedes vincular el usuario logueado
+                dateUpdated: '' // El backend genera la fecha CO
+            }
+        ]
+    };
+
+    this.orderService.postOrderUpdate(payload).subscribe({
+        next: (res) => {
+            this.toastr.success('Observación guardada en el expediente', 'Éxito');
+            this.quickNote = ''; // Limpiamos el campo
+            this.isSaving = false;
+            this.loadOrders();   // Refrescamos los datos globales
+            this.closeDetails(); // Cerramos el modal de detalles
+        },
+        error: (err) => {
+            this.isSaving = false;
+            this.toastr.error(err.message || 'Error al actualizar el expediente', 'Fallo');
+        }
+    });
+  }
+
+  /**
+   * @description Obtiene las órdenes desde el Backend usando la interfaz OrderTrackingResponse
+   */
+  loadOrders() {
+    this.orderService.getViewOrderTracking().subscribe({
+      next: (res) => {
+        // Cambiamos 'results' por 'data' que es el nombre real en tu interfaz
+        this.orders = res.data || []; 
+        
+        this.filteredOrders = [...this.orders];
+        this.updatePagination();
+        
+        // Usamos res.count que también está definido en tu interfaz
+        if (this.orders.length > 0) {
+          this.toastr.success(`Se cargaron ${res.count} registros`, 'Datos Actualizados');
+        } else {
+          this.toastr.info('No se encontraron registros para mostrar.', 'Información');
+        }
+      },
+      error: (err) => {
+        // Manejo de error usando el mensaje que viene del servicio
+        this.toastr.error(err.message || 'Error al conectar con el servidor', 'Fallo de Red');
+        console.error('Error en loadOrders:', err);
+      }
+    });
   }
 }
