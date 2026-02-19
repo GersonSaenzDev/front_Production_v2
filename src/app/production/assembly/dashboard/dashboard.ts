@@ -4,13 +4,13 @@ import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es'; 
 import { FormsModule } from '@angular/forms'; 
 
-import { SharedModule } from 'src/app/theme/shared/shared.module';
-import { DashboardServices } from 'src/app/services/dashboard-services';
-import { ChartData, ChartDataResponse, CardAssemblyResponse, AssemblyMetrics, TopProductsItem, TopProductsResponse } from 'src/app/interfaces/assembly.interface';
-// import { BajajChartComponent } from '../apexchart/bajaj-chart/bajaj-chart.component';
+import { DashboardServices } from '../../../services/dashboard-services';
+import { ChartData, ChartDataResponse, CardAssemblyResponse, AssemblyMetrics, TopProductsItem, TopProductsResponse } from '../../../interfaces/assembly.interface';
+
 import { BarChartComponent } from '../apexchart/bar-chart/bar-chart.component';
-import { ErrorRecord, ErrorRecordsResponse } from 'src/app/interfaces/dashInventory.interface';
+import { ErrorRecord, ErrorRecordsResponse } from '../../../interfaces/dashInventory.interface';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { SharedModule } from '../../../theme/shared/shared.module';
 // import { ChartDataMonthComponent } from '../apexchart/chart-data-month/chart-data-month.component';
 
 // Registrar el locale de español

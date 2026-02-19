@@ -7,7 +7,7 @@ import { DeliveryStatus, FlowData, OrderTracking, OrderUpdatePayload } from '../
 
 // Servicios
 import { ToastrService } from 'ngx-toastr';
-import { OrderTrackingService } from 'src/app/services/order-tracking-service';
+import { OrderTrackingService } from '../../services/order-tracking-service';
 
 @Component({
   selector: 'app-order-control',
@@ -281,6 +281,8 @@ export class OrderControl implements OnInit {
             }
         ]
     };
+
+    console.log('Payload:', payload); // Debug: Verificar estructura antes de enviar
 
     // LLAMADA CORRECTA: Solo un argumento (payload)
     this.orderService.postOrderUpdate(payload).subscribe({

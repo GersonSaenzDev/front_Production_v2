@@ -6,10 +6,10 @@ import localeEs from '@angular/common/locales/es';
 import { Component, LOCALE_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { throwError } from 'rxjs';
-import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, } from 'src/app/interfaces/dashInventory.interface';
-import { DashInventoryServices } from 'src/app/services/dashInventory-services';
+import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, } from '../../interfaces/dashInventory.interface';
+import { DashInventoryServices } from '../../services/dashInventory-services';
 
-import { SharedModule } from 'src/app/theme/shared/shared.module';
+import { SharedModule } from '../../theme/shared/shared.module';
 
 registerLocaleData(localeEs, 'es');
 

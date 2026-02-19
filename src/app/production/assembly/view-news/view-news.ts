@@ -3,8 +3,8 @@ import { CommonModule, registerLocaleData } from '@angular/common';
 import { Component, LOCALE_ID, OnInit, inject } from '@angular/core'; 
 import localeEs from '@angular/common/locales/es';
 import { FormsModule } from '@angular/forms';
-import { ProductionNews } from 'src/app/interfaces/assembly.interface'; 
-import { DashboardServices } from 'src/app/services/dashboard-services';
+import { ProductionNews } from '../../../interfaces/assembly.interface'; 
+import { DashboardServices } from '../../../services/dashboard-services';
 
 registerLocaleData(localeEs, 'es');
 

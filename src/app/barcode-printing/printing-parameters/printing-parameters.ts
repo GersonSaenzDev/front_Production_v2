@@ -3,12 +3,12 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormArray } from '@angular/forms';
 import { Subject, of, } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, catchError, finalize } from 'rxjs/operators';
-import { DashboardServices } from 'src/app/services/dashboard-services';
-import { PrintingLabelsService } from 'src/app/services/printingLabels-services';
-import { SharedModule } from 'src/app/theme/shared/shared.module';
+import { DashboardServices } from '../../services/dashboard-services';
+import { PrintingLabelsService } from '../../services/printingLabels-services';
+import { SharedModule } from '../../theme/shared/shared.module';
 // 💡 Importamos la interfaz que ya tenías definida
-import { AdditionalDataGroup, LabelParametersRequest, ProcessData, ViewAddResponse } from 'src/app/interfaces/printingLabel.interfaces';
-import { CheckListItem } from 'src/app/interfaces/dashInventory.interface';
+import { AdditionalDataGroup, LabelParametersRequest, ProcessData, ViewAddResponse } from '../../interfaces/printingLabel.interfaces';
+import { CheckListItem } from '../../interfaces/dashInventory.interface';
 
 @Component({
   selector: 'app-printing-parameters',

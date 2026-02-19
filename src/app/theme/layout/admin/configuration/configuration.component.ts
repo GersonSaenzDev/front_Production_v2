@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, Renderer2 } from '@angular/core';
 
 // project import
-import { BerryConfig } from 'src/app/app-config';
+import { BerryConfig } from '../../../../app-config';
 
 @Component({
   selector: 'app-configuration',

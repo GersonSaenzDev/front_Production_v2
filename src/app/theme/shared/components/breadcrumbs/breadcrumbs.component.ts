@@ -5,7 +5,7 @@ import { NavigationEnd, Router, RouterModule, Event } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 // project import
-import { NavigationItem, NavigationItems } from 'src/app/theme/layout/admin/navigation/navigation';
+import { NavigationItem, NavigationItems } from '../../../../theme/layout/admin/navigation/navigation';
 import { SharedModule } from '../../shared.module';
 
 interface titleType {

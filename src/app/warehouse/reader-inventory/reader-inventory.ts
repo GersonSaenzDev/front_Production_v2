@@ -6,8 +6,8 @@ import { finalize } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 
-import { DashInventoryServices } from 'src/app/services/dashInventory-services';
-import { Product, StorageItem } from 'src/app/interfaces/dashInventory.interface';
+import { DashInventoryServices } from '../../services/dashInventory-services';
+import { Product, StorageItem } from '../../interfaces/dashInventory.interface';
 
 import { throwError } from 'rxjs';
 

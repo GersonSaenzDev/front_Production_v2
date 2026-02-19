@@ -5,7 +5,7 @@ import { RouterModule } from '@angular/router';
 import { ChangeDetectorRef } from '@angular/core';
 
 // Project import
-import { BerryConfig } from 'src/app/app-config';
+import { BerryConfig } from '../../../app-config';
 
 import { ConfigurationComponent } from './configuration/configuration.component';
 import { NavBarComponent } from './nav-bar/nav-bar.component';

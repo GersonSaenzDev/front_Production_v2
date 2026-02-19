@@ -1,3 +1,4 @@
+// app/client-home/processed-orders/processed-orders.ts
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -5,7 +6,7 @@ import { OrderTracking } from '../../interfaces/order-tracking.interface';
 
 // Servicios
 import { ToastrService } from 'ngx-toastr';
-import { OrderTrackingService } from 'src/app/services/order-tracking-service';
+import { OrderTrackingService } from '../../services/order-tracking-service';
 
 @Component({
   selector: 'app-processed-orders',

@@ -1,9 +1,9 @@
-// src/app/warehouse/inventory-report/inventory-report.ts
+// ../..//warehouse/inventory-report/inventory-report.ts
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DashboardServices } from 'src/app/services/dashboard-services';
-import { InventoryGroup } from 'src/app/interfaces/dashInventory.interface';
+import { DashboardServices } from '../../services/dashboard-services';
+import { InventoryGroup } from '../../interfaces/dashInventory.interface';
 import * as XLSX from 'xlsx';
 
 // Interfaz extendida para controlar el despliegue

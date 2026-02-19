@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, filter, switchMap, tap } from 'rxjs/operators'; 
-import { ReferenceItem } from 'src/app/interfaces/assembly.interface';
-import { WarehouseNewsRequest } from 'src/app/interfaces/production-news.interface';
-import { DashboardServices } from 'src/app/services/dashboard-services';
-import { NewsServices } from 'src/app/services/news-services';
+import { ReferenceItem } from '../../../interfaces/assembly.interface';
+import { WarehouseNewsRequest } from '../../../interfaces/production-news.interface';
+import { DashboardServices } from '../../../services/dashboard-services';
+import { NewsServices } from '../../../services/news-services';
 
 @Component({
   selector: 'app-winery-news',

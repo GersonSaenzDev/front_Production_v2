@@ -2,9 +2,10 @@
 
 import { Component, ViewChild, Input, OnChanges, SimpleChanges } from '@angular/core'; // 👈 Importar Input, OnChanges, SimpleChanges
 import { NgApexchartsModule, ChartComponent, ApexOptions } from 'ng-apexcharts';
+import { ChartData } from '../../../../interfaces/assembly.interface'; // 💡 Importar la interfaz ChartData
 
 // 💡 IMPORTANTE: Asegúrate de que esta ruta a tu interfaz sea correcta
-import { ChartData } from 'src/app/interfaces/assembly.interface'; 
+// import { ChartData } from 'src/app/interfaces/assembly.interface'; 
 
 @Component({
   selector: 'app-bar-chart',

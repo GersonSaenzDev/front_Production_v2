@@ -3,8 +3,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { DashInventoryServices } from 'src/app/services/dashInventory-services';
-import { Barcode, UpdateBarcodeRequest, ViewOrderData } from 'src/app/interfaces/dashInventory.interface';
+import { DashInventoryServices } from '../../services/dashInventory-services';
+import { Barcode, UpdateBarcodeRequest, ViewOrderData } from '../../interfaces/dashInventory.interface';
 import * as XLSX from 'xlsx';
 
 @Component({

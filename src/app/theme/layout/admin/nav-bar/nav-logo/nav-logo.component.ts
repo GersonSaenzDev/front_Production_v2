@@ -3,7 +3,7 @@ import { Component, Input, output, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 // project import
-import { SharedModule } from 'src/app/theme/shared/shared.module';
+import { SharedModule } from '../../../../shared/shared.module';
 
 @Component({
   selector: 'app-nav-logo',
