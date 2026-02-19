@@ -18,7 +18,7 @@
                 <input type="date" [(ngModel)]="dateRange.end">
             </div>
         </div>
-        <button class="btn-refresh-modern" title="Actualizar Datos">
+        <button class="btn-refresh-modern" title="Actualizar Datos" (click)="loadOrders()">
             <i class="ti ti-refresh"></i>
         </button>
         </div>

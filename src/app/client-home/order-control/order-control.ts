@@ -149,11 +149,21 @@ export class OrderControl implements OnInit {
       return;
     }
 
-    // Usamos los parámetros individuales para que el service arme el FormData
+    // Iniciamos la carga
     this.orderService.uploadOrderFile(this.selectedFile!, this.selectedClient).subscribe({
       next: (res) => {
+        // 1. Notificamos el éxito
         this.toastr.success(res.msg || 'Archivo procesado correctamente', 'Éxito');
+        
+        // 2. Limpiamos los controles de carga
         this.resetUpload();
+
+        // 3. ¡IMPORTANTE!: Recargamos la lista inmediatamente
+        // Esto traerá los datos recién guardados en la DB a la tabla
+        this.loadOrders(); 
+
+        // 4. (Opcional) Limpiar búsqueda para asegurar que vea los nuevos datos
+        this.searchQuery = '';
       },
       error: (err) => {
         this.toastr.error(err.message || 'Error en la carga', 'Fallo');
