@@ -16,6 +16,7 @@ export interface OrderTracking {
   phones: string;
   quantity: number;
   reference: string;
+  warehouseDispatchId: string;
   status: string;
   storeNumber: string;
   userUpdated: string;
