@@ -1,0 +1,85 @@
+<!-- app/client-home/shipping-management/shipping-management.html -->
+<div class="dashboard-wrapper">
+  <header class="main-header">
+    <div class="header-content">
+      <div class="brand-section">
+        <h1>Gestión de Envíos <span>Casa Cliente</span></h1>
+        <p class="subtitle">Proceso de creación de Guías y Consolidación</p>
+      </div>
+      <div class="header-actions">
+        <button class="export-btn" (click)="exportToExcel()" [disabled]="selectedItems.length === 0">
+          📥 Descargar Excel ({{selectedItems.length}})
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-body">
+    <section class="search-section">
+      <div class="search-box-container">
+        <label>Buscador de Pedidos (EAN, Nombre, Documento, OC)</label>
+        <div class="input-group">
+          <input 
+            type="text" 
+            [(ngModel)]="searchQuery" 
+            (input)="onSearch()"
+            placeholder="Ej: 770123... o Juan Perez..."
+            class="search-input">
+          <span class="search-icon">🔍</span>
+        </div>
+
+        <div class="search-results-overlay" *ngIf="filteredResults.length > 0">
+          <div 
+            class="result-item" 
+            *ngFor="let res of filteredResults" 
+            (click)="toggleSelection(res)">
+            <div class="res-info">
+              <strong>{{res.storePurchaseOrder}}</strong> - {{res.clientName}}
+              <small>{{res.clientIdentification}} | EAN: {{res.ean}}</small>
+            </div>
+            <button class="add-mini-btn">+</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="selection-area">
+      <div class="table-container">
+        <div class="table-header">
+          <h3>Lista de Ítems para Gestión</h3>
+          <p>Has seleccionado {{selectedItems.length}} pedidos para procesar</p>
+        </div>
+
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Orden de Compra</th>
+              <th>Cliente</th>
+              <th>Identificación</th>
+              <th>Ciudad</th>
+              <th>EAN</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of selectedItems; let i = index">
+              <td><strong>{{item.storePurchaseOrder}}</strong></td>
+              <td>{{item.clientName}}</td>
+              <td>{{item.clientIdentification}}</td>
+              <td>{{item.city}}</td>
+              <td>{{item.ean}}</td>
+              <td>
+                <button class="btn-remove" (click)="removeItem(i)">❌</button>
+              </td>
+            </tr>
+            <tr *ngIf="selectedItems.length === 0">
+              <td colspan="6" class="empty-state">
+                No has seleccionado ningún ítem todavía. Usa el buscador superior.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>

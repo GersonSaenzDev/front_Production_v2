@@ -167,6 +167,14 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'alistamiento-pedidos-item',
+            title: 'Control Casa Cliente',
+            type: 'item',
+            url: 'clientHome/dash',
+            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+            breadcrumbs: false
+          },
+          {
+            id: 'alistamiento-pedidos-item',
             title: 'Control Pedidos',
             type: 'item',
             url: 'clientHome/orderControl',
@@ -178,6 +186,22 @@ export const NavigationItems: NavigationItem[] = [
             title: 'Pedidos Procesados',
             type: 'item',
             url: 'clientHome/processedOrders',
+            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+            breadcrumbs: false
+          },
+          {
+            id: 'pedidos-procesados-item',
+            title: 'Control de Envios',
+            type: 'item',
+            url: 'clientHome/shippingManagement',
+            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+            breadcrumbs: false
+          },
+          {
+            id: 'pedidos-procesados-item',
+            title: 'Pedidos a Producción',
+            type: 'item',
+            url: 'clientHome/productionOrders',
             // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
           },

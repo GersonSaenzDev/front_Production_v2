@@ -65,12 +65,12 @@
                     <td>
                         <div class="ids-cell">
                             <small class="muted">OC: {{order.storePurchaseOrder}}</small>
-                            <small class="muted">Ciudad: {{order.city}}</small>
+                            <small class="muted">Ciudad: {{order.city}} </small>
                         </div>
                     </td>
                     <td>
                         <span class="status-pill" [attr.data-status]="order.deliveryStatus">
-                            {{order.deliveryStatus}}
+                             {{order.deliveryStatus}} 
                         </span>
                     </td>
                     <td>
@@ -120,7 +120,7 @@
         <div class="modal-body" *ngIf="selectedOrder">
             <div class="detail-grid-v2">
                 <div class="detail-box">
-                    <h5><i class="ti ti-user-check"></i> Información del Cliente</h5>
+                    <h5><i class="ti ti-user-check"></i>Información del Cliente</h5>
                     <p><strong>Nombre:</strong> {{selectedOrder.clientName}}</p>
                     <p><strong>Dirección:</strong> {{selectedOrder.address}}</p>
                     <p><strong>Ciudad:</strong> {{selectedOrder.city}}</p>
@@ -132,6 +132,8 @@
                     <p><strong>Total Fletes:</strong> {{ getTotalShippingCost(selectedOrder.shippingCost) | currency:'USD':'symbol':'1.0-0' }}</p>
                     <p><strong>N° Intentos:</strong> {{ selectedOrder.guideNumber?.length }}</p>
                     <p><strong>Última Actualización:</strong> {{selectedOrder.dateUpdated}}</p>
+                    <p><strong>Orden Indusel:</strong> {{selectedOrder.induselOrder}}</p>
+                    <p><strong>Despacho Bodega:</strong> {{selectedOrder.warehouseDispatchId}}</p>
                 </div>
             </div>
 

@@ -310,6 +310,74 @@ $border-color: #e2e8f0;
   }
 }
 
+.search-box-container {
+  position: relative;
+  max-width: 600px;
+  margin: 20px 0;
+
+  .search-input {
+    width: 100%;
+    padding: 12px 40px 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+  }
+
+  .search-results-overlay {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    z-index: 1000;
+    border-radius: 0 0 8px 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .result-item {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+
+    &:hover { background-color: #f8fafc; }
+    
+    .res-info {
+      display: flex;
+      flex-direction: column;
+      small { color: #64748b; }
+    }
+  }
+}
+
+.export-btn {
+  background: #10b981;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  &:disabled { background: #cbd5e1; }
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px !important;
+  color: #94a3b8;
+}
+
 // Clases de Utilidad de Color
 .text-danger { color: $color-danger; }
 .text-warning { color: $color-warning; }

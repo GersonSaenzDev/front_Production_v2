@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/interfaces/order-tracking.interface.ts
 
 export interface OrderTracking {
@@ -21,18 +22,15 @@ export interface OrderTracking {
   storeNumber: string;
   userUpdated: string;
   validationAutomatically: boolean;
-
   // --- NUEVOS CAMPOS DE LOGÍSTICA (ARRAYS PARA HISTORIAL) ---
   guideNumber?: string[];        // Array de guías
   transporter?: string[];        // Array de transportadoras
   vehiclePlate?: string[];       // Array de placas
   shippingCost?: string[];       // Array de costos
-  warehouseExitDate?: string[];  // Array de fechas de salida
-  
+  warehouseExitDate?: string[];  // Array de fechas de salida  
   // Observaciones estructuradas
   processControlObservations?: ObservationItem[];
   dispatchOfObservations?: ObservationItem[];
-
   // Otros campos opcionales
   saleDate?: string;
   saleValue?: number;

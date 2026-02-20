@@ -1,1 +1,139 @@
-<p>dashboard works!</p>
+<!-- app/client-home/dashboard/dashboard.html -->
+<div class="dashboard-wrapper">
+  
+  <header class="main-header">
+    <div class="header-content">
+      <div class="brand-section">
+        <h1>Control KPI's <span>Casa Cliente</span></h1>
+        <p class="subtitle">Análisis de Desempeño Logístico y Cumplimiento de Promesa al Cliente</p>
+      </div>
+
+      <div class="header-actions">
+        <div class="date-control-group">
+          <div class="date-input">
+            <label>REPORTING START</label>
+            <input type="date" [(ngModel)]="startDate" (change)="onDateChange()">
+          </div>
+          <div class="date-separator"></div>
+          <div class="date-input">
+            <label>REPORTING END</label>
+            <input type="date" [(ngModel)]="endDate" (change)="onDateChange()">
+          </div>
+          <button class="refresh-btn" (click)="onDateChange()">
+            <span>REFRESH</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="secondary-bar">
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Global Search: EAN, OC, Client Identification...">
+    </div>
+    <div class="select-wrapper">
+      <select class="store-select">
+        <option value="">Consolidado Multi-Store</option>
+        <option value="SAO">SAO - Olimpica</option>
+        <option value="EASY">EASY - Cencosud</option>
+        <option value="SOELCO">SOELCO</option>
+      </select>
+    </div>
+  </div>
+
+  <main class="dashboard-body">
+    <section class="kpi-grid">
+      <div class="kpi-card info">
+        <div class="kpi-info">
+          <span class="kpi-title">Active Throughput</span>
+          <span class="kpi-value">{{totalActive}}</span>
+          <span class="kpi-trend">Unidades en flujo transitorio</span>
+        </div>
+        <div class="kpi-icon">📦</div>
+      </div>
+
+      <div class="kpi-card danger">
+        <div class="kpi-info">
+          <span class="kpi-title">SLA Breach (>48h)</span>
+          <span class="kpi-value text-danger">{{overdueCount}}</span>
+          <span class="kpi-trend text-danger">Acción correctiva requerida</span>
+        </div>
+        <div class="kpi-icon">🚨</div>
+      </div>
+
+      <div class="kpi-card warning">
+        <div class="kpi-info">
+          <span class="kpi-title">Risk Exposure (<24h)</span>
+          <span class="kpi-value text-warning">{{nearDueCount}}</span>
+          <span class="kpi-trend text-warning">Pedidos en ventana crítica</span>
+        </div>
+        <div class="kpi-icon">⏳</div>
+      </div>
+
+      <div class="kpi-card success">
+        <div class="kpi-info">
+          <span class="kpi-title">Logistics Spend</span>
+          <span class="kpi-value">$45.8M</span>
+          <span class="kpi-trend text-success">Optimización: +2.4% vs Mes Ant.</span>
+        </div>
+        <div class="kpi-icon">💰</div>
+      </div>
+    </section>
+
+    <section class="stats-section">
+      <div class="stat-box">
+        <div class="box-header">
+          <h3>Lead Time: Estados Transitorios</h3>
+          <p>Identificación de cuellos de botella por etapa</p>
+        </div>
+        <div class="chart-placeholder">
+           
+        </div>
+      </div>
+      
+      <div class="stat-box">
+        <div class="box-header">
+          <h3>Performance por Transportadora</h3>
+          <p>Análisis de Costos vs Efectividad de Entrega</p>
+        </div>
+        <div class="chart-placeholder">
+           
+        </div>
+      </div>
+    </section>
+
+    <section class="table-container">
+      <div class="table-header">
+        <h3>Exception Management & Change Orders</h3>
+        <p>Pedidos con incidencias reportadas por Tienda o Cliente Final</p>
+      </div>
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>PO Reference</th>
+            <th>Customer Entity</th>
+            <th>Location</th>
+            <th>Fulfillment Status</th>
+            <th>Cycle Time</th>
+            <th>Exceptions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let order of mockData">
+            <td><strong>{{order.storePurchaseOrder}}</strong></td>
+            <td>{{order.clientName}}</td>
+            <td>{{order.city}}</td>
+            <td><span class="badge blue">{{order.deliveryStatus}}</span></td>
+            <td><span class="time-tag" [ngClass]="{'red': order.isOverdue}">{{order.daysInSystem}}d</span></td>
+            <td>
+              <span class="change-alert" *ngIf="order.observations.length > 0">
+                ⚠️ {{order.observations.length}} Modificaciones
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</div>

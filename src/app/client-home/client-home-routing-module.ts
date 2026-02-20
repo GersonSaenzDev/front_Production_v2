@@ -21,6 +21,14 @@ const routes: Routes = [
       path: 'dash',
       loadComponent: () => import('./dashboard/dashboard').then((c) => c.Dashboard)
     },
+    {
+      path: 'productionOrders',
+      loadComponent: () => import('./production-orders/production-orders').then((c) => c.ProductionOrders)
+    },
+    {
+      path: 'shippingManagement',
+      loadComponent: () => import('./shipping-management/shipping-management').then((c) => c.ShippingManagement)
+    },
     // {
     //   // Path completo: /production/productionNews
     //   path: 'configInventories',
