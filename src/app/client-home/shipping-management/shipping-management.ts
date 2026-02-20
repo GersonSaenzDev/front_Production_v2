@@ -88,6 +88,7 @@ export class ShippingManagement implements OnInit {
 
     const dataToExport = this.selectedItems.map(item => ({
       'ID': item._id,
+      'TIENDA': item.store,
       'ORDEN_TIENDA': item.storePurchaseOrder,
       'CLIENTE': item.clientName,
       'IDENTIFICACION': item.clientIdentification,

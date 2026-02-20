@@ -323,6 +323,8 @@
                             <label>Fecha Salida de Bodega</label>
                             <input type="date" [(ngModel)]="flowData.warehouseExitDate" name="warehouseExitDate" class="modern-input">
                         </div>
+
+                        <div class="detail-item"><strong>Estado Entrega:</strong> {{flowData.deliveryStatus}}</div>
                     </div>
                 </div>
 
@@ -350,10 +352,7 @@
                             <input type="text" [(ngModel)]="flowData.shippingCost" name="shippingCost" 
                                    class="modern-input" placeholder="Ej: 45000">
                         </div>
-                        <div class="form-group">
-                            <label>Fecha Salida Almacén</label>
-                            <input type="date" [(ngModel)]="flowData.warehouseExitDate" name="warehouseExitDate" class="modern-input">
-                        </div>
+                        
                     </div>
                 </div>
 

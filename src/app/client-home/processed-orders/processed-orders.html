@@ -151,6 +151,31 @@
                 </div>
             </div>
 
+            <div class="history-Observations">
+                <h5><i class="ti ti-message-2"></i> Observaciones de Control</h5>
+                
+                <div *ngIf="selectedOrder.processControlObservations?.length > 0; else noObservations" class="observations-container">
+                    <div class="observation-item" *ngFor="let obs of selectedOrder.processControlObservations">
+                        <div class="obs-header">
+                            <span class="obs-user">
+                                <i class="ti ti-user-edit"></i> {{ 'Usuario Sistema' }}
+                            </span>
+                            <span class="obs-date">{{ obs.dateUpdated }}</span>
+                        </div>
+                        <div class="obs-body">
+                            <p>{{ obs.note }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <ng-template #noObservations>
+                    <div class="empty-observations">
+                        <i class="ti ti-message-off"></i>
+                        <p>No hay observaciones registradas para este pedido.</p>
+                    </div>
+                </ng-template>
+            </div>
+
             <div class="quick-note-section">
                 <div class="section-card premium-border">
                     <div class="card-header-simple">
