@@ -197,14 +197,14 @@ export const NavigationItems: NavigationItem[] = [
             // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
           },
-          {
-            id: 'pedidos-procesados-item',
-            title: 'Pedidos a Producción',
-            type: 'item',
-            url: 'clientHome/productionOrders',
-            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
-            breadcrumbs: false
-          },
+          // {
+          //   id: 'pedidos-procesados-item',
+          //   title: 'Pedidos a Producción',
+          //   type: 'item',
+          //   url: 'clientHome/productionOrders',
+          //   // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
+          //   breadcrumbs: false
+          // },
         ]
       },
       {
