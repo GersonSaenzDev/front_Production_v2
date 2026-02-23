@@ -123,3 +123,13 @@ export interface OrderUpdateResponse {
     msg: string;
     data: any; // Aquí vendría el objeto OrderTracking completo actualizado
 }
+export interface UpdateShipmentsResponse {
+    ok: boolean;
+    msg: string;
+    data: {
+        totalRows: number;
+        matched: number;
+        updated: number;
+        skipped: number;
+    };
+}

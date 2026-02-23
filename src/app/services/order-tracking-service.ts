@@ -10,7 +10,8 @@ import {
     OrderTrackingResponse, 
     OrderLoadingResponse, 
     OrderUpdatePayload,
-    OrderUpdateResponse
+    OrderUpdateResponse,
+    UpdateShipmentsResponse
 } from '../interfaces/order-tracking.interface';
 
 @Injectable({
@@ -29,6 +30,7 @@ export class OrderTrackingService {
     private readonly TRACKING_URL  = `${this.ENDPOINT}/viewOrderTracking`;
     private readonly PROCESSED_URL = `${this.ENDPOINT}/viewProcessedTrackings`;
     private readonly UPDATE_URL = `${this.ENDPOINT}/orderUpdate`;
+    private readonly UPDATE_SHIPMENTS_URL = `${this.ENDPOINT}/updateShipments`;
 
     /**
      * @description Manejo centralizado de errores HTTP.
@@ -115,4 +117,25 @@ export class OrderTrackingService {
                 })
             );
     }
+
+    /**
+     * @description Actualiza las guías de envío mediante un archivo Excel (.xlsx).
+     * @param file El archivo Excel seleccionado por el usuario.
+     */
+    updateShipments(file: File): Observable<UpdateShipmentsResponse> {
+        // Creamos el objeto FormData para enviar archivos
+        const formData = new FormData();
+        
+        // El nombre del campo 'upshipments' debe coincidir exactamente 
+        // con lo que espera el backend (visto en tu captura de Postman)
+        formData.append('upshipments', file);
+
+        return this.http.post<UpdateShipmentsResponse>(this.UPDATE_SHIPMENTS_URL, formData, {
+            reportProgress: true, // Habilita el reporte de progreso
+            observe: 'events'      // Permite observar todos los eventos, no solo el cuerpo
+        }).pipe(
+            catchError(this.handleError.bind(this))
+        );
+    }
+
 }

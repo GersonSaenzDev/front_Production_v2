@@ -3,7 +3,7 @@
   <header class="main-header">
     <div class="header-content">
       <div class="brand-section">
-        <h1>Gestión de Envíos <span>Casa Cliente</span></h1>
+        <h1>Gestión de Envíos <span>Casa Cliente INDUSEL</span></h1>
         <p class="subtitle">Proceso de creación de Guías y Consolidación</p>
       </div>
       <div class="header-actions">
@@ -15,30 +15,56 @@
   </header>
 
   <main class="dashboard-body">
-    <section class="search-section">
-      <div class="search-box-container">
-        <label>Buscador de Pedidos (EAN, Nombre, Documento, OC)</label>
-        <div class="input-group">
+    <section class="actions-console">
+      
+      <div class="console-card search-card">
+        <label class="console-label">Buscador Inteligente</label>
+        <div class="input-group-modern">
+          <span class="input-icon">🔍</span>
           <input 
             type="text" 
             [(ngModel)]="searchQuery" 
             (input)="onSearch()"
-            placeholder="Ej: 770123... o Juan Perez..."
-            class="search-input">
-          <span class="search-icon">🔍</span>
-        </div>
-
-        <div class="search-results-overlay" *ngIf="filteredResults.length > 0">
-          <div 
-            class="result-item" 
-            *ngFor="let res of filteredResults" 
-            (click)="toggleSelection(res)">
-            <div class="res-info">
-              <strong>{{res.storePurchaseOrder}}</strong> - {{res.clientName}}
-              <small>{{res.clientIdentification}} | EAN: {{res.ean}}</small>
+            placeholder="EAN, Nombre, Documento o OC..."
+            class="modern-input">
+          
+          <div class="search-results-overlay" *ngIf="filteredResults.length > 0">
+            <div class="result-item" *ngFor="let res of filteredResults" (click)="toggleSelection(res)">
+              <div class="res-info">
+                <strong>{{res.storePurchaseOrder}}</strong>
+                <span>{{res.clientName}}</span>
+                <small>{{res.clientIdentification}} | EAN: {{res.ean}}</small>
+              </div>
+              <button class="add-mini-btn">+</button>
             </div>
-            <button class="add-mini-btn">+</button>
           </div>
+        </div>
+      </div>
+
+      <div class="console-card upload-card-modern">
+        <label class="console-label">Actualización Masiva de Guías</label>
+        <div class="upload-controls">
+          <div class="file-selector" (click)="!isUploading && fileInput.click()" [class.disabled]="isUploading">
+            <span class="file-icon">{{ isUploading ? '⏳' : '📄' }}</span>
+            <div class="file-details">
+              <span class="file-name">{{ selectedFile ? selectedFile.name : 'Seleccionar Excel' }}</span>
+              <span class="file-hint" *ngIf="!isUploading">Formato .xlsx</span>
+              
+              <div class="mini-progress-container" *ngIf="isUploading">
+                <div class="mini-progress-bar" [style.width.%]="uploadProgress"></div>
+              </div>
+            </div>
+          </div>
+
+          <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xlsx" hidden>
+
+          <button 
+            class="btn-action-primary" 
+            [disabled]="!selectedFile || isUploading"
+            (click)="uploadShipments()">
+            <span *ngIf="!isUploading">🚀 Actualizar</span>
+            <span *ngIf="isUploading">{{ uploadProgress }}%</span>
+          </button>
         </div>
       </div>
     </section>

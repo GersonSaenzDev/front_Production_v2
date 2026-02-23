@@ -6,6 +6,7 @@ import { OrderTrackingService } from '../../services/order-tracking-service';
 import { ToastrService } from 'ngx-toastr';
 import { OrderTracking } from '../../interfaces/order-tracking.interface';
 import * as XLSX from 'xlsx'; // Importante para la exportación
+import { HttpEventType } from '@angular/common/http';
 
 @Component({
   selector: 'app-shipping-management',
@@ -18,6 +19,10 @@ export class ShippingManagement implements OnInit {
   // Inyección de servicios
   private readonly orderService = inject(OrderTrackingService);
   private readonly toastr = inject(ToastrService);
+
+  selectedFile: File | null = null;
+  isUploading: boolean = false;
+  uploadProgress: number = 0;
 
   // Estados
   public allOrders: OrderTracking[] = [];
@@ -101,6 +106,7 @@ export class ShippingManagement implements OnInit {
       'TRANSPORTADORA': '',
       'PLACA': '',
       'GUIA': '',
+      'COSTO_ENVIO': '',
       'ORDEN_INDUSEL': '',
       'ORDEN_SALIDA': '',
       'SERIAL': '',
@@ -113,5 +119,59 @@ export class ShippingManagement implements OnInit {
     
     XLSX.writeFile(workbook, `Gestion_Envios_${new Date().getTime()}.xlsx`);
     this.toastr.success('Archivo Excel generado');
+  }
+
+  onFileSelected(event: any) {
+    const file: File = event.target.files[0];
+    if (file) {
+      if (file.name.endsWith('.xlsx')) {
+        this.selectedFile = file;
+        this.toastr.info(`Archivo seleccionado: ${file.name}`);
+      } else {
+        this.toastr.error('Por favor, selecciona solo archivos .xlsx');
+        this.selectedFile = null;
+      }
+    }
+  }
+
+  // Al seleccionar el archivo
+
+  /**
+   * Realiza la subida al servidor con barra de progreso
+   */
+    uploadShipments() {
+      if (!this.selectedFile) {
+        this.toastr.warning('Primero selecciona un archivo.');
+        return;
+      }
+
+      this.isUploading = true;
+      this.uploadProgress = 0;
+
+      this.orderService.updateShipments(this.selectedFile).subscribe({
+        next: (event: any) => {
+          // Manejo del progreso de subida
+          if (event.type === HttpEventType.UploadProgress) {
+            this.uploadProgress = Math.round((100 * event.loaded) / (event.total || 100));
+          } 
+          // Manejo de la respuesta final
+          else if (event.type === HttpEventType.Response) {
+            const res = event.body;
+            this.toastr.success(`${res.msg}. Actualizados: ${res.data.updated}`);
+            this.resetUpload();
+          }
+        },
+        error: (err) => {
+          this.toastr.error(err.message || 'Error al actualizar guías');
+          this.isUploading = false;
+          this.uploadProgress = 0;
+        }
+      });
+    }
+
+  resetUpload() {
+    this.isUploading = false;
+    this.uploadProgress = 0;
+    this.selectedFile = null;
   }
 }
