@@ -1,8 +1,11 @@
+// src/app/app-routing.module.ts
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AdminComponent } from './theme/layout/admin/admin.component';
 
+
 const routes: Routes = [
+  // Rutas con Layout de Administrador
   {
     path: '',
     component: AdminComponent,
@@ -31,24 +34,17 @@ const routes: Routes = [
     ]
   },
   
+  // Ruta de Autenticación (Fuera del AdminComponent)
+  {
+    path: 'auth',
+    loadChildren: () => import('./auth/auth-module').then((m) => m.AuthModule)
+  },
 
-  // Rutas con Layout de Invitado (GuestComponent)
-  // {
-  //   path: '',
-  //   component: GuestComponent,
-  //   children: [
-  //     {
-  //       path: 'login',
-  //       // Esto asume que LoginComponent es un componente standalone o está correctamente exportado.
-  //       loadComponent: () => import('./demo/pages/authentication/login/login.component').then((c) => c.LoginComponent)
-  //     },
-  //     {
-  //       path: 'register',
-  //       // Esto asume que RegisterComponent es un componente standalone o está correctamente exportado.
-  //       loadComponent: () => import('./demo/pages/authentication/register/register.component').then((c) => c.RegisterComponent)
-  //     }
-  //   ]
-  // }
+  // Redirección por defecto si la ruta no existe
+  {
+    path: '**',
+    redirectTo: 'auth/login'
+  }
 ];
 
 @NgModule({
