@@ -73,8 +73,10 @@ export class OrderControl implements OnInit {
   showFlowModal: boolean = false;
   selectedOrder: OrderTracking | null = null;
   flowData: FlowData = {
+    isPaqueteraFinalized: false,
     status: '',
     deliveryStatus: '',
+    finalDeliveryDate: '',
     userUpdated: '',
     induselOrder: '',
     warehouseDispatchId: '',
@@ -262,6 +264,7 @@ export class OrderControl implements OnInit {
         id: order._id, // El ID va DENTRO del objeto
         deliveryStatus: this.flowData.status,
         userUpdated: this.flowData.userUpdated,
+        finalDeliveryDate: this.flowData.finalDeliveryDate,
         induselOrder: this.flowData.induselOrder,
         warehouseDispatchId: this.flowData.warehouseDispatchId,
         warehouseExitDate: this.flowData.warehouseExitDate,
@@ -316,12 +319,28 @@ export class OrderControl implements OnInit {
   openFlow(order: OrderTracking) { 
     this.selectedOrder = order; 
     this.resetFlowForm(); 
+
+    // --- NUEVO: Cargar datos existentes si los hay ---
+    
+    // 1. Cargar Orden Indusel si existe
+    if (order.induselOrder) {
+      this.flowData.induselOrder = order.induselOrder;
+    }
+
+    // 2. Cargar Salida de Bodega si existe 
+    // (Verificamos si es un array basado en tu JSON de respuesta)
+    if (order.warehouseDispatchId && order.warehouseDispatchId.length > 0) {
+      this.flowData.warehouseDispatchId = Array.isArray(order.warehouseDispatchId) 
+        ? order.warehouseDispatchId[0] // Tomamos el primer elemento del array
+        : order.warehouseDispatchId;
+    }
+
     this.showFlowModal = true; 
   }
   closeFlow() { this.showFlowModal = false; this.resetFlowForm(); }
   resetFlowForm() {
     this.flowData = { 
-      status: '', deliveryStatus: '',userUpdated: '', transporter: '', vehiclePlate: '', 
+      status: '',isPaqueteraFinalized: false, deliveryStatus: '',userUpdated: '', transporter: '', vehiclePlate: '', 
       guideNumber: '', deliveredSerial: '', note: '', 
       shippingCost: '', warehouseExitDate: '', processNote: '', dispatchNote: '' 
     };
@@ -351,6 +370,15 @@ export class OrderControl implements OnInit {
   // Función auxiliar para verificar la condición en el HTML
   isInduselRequired(): boolean {
     return this.INDUSEL_REQUIRED_STATUSES.includes(this.flowData.status);
+  }
+
+  get hasExistingInduselOrder(): boolean {
+    return !!(this.selectedOrder?.induselOrder && this.selectedOrder.induselOrder !== '');
+  }
+
+  get hasExistingWarehouseDispatchId(): boolean {
+    const dispatchId = this.selectedOrder?.warehouseDispatchId;
+    return Array.isArray(dispatchId) ? dispatchId.length > 0 : !!(dispatchId && dispatchId !== '');
   }
 
   

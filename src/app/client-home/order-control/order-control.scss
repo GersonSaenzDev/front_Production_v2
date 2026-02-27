@@ -682,3 +682,90 @@
 .glass-card {
     box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Usa valores simples */
 }
+
+/* Alinear el título y el toggle */
+.section-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px; /* Ajusta según tu diseño */
+}
+
+/* Contenedor del toggle */
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toggle-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333; /* Ajusta a tu paleta de colores */
+}
+
+/* Estilos nativos para el Switch/Toggle */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #0056b3; /* Color primario de tu tema (parece azul oscuro) */
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px #0056b3;
+}
+
+input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
+/* Slider redondeado */
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Estilo para inputs de solo lectura */
+.modern-input.readonly-input {
+    background-color: #f3f4f6; /* Un gris muy suave */
+    color: #6b7280; /* Texto más opaco */
+    cursor: not-allowed;
+    border-color: #d1d5db;
+    pointer-events: none; /* Evita que se pueda enfocar o modificar */
+}

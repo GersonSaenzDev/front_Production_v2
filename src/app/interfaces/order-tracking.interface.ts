@@ -62,12 +62,14 @@ export interface OrderLoadingResponse {
 }
 
 export interface FlowData {
+  isPaqueteraFinalized: false;
   status: string;
   deliveryStatus: string;
   transporter?: string;
   vehiclePlate?: string;
   guideNumber?: string;
   deliveredSerial?: string; // Lo capturamos como string y luego lo procesamos
+  finalDeliveryDate?: string;
   userUpdated: string;
   note: string;
   // --- AGREGA ESTOS CAMPOS NUEVOS ---
@@ -102,6 +104,7 @@ export interface ObservationItem {
 export interface OrderUpdatePayload {
     id: string;
     deliveryStatus: string;
+    finalDeliveryDate: string;
     userUpdated: string;
     induselOrder: string;
     warehouseDispatchId: string;

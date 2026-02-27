@@ -23,12 +23,12 @@
         <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="modern-form">
           
           <div class="input-group">
-            <div class="field-wrapper" [class.has-error]="submitted() && f['email'].errors">
+            <div class="field-wrapper" [class.has-error]="submitted()">
               <div class="input-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
-              <input type="text" formControlName="user" id="user" placeholder=" " class="custom-input">
-              <label for="user" class="floating-label">Usuario</label>
+              <input type="text" formControlName="username" id="username" class="custom-input">
+              <label for="username" class="floating-label">Usuario</label>
               <span class="focus-indicator"></span>
             </div>
             <div *ngIf="submitted()" class="field-error-text">

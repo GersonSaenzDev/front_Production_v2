@@ -282,7 +282,18 @@
             <form (ngSubmit)="saveOrderFlow()" #flowForm="ngForm" class="modern-form">
                 
                 <div class="form-section">
-                    <h4><i class="ti ti-settings-automation"></i> CONTROL DE PROCESO</h4>
+                    <div class="section-header-flex">
+                        <h4><i class="ti ti-settings-automation"></i> CONTROL DE PROCESO</h4>
+                        
+                        <div class="toggle-container">
+                            <span class="toggle-label">Finalizar Paquetera</span>
+                            <label class="switch">
+                                <input type="checkbox" [(ngModel)]="flowData.isPaqueteraFinalized" name="isPaqueteraFinalized">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label>Estado Actual <span class="text-danger">*</span></label>
@@ -292,38 +303,32 @@
                                     {{ status.icon }} {{ status.value }}
                                 </option>
                             </select>
-                            <small class="text-error" *ngIf="statusModel.invalid && statusModel.touched">
-                                El estado es obligatorio.
-                            </small>
+                            <small class="text-error" *ngIf="statusModel.invalid && statusModel.touched">El estado es obligatorio.</small>
                         </div>
-
                         <div class="form-group">
-                            <label>Operario Responsable</label>
-                            <input type="text" [(ngModel)]="flowData.userUpdated" name="userUpdated" 
-                                   class="modern-input" placeholder="Nombre completo">
+                            <label>Fecha Entrega al Cliente</label>
+                            <input type="date" [(ngModel)]="flowData.finalDeliveryDate" name="finalDeliveryDate" class="modern-input">
                         </div>
-
                         <div class="form-group">
                             <label>Orden Indusel <span class="text-danger" *ngIf="isInduselRequired()">*</span></label>
                             <input type="text" [(ngModel)]="flowData.induselOrder" name="induselOrder" 
-                                   class="modern-input" placeholder="Número de orden Indusel"
-                                   [required]="isInduselRequired()" #induselModel="ngModel">
-                            <small class="text-error" *ngIf="isInduselRequired() && induselModel.invalid && induselModel.touched">
-                                La orden Indusel es obligatoria para este estado.
-                            </small>
+                                class="modern-input" placeholder="Número de orden Indusel"
+                                [required]="isInduselRequired()" #induselModel="ngModel"
+                                [readonly]="hasExistingInduselOrder"
+                                [ngClass]="{'readonly-input': hasExistingInduselOrder}">
+                            <small class="text-error" *ngIf="isInduselRequired() && induselModel.invalid && induselModel.touched">La orden Indusel es obligatoria para este estado.</small>
                         </div>
-
                         <div class="form-group">
                             <label>Salida de Bodega</label>
                             <input type="text" [(ngModel)]="flowData.warehouseDispatchId" name="warehouseDispatchId" 
-                                   class="modern-input" placeholder="Número de despacho de bodega">
+                                class="modern-input" placeholder="Número de despacho de bodega"
+                                [readonly]="hasExistingWarehouseDispatchId"
+                                [ngClass]="{'readonly-input': hasExistingWarehouseDispatchId}">
                         </div>
-
                         <div class="form-group">
                             <label>Fecha Salida de Bodega</label>
                             <input type="date" [(ngModel)]="flowData.warehouseExitDate" name="warehouseExitDate" class="modern-input">
                         </div>
-
                         <div class="detail-item"><strong>Estado Entrega:</strong> {{flowData.deliveryStatus}}</div>
                     </div>
                 </div>
@@ -345,14 +350,12 @@
                             <input type="text" [(ngModel)]="flowData.guideNumber" name="guideNumber" class="modern-input">
                         </div>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label>Costo de Envío</label>
                             <input type="text" [(ngModel)]="flowData.shippingCost" name="shippingCost" 
                                    class="modern-input" placeholder="Ej: 45000">
                         </div>
-                        
                     </div>
                 </div>
 
@@ -361,25 +364,26 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Nota Control de Proceso 
-                                <span class="text-danger" *ngIf="flowData.status === 'AVERIA_TRANSPORTADOR'">*</span>
+                                <span class="text-danger" *ngIf="flowData.status === 'AVERIA_TRANSPORTADOR' || flowData.isPaqueteraFinalized">*</span>
                             </label>
+                            
                             <textarea [(ngModel)]="flowData.processNote" name="processNote" 
-                                    class="modern-input" rows="2" placeholder="Describa la avería..."
-                                    [required]="flowData.status === 'AVERIA_TRANSPORTADOR'"
-                                    [minlength]="flowData.status === 'AVERIA_TRANSPORTADOR' ? 10 : 0"
+                                    class="modern-input" rows="2" placeholder="Ingrese la observación detallada..."
+                                    [required]="flowData.status === 'AVERIA_TRANSPORTADOR' || flowData.isPaqueteraFinalized"
+                                    [minlength]="(flowData.status === 'AVERIA_TRANSPORTADOR' || flowData.isPaqueteraFinalized) ? 10 : 0"
                                     #processNoteModel="ngModel"></textarea>
                             
-                            <div class="counter-container" *ngIf="flowData.status === 'AVERIA_TRANSPORTADOR'">
+                            <div class="counter-container" *ngIf="flowData.status === 'AVERIA_TRANSPORTADOR' || flowData.isPaqueteraFinalized">
                                 <small class="text-error" *ngIf="processNoteModel.errors?.['required'] && processNoteModel.touched">
                                     Campo obligatorio
                                 </small>
-                                <small *ngIf="!processNoteModel.errors?.['required']"></small> <span class="char-counter" 
-                                      [ngClass]="(flowData.processNote?.length || 0) < 10 ? 'under-limit' : 'over-limit'">
+                                <small *ngIf="!processNoteModel.errors?.['required']"></small> 
+                                <span class="char-counter" [ngClass]="(flowData.processNote?.length || 0) < 10 ? 'under-limit' : 'over-limit'">
                                     {{ flowData.processNote?.length || 0 }} / 10 caracteres
                                 </span>
                             </div>
 
-                            <small class="text-error" *ngIf="flowData.status === 'AVERIA_TRANSPORTADOR' && processNoteModel.errors?.['minlength']">
+                            <small class="text-error" *ngIf="(flowData.status === 'AVERIA_TRANSPORTADOR' || flowData.isPaqueteraFinalized) && processNoteModel.errors?.['minlength']">
                                 <i class="ti ti-info-circle"></i> Faltan {{ 10 - (flowData.processNote?.length || 0) }} caracteres
                             </small>
                         </div>
