@@ -57,7 +57,7 @@ export class OrderControl implements OnInit {
     { value: 'ENTREGADO_RUTA', label: 'Entregado (Incump. Frecuencia Ruta)', color: '#a855f7', icon: '🛤️' },
     { value: 'ENTREGADO_INVENTARIO', label: 'Entregado (Incump. Producto Agotado)', color: '#4b5563', icon: '🌑' },
     { value: 'ENTREGADO_SECCIONAL', label: 'Despachado desde Seccional', color: '#65a30d', icon: '🌿' },
-    { value: 'DESPACHADO_AGOTADO', label: 'Despachado (Trans. Producto Agotado)', color: '#4b5563', icon: '🌑' },
+    { value: 'DESPACHO_AGOTADO', label: 'Despachado (Trans. Producto Agotado)', color: '#4b5563', icon: '🌑' },
     { value: 'DESPACHO_OPORTUNO', label: 'Despacho en Tiempos', color: '#0d9488', icon: '✨' },
     { value: 'AVERIA_TRANSPORTADOR', label: 'Producto Averiado por Transportadora', color: '#6b7280', icon: '⚠️' }
   ];
