@@ -21,6 +21,7 @@ export interface OrderTracking {
   status: string;
   storeNumber: string;
   userUpdated: string;
+  purchaseDate: string;
   validationAutomatically: boolean;
   // --- NUEVOS CAMPOS DE LOGÍSTICA (ARRAYS PARA HISTORIAL) ---
   guideNumber?: string[];        // Array de guías

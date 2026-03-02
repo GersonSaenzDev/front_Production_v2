@@ -100,100 +100,100 @@
 
     </section>
 
-  <section class="table-container glass-card">
-    <table class="modern-table">
-        <thead>
-        <tr>
-            <th style="width: 25%;">Cliente / Almacén</th>
-            <th style="width: 20%;">Identificadores</th>
-            <th style="width: 20%;">Destino</th>
-            <th style="width: 15%;">Estado Operativo</th>
-            <th style="width: 20%;" class="text-center">Acciones</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr *ngFor="let order of paginatedOrders" class="table-row">
-            <td>
-            <div class="client-cell">
-                <span class="client-badge" [attr.data-store]="order.store">{{order.store}}</span>
-                <span class="client-name">{{order.clientName}}</span>
-            </div>
-            </td>
-
-            <td>
-            <div class="ids-cell">
-                <div class="id-item">
-                <span class="label">OC TIENDA: </span>
-                <span class="value">{{order.storePurchaseOrder}}</span>
+    <section class="table-container glass-card">
+        <table class="modern-table">
+            <thead>
+            <tr>
+                <th style="width: 25%;">Cliente / Almacén</th>
+                <th style="width: 20%;">Identificadores</th>
+                <th style="width: 20%;">Destino</th>
+                <th style="width: 15%;">Estado Operativo</th>
+                <th style="width: 20%;" class="text-center">Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr *ngFor="let order of paginatedOrders" class="table-row">
+                <td>
+                <div class="client-cell">
+                    <span class="client-badge" [attr.data-store]="order.store">{{order.store}}</span>
+                    <span class="client-name">{{order.clientName}}</span>
                 </div>
-                <div class="id-item">
-                <span class="label"><strong>Recepcion: </strong></span>
-                <span class="value secondary">{{order.fileReceptionDate}}</span>
+                </td>
+
+                <td>
+                <div class="ids-cell">
+                    <div class="id-item">
+                    <span class="label">OC TIENDA: </span>
+                    <span class="value">{{order.storePurchaseOrder}}</span>
+                    </div>
+                    <div class="id-item">
+                    <span class="label"><strong>Recepcion: </strong></span>
+                    <span class="value secondary">{{order.fileReceptionDate}}</span>
+                    </div>
                 </div>
-            </div>
-            </td>
+                </td>
 
-            <td>
-            <div class="location-cell">
-                <i class="ti ti-map-pin"></i>
-                <span>{{order.city}}</span>
-            </div>
-            </td>
+                <td>
+                <div class="location-cell">
+                    <i class="ti ti-map-pin"></i>
+                    <span>{{order.city}}</span>
+                </div>
+                </td>
 
-            <td>
-            <span class="status-pill" [attr.data-deliveryStatus]="order.deliveryStatus">
-                {{order.deliveryStatus || 'SIN INFORMACIÓN'}}
-            </span>
-            </td>
+                <td>
+                <span class="status-pill" [attr.data-deliveryStatus]="order.deliveryStatus">
+                    {{order.deliveryStatus || 'SIN INFORMACIÓN'}}
+                </span>
+                </td>
 
-            <td class="text-center">
-                <div class="actions-group">
-                    <button class="btn-action view" (click)="openDetails(order)" title="Ver Detalles">
-                        <i class="ti ti-eye"></i>
+                <td class="text-center">
+                    <div class="actions-group">
+                        <button class="btn-action view" (click)="openDetails(order)" title="Ver Detalles">
+                            <i class="ti ti-eye"></i>
+                        </button>
+                        <button class="btn-action add" (click)="openFlow(order)" title="Agregar flujo">
+                            <i class="ti ti-plus"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+            <footer class="table-footer-modern">
+                <div class="footer-settings">
+                    <span class="label-caps">MOSTRAR</span>
+                    <div class="select-premium-wrapper">
+                    <select [(ngModel)]="pageSize" (change)="changePageSize()" class="select-premium">
+                        <option *ngFor="let size of pageSizeOptions" [value]="size">{{size}}</option>
+                    </select>
+                    <i class="ti ti-chevron-down"></i>
+                    </div>
+                    <span class="label-caps">DE {{filteredOrders.length}}</span>
+                </div>
+
+                <div class="footer-center-group">
+                    <p class="status-text">
+                    Mostrando <span class="highlight">{{startEntry}} – {{endEntry}}</span>
+                    <span class="muted">de resultados</span>
+                    </p>
+
+                    <nav class="pagination-controls">
+                    <button class="control-btn" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" title="Anterior">
+                        <i class="ti ti-chevron-left"></i>
                     </button>
-                    <button class="btn-action add" (click)="openFlow(order)" title="Agregar flujo">
-                        <i class="ti ti-plus"></i>
+                    
+                    <div class="page-info">
+                        <span class="muted">Página</span>
+                        <span class="page-number-active">{{currentPage}}</span>
+                        <span class="muted">de {{totalPages}}</span>
+                    </div>
+
+                    <button class="control-btn" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Siguiente">
+                        <i class="ti ti-chevron-right"></i>
                     </button>
+                    </nav>
                 </div>
-            </td>
-        </tr>
-        </tbody>
-        <footer class="table-footer-modern">
-            <div class="footer-settings">
-                <span class="label-caps">MOSTRAR</span>
-                <div class="select-premium-wrapper">
-                <select [(ngModel)]="pageSize" (change)="changePageSize()" class="select-premium">
-                    <option *ngFor="let size of pageSizeOptions" [value]="size">{{size}}</option>
-                </select>
-                <i class="ti ti-chevron-down"></i>
-                </div>
-                <span class="label-caps">DE {{filteredOrders.length}}</span>
-            </div>
-
-            <div class="footer-center-group">
-                <p class="status-text">
-                Mostrando <span class="highlight">{{startEntry}} – {{endEntry}}</span>
-                <span class="muted">de resultados</span>
-                </p>
-
-                <nav class="pagination-controls">
-                <button class="control-btn" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" title="Anterior">
-                    <i class="ti ti-chevron-left"></i>
-                </button>
-                
-                <div class="page-info">
-                    <span class="muted">Página</span>
-                    <span class="page-number-active">{{currentPage}}</span>
-                    <span class="muted">de {{totalPages}}</span>
-                </div>
-
-                <button class="control-btn" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Siguiente">
-                    <i class="ti ti-chevron-right"></i>
-                </button>
-                </nav>
-            </div>
-        </footer>
-    </table>
+            </footer>
+        </table>
 
     </section>
 </div>
