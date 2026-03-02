@@ -110,6 +110,7 @@ export class ShippingManagement implements OnInit {
       'ORDEN_INDUSEL': '',
       'ORDEN_SALIDA': '',
       'SERIAL': '',
+      'FECHA_SALIDA_BODEGA': '',
 
     }));
 
