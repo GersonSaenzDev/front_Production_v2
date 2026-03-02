@@ -20,6 +20,7 @@ export interface OrderTracking {
   warehouseDispatchId: string;
   status: string;
   storeNumber: string;
+  deliveredSerial: string;
   userUpdated: string;
   purchaseDate: string;
   validationAutomatically: boolean;
