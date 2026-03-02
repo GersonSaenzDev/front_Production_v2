@@ -263,6 +263,7 @@ export class OrderControl implements OnInit {
     const payload: OrderUpdatePayload = {
         id: order._id, // El ID va DENTRO del objeto
         deliveryStatus: this.flowData.status,
+        isPaqueteraFinalized: this.flowData.isPaqueteraFinalized,
         userUpdated: this.flowData.userUpdated,
         finalDeliveryDate: this.flowData.finalDeliveryDate,
         induselOrder: this.flowData.induselOrder,

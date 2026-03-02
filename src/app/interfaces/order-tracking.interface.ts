@@ -104,6 +104,7 @@ export interface ObservationItem {
 export interface OrderUpdatePayload {
     id: string;
     deliveryStatus: string;
+    isPaqueteraFinalized: boolean;
     finalDeliveryDate: string;
     userUpdated: string;
     induselOrder: string;
