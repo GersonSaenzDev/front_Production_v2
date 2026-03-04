@@ -41,7 +41,7 @@ export class OrderControl implements OnInit {
   paginatedOrders: OrderTracking[] = [];
   orders: OrderTracking[] = [];
   filteredOrders: OrderTracking[] = [];
-  clients = ['Sao', 'Easy', 'Exito', 'Cencosud', 'Falabella', 'Soelco', 'ElectroJaponesa', 'Trazacencosud' ];
+  clients = ['Sao', 'Easy', 'Exito', 'Cencosud', 'Falabella', 'Soelco', 'ElectroJaponesa', 'Ventas Web', 'Trazacencosud' ];
 
   // 2. Mock de Estados de Entrega (según imagen image_513b5f.png)
   public readonly DELIVERY_STATUSES: DeliveryStatus[] = [
