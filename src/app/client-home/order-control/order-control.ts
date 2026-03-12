@@ -25,7 +25,12 @@ export class OrderControl implements OnInit {
   selectedClient: string = '';
   selectedFileName: string | null = null;
   public selectedFile: File | null = null;
-  searchQuery: string = '';
+  filters = {
+    store: '',
+    city: '',
+    status: '',
+    document: ''
+  };
   
   // --- Paginación y Datos ---
   currentPage: number = 1;
@@ -165,7 +170,8 @@ export class OrderControl implements OnInit {
         this.loadOrders(); 
 
         // 4. (Opcional) Limpiar búsqueda para asegurar que vea los nuevos datos
-        this.searchQuery = '';
+        // ✅ CORRECCIÓN: Llamamos al método que reinicia el objeto correctamente
+        this.clearFilters(); 
       },
       error: (err) => {
         this.toastr.error(err.message || 'Error en la carga', 'Fallo');
@@ -182,42 +188,42 @@ export class OrderControl implements OnInit {
   // --- Métodos de búsqueda y modales ---
 
   onSearch() {
-    // Si la búsqueda está vacía, restauramos todos los pedidos
-    if (!this.searchQuery.trim()) {
-      this.filteredOrders = [...this.orders];
-    } else {
-      const query = this.searchQuery.toLowerCase().trim();
+    this.filteredOrders = this.orders.filter(o => {
+      // 1. Convertimos todo a minúsculas y quitamos espacios extra para evitar errores de tipeo
+      const qStore = this.filters.store.toLowerCase().trim();
+      const qCity = this.filters.city.toLowerCase().trim();
+      const qStatus = this.filters.status; // Búsqueda exacta por el value del select
+      const qDoc = this.filters.document.toLowerCase().trim();
 
-      this.filteredOrders = this.orders.filter(o => {
-        // Campos de texto directo
-        const name = (o.clientName || '').toLowerCase();
-        const store = (o.store || '').toLowerCase();
-        const city = (o.city || '').toLowerCase();
-        const address = (o.address || '').toLowerCase();
-        const oc = (o.storePurchaseOrder || '').toLowerCase();
-        const eo = (o.deliveryStatus || '').toLowerCase();
-        
-        // Campos que suelen ser números o identificadores (convertidos a string)
-        const id = (o.clientIdentification || '').toString().toLowerCase();
-        const ean = (o.ean || '').toString().toLowerCase();
-        const phones = (o.phones || '').toString().toLowerCase();
+      // 2. Evaluamos cada condición (Si el filtro está vacío, retorna true automáticamente)
+      const matchStore = !qStore || (o.store || '').toLowerCase().includes(qStore);
+      const matchCity = !qCity || (o.city || '').toLowerCase().includes(qCity);
+      const matchStatus = !qStatus || (o.deliveryStatus || '') === qStatus;
+      
+      // Para el documento, buscamos coincidencias en OC Tienda, Cédula, Guía o EAN
+      const docString = `${o.storePurchaseOrder || ''} ${o.clientIdentification || ''} ${o.guideNumber || ''} ${o.ean || ''}`.toLowerCase();
+      const matchDoc = !qDoc || docString.includes(qDoc);
 
-        // Retorna verdadero si la query coincide con CUALQUIERA de estos campos
-        return name.includes(query) ||
-               store.includes(query) ||
-               city.includes(query) ||
-               address.includes(query) ||
-               oc.includes(query) ||
-               eo.includes(query) ||
-               id.includes(query) ||
-               ean.includes(query) ||
-               phones.includes(query);
-      });
-    }
+      // 3. Retornamos true SOLO si cumple TODAS las condiciones establecidas (Lógica AND)
+      return matchStore && matchCity && matchStatus && matchDoc;
+    });
 
     // Reiniciamos a la página 1 y actualizamos la vista
     this.currentPage = 1;
     this.updatePagination();
+  }
+
+  /** @description Limpia todos los filtros y restaura la tabla */
+  clearFilters() {
+    this.filters = { store: '', city: '', status: '', document: '' };
+    this.onSearch();
+  }
+
+  /** @description Obtiene el icono correspondiente al estado para mostrarlo en la tabla */
+  getStatusIcon(statusValue: string | undefined): string {
+    if (!statusValue) return '❔'; // Icono por defecto si viene nulo
+    const status = this.DELIVERY_STATUSES.find(s => s.value === statusValue);
+    return status ? status.icon : '❔';
   }
 
   /**

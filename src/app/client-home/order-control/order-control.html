@@ -70,31 +70,61 @@
 
     <div class="glass-card search-section">
         <div class="card-header">
-        <i class="ti ti-search"></i>
-        <span>Búsqueda Inteligente</span>
+            <i class="ti ti-search"></i>
+            <span>Búsqueda Inteligente Combinada</span>
         </div>
         <div class="card-body">
-        <div class="modern-form-group">
-            <label>FILTRAR INFORMACIÓN</label>
-            <div class="input-wrapper">
-            <i class="ti ti-search"></i>
-            <input type="text" 
-                    [(ngModel)]="searchQuery" 
-                    (input)="onSearch()" 
-                    class="modern-input" 
-                    placeholder="Buscar por OC, Guía o Nombre...">
+            <div class="search-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                
+                <div class="modern-form-group">
+                    <label>ALMACÉN</label>
+                    <div class="input-wrapper">
+                        <i class="ti ti-building"></i>
+                        <input type="text" [(ngModel)]="filters.store" (input)="onSearch()" class="modern-input" placeholder="Ej: Éxito, Sao...">
+                    </div>
+                </div>
+
+                <div class="modern-form-group">
+                    <label>DESTINO (CIUDAD)</label>
+                    <div class="input-wrapper">
+                        <i class="ti ti-map-pin"></i>
+                        <input type="text" [(ngModel)]="filters.city" (input)="onSearch()" class="modern-input" placeholder="Ej: Bogotá, Cali...">
+                    </div>
+                </div>
+
+                <div class="modern-form-group">
+                    <label>ESTADO OPERATIVO</label>
+                    <div class="input-wrapper">
+                        <i class="ti ti-activity"></i>
+                        <select [(ngModel)]="filters.status" (change)="onSearch()" class="modern-input">
+                            <option value="">Todos los estados</option>
+                            <option *ngFor="let s of DELIVERY_STATUSES" [value]="s.value">
+                                {{s.icon}} {{s.label}}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modern-form-group">
+                    <label>DOCUMENTO / OC</label>
+                    <div class="input-wrapper">
+                        <i class="ti ti-file-barcode"></i>
+                        <input type="text" [(ngModel)]="filters.document" (input)="onSearch()" class="modern-input" placeholder="OC, Guía, Cédula...">
+                    </div>
+                </div>
             </div>
-        </div>
-        
-        <div class="quick-info-box">
-            <div class="info-item">
-            <span class="label">Registros:</span>
-            <span class="value">{{filteredOrders.length}}</span>
+            
+            <div class="quick-info-box" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <button class="btn-modern btn-secondary" (click)="clearFilters()" [disabled]="!filters.store && !filters.city && !filters.status && !filters.document">
+                        <i class="ti ti-eraser"></i> Limpiar Filtros
+                    </button>
+                </div>
+                <div class="info-item">
+                    <span class="label">Resultados:</span>
+                    <span class="value">{{filteredOrders.length}}</span>
+                </div>
             </div>
-            <div class="info-item">
-            <i class="ti ti-filter"></i>
-            </div>
-        </div>
         </div>
     </div>
 

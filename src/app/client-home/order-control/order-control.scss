@@ -1,5 +1,11 @@
 /* app/client-home/order-control/order-control.scss */
 
+
+@use "sass:color";
+// @import '../../../../styles/variables';
+// @import '../../../styles.scss';
+$corporate-blue: #0056b3;
+
 // --- 1. VARIABLES Y BASE ---
 :host {
     --primary-blue: #003366;
@@ -600,7 +606,7 @@
             border: 1.5px solid var(--border-color);
             border-radius: 10px;
             font-size: 0.9rem;
-            background: white;
+            background: color.adjust(#0056b3, $lightness: 5%);
             color: var(--text-main);
             transition: all 0.2s;
             appearance: none; /* Quita el estilo por defecto de Safari/Chrome */
