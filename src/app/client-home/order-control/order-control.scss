@@ -776,3 +776,87 @@ input:checked + .slider:before {
     border-color: #d1d5db;
     pointer-events: none; /* Evita que se pueda enfocar o modificar */
 }
+
+/* Estilos para limpiar los inputs y quitar el azul intenso */
+
+.form-control, 
+input[type="text"], 
+input[type="date"], 
+input[type="number"], 
+select.form-select {
+    // Fondo blanco puro
+    background-color: #ffffff !important;
+    
+    // Texto en color oscuro para legibilidad
+    color: #334155 !important; 
+    
+    // Borde gris suave en lugar de azul
+    border: 1px solid #cbd5e1 !important;
+    
+    // Sombra suave para dar profundidad
+    box-shadow: none;
+    
+    // Aseguramos que el texto del placeholder sea visible
+    &::placeholder {
+        color: #94a3b8;
+    }
+
+    // Estilo cuando el usuario hace clic (Focus)
+    &:focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important; // Un borde azul muy delgado y sutil
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); // Brillo muy tenue
+        outline: none;
+    }
+}
+
+/* Ajuste específico para los iconos de calendario en inputs de fecha */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5); // Hace el icono del calendario más grisáceo y no tan oscuro
+}
+
+/* Si usas clases de contenedores para los inputs en tu HTML */
+.input-group-text {
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+}
+
+/* Estilos específicos para blanquear el SELECT y quitar el azul */
+
+select.form-control,
+select.form-select,
+select {
+    background-color: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    appearance: none; // Quita el estilo nativo del navegador
+    
+    // Para cuando el campo está deshabilitado
+    &:disabled {
+        background-color: #f1f5f9 !important;
+        cursor: not-allowed;
+    }
+
+    // Estilo al hacer clic
+    &:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        outline: none !important;
+    }
+}
+
+/* OPCIONAL: Si el texto "Seleccione estado..." se ve muy claro */
+select option:first-child {
+    color: #94a3b8;
+}
+
+/* Estilos para las opciones dentro del desplegable */
+select option {
+    background-color: #ffffff;
+    color: #334155;
+}
