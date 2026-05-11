@@ -103,6 +103,9 @@ typings/
 # TernJS port file
 .tern-port
 
-#angular catch file
+#angular cache file
 .angular
 .vscode/
+
+# Log de cambios de Claude Code — solo uso local
+claude_code.log

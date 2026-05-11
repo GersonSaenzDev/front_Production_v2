@@ -8,11 +8,11 @@
 
   <div class="card shadow-lg border-0">
     <div class="card-body p-4 p-md-5">
-      
+
       <div class="alert-container mb-4" *ngIf="submitSuccess || submitError || isSubmitting">
-        
-        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm" 
-             role="alert" 
+
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm"
+             role="alert"
              *ngIf="submitSuccess">
           <i class="ti ti-circle-check fs-3 me-3"></i>
           <div class="flex-grow-1">
@@ -22,8 +22,8 @@
           <button type="button" class="btn-close" (click)="submitSuccess = false" aria-label="Close"></button>
         </div>
 
-        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm" 
-             role="alert" 
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm"
+             role="alert"
              *ngIf="submitError">
           <i class="ti ti-alert-circle fs-3 me-3"></i>
           <div class="flex-grow-1">
@@ -33,8 +33,8 @@
           <button type="button" class="btn-close" (click)="submitError = ''" aria-label="Close"></button>
         </div>
 
-        <div class="alert alert-info alert-dismissible fade show d-flex align-items-center shadow-sm" 
-             role="alert" 
+        <div class="alert alert-info alert-dismissible fade show d-flex align-items-center shadow-sm"
+             role="alert"
              *ngIf="isSubmitting">
           <div class="spinner-border spinner-border-sm text-info me-3" role="status">
             <span class="visually-hidden">Cargando...</span>
@@ -46,17 +46,17 @@
         </div>
 
       </div>
-      
+
       <form [formGroup]="novedadForm" (ngSubmit)="onSubmit()">
         <div class="row g-4">
-          
+
           <div class="col-md-6">
             <label for="fecha" class="form-label text-muted">Fecha de Novedad (*)</label>
             <input type="date" id="fecha" class="form-control" formControlName="fecha"
               [ngClass]="{'is-invalid': isFieldInvalid('fecha')}">
             <div class="invalid-feedback" *ngIf="isFieldInvalid('fecha')">La fecha es obligatoria.</div>
           </div>
-          
+
           <div class="col-md-6">
             <label for="categoriaNovedad" class="form-label text-muted">Categoría de Novedad (*)</label>
             <select id="categoriaNovedad" class="form-select" formControlName="categoriaNovedad"
@@ -66,8 +66,32 @@
             </select>
             <div class="invalid-feedback" *ngIf="isFieldInvalid('categoriaNovedad')">Debe seleccionar una categoría de novedad.</div>
           </div>
-          
+
+          <div class="col-12">
+            <hr class="my-1">
+            <h6 class="text-primary-darker mb-0">Área que reporta la novedad</h6>
+          </div>
+
           <div class="col-md-6">
+            <label for="originArea" class="form-label text-muted">Área Origen (*)</label>
+            <select id="originArea" class="form-select" formControlName="originArea"
+              [ngClass]="{'is-invalid': isFieldInvalid('originArea')}">
+              <option value="" disabled>Seleccione el área que reporta</option>
+              <option *ngFor="let area of groupedAreas" [value]="area.area">{{ area.area }}</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('originArea')">Debe seleccionar el área que reporta.</div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="originSubArea" class="form-label text-muted">Sub-Área Origen</label>
+            <select id="originSubArea" class="form-select" formControlName="originSubArea"
+              [disabled]="!originSubAreas.length">
+              <option value="">Seleccione la sub-área</option>
+              <option *ngFor="let sub of originSubAreas" [value]="sub">{{ sub }}</option>
+            </select>
+          </div>
+
+          <div class="col-md-6" *ngIf="isOriginEnsamble">
             <label for="lineaNovedad" class="form-label text-muted">Línea con Novedad (*)</label>
             <select id="lineaNovedad" class="form-select" formControlName="lineaNovedad"
               [ngClass]="{'is-invalid': isFieldInvalid('lineaNovedad')}">
@@ -77,24 +101,45 @@
             <div class="invalid-feedback" *ngIf="isFieldInvalid('lineaNovedad')">Debe seleccionar la línea afectada.</div>
           </div>
 
-          <div class="col-md-6">
-            <label for="responsible" class="form-label text-muted">Area/Seccion Responsable (*)</label>
-            <input 
-              type="text" 
-              id="responsible" 
-              class="form-control" 
-              formControlName="responsible"
-              placeholder="Ej: Almacen, Mantenimiento, Calidad"
-              [ngClass]="{'is-invalid': isFieldInvalid('responsible')}"
-            >
-            <div class="invalid-feedback" *ngIf="isFieldInvalid('responsible')">El área responsable es obligatoria.</div>
+          <div class="col-12">
+            <hr class="my-1">
+            <h6 class="text-primary-darker mb-0">Área a la que se le carga la novedad</h6>
+            <small class="text-muted">No puede ser la misma área que reporta.</small>
           </div>
-          <div class="col-md-6 position-relative"> 
+
+          <div class="col-md-6">
+            <label for="assignmentArea" class="form-label text-muted">Área Destino (*)</label>
+            <select id="assignmentArea" class="form-select" formControlName="assignmentArea"
+              [ngClass]="{'is-invalid': isFieldInvalid('assignmentArea')}">
+              <option value="" disabled>Seleccione el área destino</option>
+              <option *ngFor="let area of availableAssignmentAreas" [value]="area.area">{{ area.area }}</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('assignmentArea')">Debe seleccionar el área destino.</div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="assignmentSubArea" class="form-label text-muted">Sub-Área Destino (*)</label>
+            <select id="assignmentSubArea" class="form-select" formControlName="assignmentSubArea"
+              [ngClass]="{'is-invalid': isFieldInvalid('assignmentSubArea')}"
+              [disabled]="!availableAssignmentSubAreas.length">
+              <option value="" disabled>Seleccione la sub-área</option>
+              <option *ngFor="let sub of availableAssignmentSubAreas" [value]="sub.subArea">
+                {{ sub.subArea }} — {{ sub.reportingManager }}
+              </option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isFieldInvalid('assignmentSubArea')">Debe seleccionar la sub-área destino.</div>
+          </div>
+
+          <div class="col-12">
+            <hr class="my-1">
+          </div>
+
+          <div class="col-md-6 position-relative">
             <label for="productReference" class="form-label text-muted">Referencia en Producción (*)</label>
-            <input 
-                type="text" 
-                id="productReference" 
-                class="form-control" 
+            <input
+                type="text"
+                id="productReference"
+                class="form-control"
                 formControlName="productReference"
                 placeholder="Escriba código o nombre de referencia"
                 [ngClass]="{'is-invalid': isFieldInvalid('productReference')}"
@@ -102,9 +147,9 @@
                 (blur)="onBlur()"
                 autocomplete="off"
             >
-            
-            <div 
-                class="autocomplete-results shadow-lg" 
+
+            <div
+                class="autocomplete-results shadow-lg"
                 *ngIf="predictiveList.length > 0 && showDropdown"
             >
                 <div
@@ -118,7 +163,7 @@
 
             <div class="invalid-feedback" *ngIf="isFieldInvalid('productReference')">La referencia de producción es obligatoria.</div>
           </div>
-          
+
           <div class="col-12"><hr *ngIf="isLineaParada"></div>
 
           <ng-container *ngIf="isLineaParada">
@@ -131,13 +176,13 @@
                 </select>
                 <div class="invalid-feedback" *ngIf="isFieldInvalid('tipoNovedad')">Debe especificar el tipo de parada.</div>
             </div>
-          
+
             <div class="col-md-2 col-6">
                 <label for="horaInicio" class="form-label text-muted">Inicio (HH:mm) (*)</label>
-                <input 
-                    type="text"  
-                    id="horaInicio" 
-                    class="form-control" 
+                <input
+                    type="text"
+                    id="horaInicio"
+                    class="form-control"
                     formControlName="horaInicio"
                     placeholder="Ej: 14:30"
                     pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
@@ -149,19 +194,19 @@
 
             <div class="col-md-2 col-6">
                 <label for="horaFin" class="form-label text-muted">Fin (HH:mm) (*)</label>
-                <input 
-                    type="text"  
-                    id="horaFin" 
-                    class="form-control" 
+                <input
+                    type="text"
+                    id="horaFin"
+                    class="form-control"
                     formControlName="horaFin"
                     placeholder="Ej: 15:00"
-                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]" 
+                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                     [ngClass]="{'is-invalid': isFieldInvalid('horaFin')}">
                 <div class="invalid-feedback" *ngIf="isFieldInvalid('horaFin')">
                     Obligatoria y debe ser **HH:mm** (24h).
                 </div>
             </div>
-            
+
             <div class="col-md-4">
               <label for="totalParada" class="form-label text-muted">Total Parada (HH:mm)</label>
               <input type="text" id="totalParada" class="form-control bg-light-purple" formControlName="totalParada" readonly>
@@ -178,8 +223,8 @@
           </div>
 
           <div class="col-12 mt-4 text-end">
-            <button type="submit" 
-                    class="btn btn-secundary-light btn-lg shadow-sm" 
+            <button type="submit"
+                    class="btn btn-secundary-light btn-lg shadow-sm"
                     [disabled]="novedadForm.invalid || isSubmitting">
               <span *ngIf="!isSubmitting">
                 <i class="ti ti-send me-2"></i> Registrar Novedad

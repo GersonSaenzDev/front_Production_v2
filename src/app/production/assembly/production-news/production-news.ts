@@ -4,7 +4,12 @@ import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, filter, switchMap, tap } from 'rxjs';
 import { ReferenceItem } from '../../../interfaces/assembly.interface';
-import { ProductionNewsRequest } from '../../../interfaces/production-news.interface';
+import {
+  ProductionArea,
+  ProductionAreaGrouped,
+  ProductionNewsRequest,
+  ProductionSubArea
+} from '../../../interfaces/production-news.interface';
 import { DashboardServices } from '../../../services/dashboard-services';
 import { NewsServices } from '../../../services/news-services';
 
@@ -20,18 +25,26 @@ export class ProductionNews implements OnInit {
   private dashboardService = inject(DashboardServices);
   private fb = inject(FormBuilder);
   private newsServices = inject(NewsServices);
-  
+
   categoriasNovedad = [
     'Parada de Línea',
-    'Reporte de Calidad', 
-    'Reporte Material', 
-    'Reporte Mantenimiento'
+    'Reporte de Calidad',
+    'Reporte de Ingenieria',
+    'Reporte de Material',
+    'Reporte Mantenimiento',
+    'Reporte Mecanica',
+    'Reporte Compras',
+    'Seguridad y Salud en Trabajo (SST)',
+    'Control de Talento Humano',
   ];
-  
+
   tiposParada = [
+    'Pieza Afectada',
     'Mantenimiento',
     'Calidad',
     'Insidente',
+    'Master Produccion',
+    'Proceso Produccion',
     'Papeleria Logistica',
     'Falta de Material',
     'Compras',
@@ -50,10 +63,16 @@ export class ProductionNews implements OnInit {
     'Exportación USA',
     'Multi Linea'
   ];
-    
+
+  originAreas: ProductionArea[] = [];
+  groupedAreas: ProductionAreaGrouped[] = [];
+  availableAssignmentAreas: ProductionAreaGrouped[] = [];
+  availableAssignmentSubAreas: ProductionSubArea[] = [];
+
   predictiveList: string[] = [];
   novedadForm!: FormGroup;
   isLineaParada = false;
+  isOriginEnsamble = false;
   showDropdown: boolean = false;
 
   isSubmitting: boolean = false;
@@ -67,35 +86,65 @@ export class ProductionNews implements OnInit {
   ngOnInit(): void {
     this.novedadForm = this.fb.group({
       fecha: [this.getCurrentDate(), Validators.required],
-      categoriaNovedad: ['', Validators.required], 
-      lineaNovedad: ['', Validators.required],
-      responsible: ['', Validators.required], // 💡 AJUSTE: Nuevo campo
-      productReference: ['', Validators.required], 
-      tipoNovedad: [''], 
-      horaInicio: [{ value: '', disabled: true }], 
-      horaFin: [{ value: '', disabled: true }], 
-      totalParada: [{ value: '00:00', disabled: true }], 
+      categoriaNovedad: ['', Validators.required],
+      originArea: ['', Validators.required],
+      originSubArea: [''],
+      lineaNovedad: [{ value: '', disabled: true }],
+      assignmentArea: ['', Validators.required],
+      assignmentSubArea: ['', Validators.required],
+      productReference: ['', Validators.required],
+      tipoNovedad: [''],
+      horaInicio: [{ value: '', disabled: true }],
+      horaFin: [{ value: '', disabled: true }],
+      totalParada: [{ value: '00:00', disabled: true }],
       detalle: ['', [Validators.required, Validators.minLength(50)]]
     });
 
+    this.loadProductionAreas();
     this.setupReferenceSearch();
 
     this.novedadForm.get('categoriaNovedad')?.valueChanges.subscribe(value => {
       this.handleCategoriaChange(value);
     });
-    
+
+    this.novedadForm.get('originArea')?.valueChanges.subscribe(value => {
+      this.handleOriginAreaChange(value);
+    });
+
+    this.novedadForm.get('assignmentArea')?.valueChanges.subscribe(value => {
+      this.handleAssignmentAreaChange(value);
+    });
+
     this.novedadForm.get('horaInicio')?.valueChanges.subscribe(() => this.calculateTotalParada());
     this.novedadForm.get('horaFin')?.valueChanges.subscribe(() => this.calculateTotalParada());
-    
+
     this.handleCategoriaChange(this.novedadForm.get('categoriaNovedad')?.value);
   }
 
+  private loadProductionAreas(): void {
+    this.newsServices.getProductionAreas().subscribe({
+      next: (res) => {
+        if (res.ok) this.originAreas = res.msg;
+      },
+      error: (err) => console.error('Error cargando áreas (plano):', err)
+    });
+
+    this.newsServices.getProductionAreasGrouped().subscribe({
+      next: (res) => {
+        if (res.ok) {
+          this.groupedAreas = res.msg;
+          this.availableAssignmentAreas = res.msg;
+        }
+      },
+      error: (err) => console.error('Error cargando áreas (agrupado):', err)
+    });
+  }
+
   handleCategoriaChange(value: string): void {
-    // ... (Este método no cambia)
     const inicioControl = this.novedadForm.get('horaInicio');
     const finControl = this.novedadForm.get('horaFin');
     const tipoControl = this.novedadForm.get('tipoNovedad');
-    
+
     this.isLineaParada = value === 'Parada de Línea';
 
     if (this.isLineaParada) {
@@ -107,7 +156,7 @@ export class ProductionNews implements OnInit {
       finControl?.enable();
       this.novedadForm.get('totalParada')?.enable();
       tipoControl?.enable();
-      
+
       if (!this.novedadForm.get('totalParada')?.value) {
         this.novedadForm.get('totalParada')?.setValue('00:00');
       }
@@ -120,29 +169,72 @@ export class ProductionNews implements OnInit {
       finControl?.disable();
       this.novedadForm.get('totalParada')?.disable();
       tipoControl?.disable();
-      
+
       inicioControl?.setValue('');
       finControl?.setValue('');
       this.novedadForm.get('totalParada')?.setValue('00:00');
       tipoControl?.setValue('');
     }
-    
+
     inicioControl?.updateValueAndValidity();
     finControl?.updateValueAndValidity();
     tipoControl?.updateValueAndValidity();
   }
 
+  /**
+   * Cuando cambia el área que reporta:
+   * - Si es "Ensamble", habilita el select de línea (Sobremesa, Apartamento, etc.).
+   * - Filtra del listado de áreas destino para que no pueda asignarse a la misma área padre.
+   */
+  handleOriginAreaChange(area: string): void {
+    this.isOriginEnsamble = area === 'Ensamble';
+
+    const lineaControl = this.novedadForm.get('lineaNovedad');
+    if (this.isOriginEnsamble) {
+      lineaControl?.setValidators(Validators.required);
+      lineaControl?.enable();
+    } else {
+      lineaControl?.clearValidators();
+      lineaControl?.disable();
+      lineaControl?.setValue('');
+    }
+    lineaControl?.updateValueAndValidity();
+
+    this.availableAssignmentAreas = this.groupedAreas.filter(g => g.area !== area);
+
+    if (this.novedadForm.get('assignmentArea')?.value === area) {
+      this.novedadForm.patchValue({ assignmentArea: '', assignmentSubArea: '' });
+      this.availableAssignmentSubAreas = [];
+    }
+  }
+
+  /**
+   * Cuando cambia el área destino, refresca las sub-áreas disponibles.
+   */
+  handleAssignmentAreaChange(area: string): void {
+    const group = this.groupedAreas.find(g => g.area === area);
+    this.availableAssignmentSubAreas = group ? group.subAreas : [];
+    this.novedadForm.get('assignmentSubArea')?.setValue('');
+  }
+
+  /**
+   * Sub-áreas únicas del área que reporta (para el select de origin.subArea).
+   */
+  get originSubAreas(): string[] {
+    const area = this.novedadForm?.get('originArea')?.value;
+    if (!area) return [];
+    return [...new Set(this.originAreas.filter(a => a.area === area).map(a => a.subArea))];
+  }
+
   getCurrentDate(): string {
-    // ... (Este método no cambia)
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
-  
+
   calculateTotalParada(): void {
-    // ... (Este método no cambia)
     const inicio = this.novedadForm.get('horaInicio')?.value;
     const fin = this.novedadForm.get('horaFin')?.value;
 
@@ -152,18 +244,18 @@ export class ProductionNews implements OnInit {
 
       const totalMinutosInicio = hInicio * 60 + mInicio;
       let totalMinutosFin = hFin * 60 + mFin;
-      
+
       if (totalMinutosFin < totalMinutosInicio) {
-        totalMinutosFin += 24 * 60; 
+        totalMinutosFin += 24 * 60;
       }
-      
+
       const diferenciaMinutos = totalMinutosFin - totalMinutosInicio;
-      
+
       const horas = Math.floor(diferenciaMinutos / 60);
       const minutos = diferenciaMinutos % 60;
 
       const totalParada = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
-      
+
       this.novedadForm.get('totalParada')?.setValue(totalParada);
     } else {
       this.novedadForm.get('totalParada')?.setValue('00:00');
@@ -171,7 +263,6 @@ export class ProductionNews implements OnInit {
   }
 
   onSubmit(): void {
-    // ... (Este método no cambia)
     this.submitSuccess = false;
     this.submitError = '';
 
@@ -186,7 +277,7 @@ export class ProductionNews implements OnInit {
 
     const validation = this.newsServices.validateProductionNews(newsData);
     if (!validation.valid) {
-      console.error('❌ Errores de validación:', validation.errors);
+      console.error('Errores de validación:', validation.errors);
       this.submitError = validation.errors.join(', ');
       return;
     }
@@ -197,7 +288,7 @@ export class ProductionNews implements OnInit {
         this.isSubmitting = false;
         this.submitSuccess = true;
         this.successMessage = response.msg;
-        
+
         setTimeout(() => {
           this.resetForm();
           this.submitSuccess = false;
@@ -205,10 +296,10 @@ export class ProductionNews implements OnInit {
         }, 3000);
       },
       error: (error) => {
-        console.error('❌ Error al enviar novedad:', error);
+        console.error('Error al enviar novedad:', error);
         this.isSubmitting = false;
         this.submitError = error.message || 'Error desconocido al registrar la novedad';
-        
+
         setTimeout(() => {
           this.submitError = '';
         }, 5000);
@@ -221,19 +312,33 @@ export class ProductionNews implements OnInit {
     const newsDate = `${day}/${month}/${year}`;
 
     const request: ProductionNewsRequest = {
-      newsDate: newsDate,
+      newsDate,
       category: formValues.categoriaNovedad,
-      assemblyLine: formValues.lineaNovedad,
-      responsible: formValues.responsible, // 💡 AJUSTE: Nuevo campo
       reference: formValues.productReference,
-      detail: formValues.detalle
+      detail: formValues.detalle,
+      reportedBy: {
+        userApp: 'system-form',
+        area: formValues.originArea,
+        subArea: formValues.originSubArea || ''
+      },
+      origin: {
+        area: formValues.originArea,
+        subArea: formValues.originSubArea || '',
+        location: this.isOriginEnsamble ? (formValues.lineaNovedad || '') : ''
+      },
+      assignment: {
+        currentArea: formValues.assignmentArea,
+        currentSubArea: formValues.assignmentSubArea || ''
+      }
     };
 
     if (this.isLineaParada) {
-      request.stopType = formValues.tipoNovedad;
-      request.startTime = formValues.horaInicio;
-      request.endTime = formValues.horaFin;
-      request.totalTime = formValues.totalParada;
+      request.stop = {
+        stopType: formValues.tipoNovedad,
+        startTime: formValues.horaInicio,
+        endTime: formValues.horaFin,
+        totalTime: formValues.totalParada
+      };
     }
 
     return request;
@@ -243,8 +348,11 @@ export class ProductionNews implements OnInit {
     this.novedadForm.reset({
       fecha: this.getCurrentDate(),
       categoriaNovedad: '',
+      originArea: '',
+      originSubArea: '',
       lineaNovedad: '',
-      responsible: '', // 💡 AJUSTE: Nuevo campo
+      assignmentArea: '',
+      assignmentSubArea: '',
       productReference: '',
       tipoNovedad: '',
       horaInicio: '',
@@ -252,21 +360,22 @@ export class ProductionNews implements OnInit {
       totalParada: '00:00',
       detalle: ''
     });
-    
+
     this.novedadForm.markAsUntouched();
     this.novedadForm.markAsPristine();
     this.predictiveList = [];
     this.showDropdown = false;
+    this.availableAssignmentAreas = this.groupedAreas;
+    this.availableAssignmentSubAreas = [];
+    this.isOriginEnsamble = false;
   }
 
   isFieldInvalid(field: string): boolean | undefined {
-    // ... (Este método no cambia)
     const control = this.novedadForm.get(field);
     return control?.invalid && (control?.dirty || control?.touched);
   }
 
   setupReferenceSearch(): void {
-    // ... (Este método no cambia)
     this.novedadForm.get('productReference')?.valueChanges
       .pipe(
         debounceTime(300),
@@ -299,7 +408,6 @@ export class ProductionNews implements OnInit {
   }
 
   extractPredictiveValues(items: ReferenceItem[]): string[] {
-    // ... (Este método no cambia)
     const list = new Set<string>();
     for (const p of items) {
       const ref = (p.reference || '').trim();
@@ -309,7 +417,6 @@ export class ProductionNews implements OnInit {
   }
 
   selectReference(item: string): void {
-    // ... (Este método no cambia)
     this.isSelecting = true;
     this.predictiveList = [];
     this.showDropdown = false;
@@ -319,20 +426,18 @@ export class ProductionNews implements OnInit {
       this.isSelecting = false;
     }, 400);
     setTimeout(() => {
-      document.getElementById('lineaNovedad')?.focus();
+      document.getElementById('originArea')?.focus();
     }, 50);
   }
 
   onBlur(): void {
-    // ... (Este método no cambia)
     setTimeout(() => {
       this.showDropdown = false;
       this.predictiveList = [];
     }, 120);
   }
-  
+
   onFocus(): void {
-    // ... (Este método no cambia)
     if (this.isSelecting) {
       return;
     }

@@ -6,11 +6,13 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import { environment } from 'src/environments/environment';
-import { 
-    ProductionNewsRequest, 
+import {
+    ProductionNewsRequest,
     ProductionNewsResponse,
     WarehouseNewsRequest,
-    WarehouseNewsResponse 
+    WarehouseNewsResponse,
+    ProductionAreasGroupedResponse,
+    ProductionAreasResponse
 } from '../interfaces/production-news.interface';
 
 @Injectable({
@@ -20,8 +22,11 @@ export class NewsServices {
 
     private http = inject(HttpClient);
     private readonly BASE_URL = environment.backendUrl;
-    private readonly PRODUCTION_NEWS_ENDPOINT = `${this.BASE_URL}/api/v1/assembly/productionNews`;
-    private readonly WAREHOUSE_NEWS_ENDPOINT = `${this.BASE_URL}/api/v1/storage/newsWarehouse`;
+    private readonly BASE_API = environment.api;
+    private readonly PRODUCTION_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews`;
+    private readonly WAREHOUSE_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/newsWarehouse`;
+    private readonly PRODUCTION_AREAS_GROUPED_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionAreas/grouped`;
+    private readonly PRODUCTION_AREAS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionAreas`;
 
     /**
      * @description Manejo centralizado de errores HTTP.
@@ -60,6 +65,40 @@ export class NewsServices {
     }
 
     /**
+     * @description Obtiene el listado plano de áreas de producción (sin agrupar).
+     * @returns {Observable<ProductionAreasResponse>}
+     */
+    getProductionAreas(): Observable<ProductionAreasResponse> {
+        console.log('NEWS SERVICES - CONTROL: Petición a productionAreas');
+
+        return this.http.get<ProductionAreasResponse>(this.PRODUCTION_AREAS_ENDPOINT)
+            .pipe(
+                catchError(this.handleError.bind(this)),
+                map(response => {
+                    console.log('NEWS SERVICES - CONTROL: Respuesta del backend (productionAreas):', response);
+                    return response;
+                })
+            );
+    }
+
+    /**
+     * @description Obtiene las áreas de producción agrupadas con sus sub-áreas y responsables.
+     * @returns {Observable<ProductionAreasGroupedResponse>}
+     */
+    getProductionAreasGrouped(): Observable<ProductionAreasGroupedResponse> {
+        console.log('NEWS SERVICES - CONTROL: Petición a productionAreas/grouped');
+
+        return this.http.get<ProductionAreasGroupedResponse>(this.PRODUCTION_AREAS_GROUPED_ENDPOINT)
+            .pipe(
+                catchError(this.handleError.bind(this)),
+                map(response => {
+                    console.log('NEWS SERVICES - CONTROL: Respuesta del backend (productionAreas/grouped):', response);
+                    return response;
+                })
+            );
+    }
+
+    /**
      * @description Crea una nueva novedad de bodega/almacén.
      * @param {WarehouseNewsRequest} newsData - Los datos de la novedad de bodega a registrar.
      * @returns {Observable<WarehouseNewsResponse>}
@@ -85,20 +124,43 @@ export class NewsServices {
     validateProductionNews(newsData: ProductionNewsRequest): { valid: boolean; errors: string[] } {
         const errors: string[] = [];
 
-        // Validación de campos obligatorios
         if (!newsData.newsDate) errors.push('La fecha de novedad es obligatoria');
         if (!newsData.category) errors.push('La categoría es obligatoria');
-        if (!newsData.assemblyLine) errors.push('La línea de ensamble es obligatoria');
-        if (!newsData.responsible) errors.push('El área responsable es obligatoria'); // 💡 AJUSTE
-        if (!newsData.reference) errors.push('La referencia es obligatoria'); // 💡 AJUSTE
+        if (!newsData.reference) errors.push('La referencia es obligatoria');
         if (!newsData.detail) errors.push('El detalle es obligatorio');
+        if (newsData.detail && newsData.detail.trim().length < 50) {
+            errors.push('El detalle debe tener al menos 50 caracteres');
+        }
 
-        // Validación específica para "Parada de Línea"
+        if (!newsData.reportedBy || (!newsData.reportedBy.uid && !newsData.reportedBy.userApp)) {
+            errors.push('Se requiere identificar al usuario que reporta (uid o userApp)');
+        }
+
+        if (!newsData.origin?.area) {
+            errors.push('El área que reporta (origen) es obligatoria');
+        }
+        if (!newsData.assignment?.currentArea) {
+            errors.push('El área destino de la novedad (asignación) es obligatoria');
+        }
+
+        if (
+            newsData.origin?.area &&
+            newsData.assignment?.currentArea &&
+            newsData.origin.area === newsData.assignment.currentArea
+        ) {
+            errors.push('El área que reporta no puede ser la misma a la que se le carga la novedad');
+        }
+
+        if (newsData.origin?.area === 'Ensamble' && !newsData.origin.location) {
+            errors.push('La línea de ensamble es obligatoria cuando el área que reporta es Ensamble');
+        }
+
         if (newsData.category === 'Parada de Linea' || newsData.category === 'Parada de Línea') {
-            if (!newsData.stopType) errors.push('El tipo de parada es obligatorio para Parada de Línea');
-            if (!newsData.startTime) errors.push('La hora de inicio es obligatoria para Parada de Línea');
-            if (!newsData.endTime) errors.push('La hora de fin es obligatoria para Parada de Línea');
-            if (!newsData.totalTime) errors.push('El tiempo total es obligatorio para Parada de Línea');
+            const stop = newsData.stop;
+            if (!stop?.stopType) errors.push('El tipo de parada es obligatorio para Parada de Línea');
+            if (!stop?.startTime) errors.push('La hora de inicio es obligatoria para Parada de Línea');
+            if (!stop?.endTime) errors.push('La hora de fin es obligatoria para Parada de Línea');
+            if (!stop?.totalTime) errors.push('El tiempo total es obligatorio para Parada de Línea');
         }
 
         return {

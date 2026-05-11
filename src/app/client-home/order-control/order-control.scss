@@ -860,3 +860,31 @@ select option {
     background-color: #ffffff;
     color: #334155;
 }
+
+/* Estilos para las Notas (Textareas) - Quitar azul y poner blanco */
+
+textarea.form-control,
+textarea {
+    background-color: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px; // Para que mantenga la estética redondeada
+    padding: 10px;
+    box-shadow: none !important;
+    
+    // Color del texto de ayuda (placeholder)
+    &::placeholder {
+        color: #94a3b8 !important;
+    }
+
+    // Cuando el usuario hace clic para escribir
+    &:focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        outline: none !important;
+    }
+
+    // Estilo opcional para el "triangulito" de redimensionar en la esquina
+    resize: vertical; 
+}

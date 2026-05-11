@@ -1,19 +1,69 @@
 // src/app/interfaces/production-news.interface.ts
 
 /**
+ * @description Identidad del actor (quien reporta / responde / cierra una novedad).
+ *              El backend exige uid o userApp para registrar la novedad.
+ */
+export interface NewsActor {
+    uid?: string;
+    userApp?: string;
+    name?: string;
+    area?: string;
+    subArea?: string;
+}
+
+/**
+ * @description Bloque ORIGEN: identifica al área que reporta la novedad.
+ */
+export interface NewsOrigin {
+    area: string;
+    subArea?: string;
+    location?: string;        // Línea/máquina/celda (solo aplica para área Ensamble)
+}
+
+/**
+ * @description Bloque ASIGNACIÓN: identifica al área a la que se le carga la novedad.
+ */
+export interface NewsAssignment {
+    currentArea: string;
+    currentSubArea?: string;
+}
+
+/**
+ * @description Bloque PARADA: aplica solo cuando category === 'Parada de Línea'.
+ */
+export interface NewsStop {
+    stopType: string;
+    startTime: string;        // HH:MM
+    endTime: string;          // HH:MM
+    totalTime: string;        // HH:MM
+}
+
+/**
  * @description Estructura de datos para crear una novedad de producción.
+ *              Soporta el formato nuevo (origin/assignment/stop) y mantiene
+ *              campos legacy opcionales por compatibilidad con el backend.
  */
 export interface ProductionNewsRequest {
-    newsDate: string;         // Formato: "DD/MM/YYYY"
-    category: string;         // Ej: "Parada de Linea", "Reporte de Calidad"
-    assemblyLine: string;     // Ej: "Linea 1", "Linea 9"
-    reference: string;        // 💡 AJUSTE: Es obligatorio según el formulario
-    responsible: string;      // 💡 AJUSTE: Nuevo campo obligatorio
-    stopType?: string;        // Opcional (obligatorio si category es "Parada de Línea")
-    startTime?: string;       // Opcional: Formato "HH:MM"
-    endTime?: string;         // Opcional: Formato "HH:MM"
-    totalTime?: string;       // Opcional: Formato "HH:MM" o "HHh MMm"
-    detail: string;           // Detalle de la novedad
+    newsDate: string;                 // Formato: "DD/MM/YYYY"
+    category: string;                 // Ej: "Parada de Línea", "Reporte de Calidad"
+    reference: string;                // Referencia del producto (obligatoria)
+    detail: string;                   // Detalle de la novedad (mínimo 50 caracteres)
+
+    reportedBy: NewsActor;            // Identidad del usuario que reporta
+    origin: NewsOrigin;               // Área que reporta
+    assignment: NewsAssignment;       // Área a la que se le carga la novedad
+    stop?: NewsStop;                  // Solo si category === 'Parada de Línea'
+
+    // -----------------------------------------------------------------
+    // CAMPOS LEGACY (opcionales — se mantienen mientras el backend los acepte)
+    // -----------------------------------------------------------------
+    assemblyLine?: string;
+    responsible?: string;
+    stopType?: string;
+    startTime?: string;
+    endTime?: string;
+    totalTime?: string;
 }
 
 /**
@@ -74,4 +124,49 @@ export interface WarehouseNewsData {
     reportedAmount: number;
     description: string;
     dateCreate: string;
+}
+
+/**
+ * @description Sub-área de producción agrupada por área.
+ */
+export interface ProductionSubArea {
+    cod: number;
+    subArea: string;
+    reportingManager: string;
+}
+
+/**
+ * @description Área de producción con sus sub-áreas agrupadas.
+ */
+export interface ProductionAreaGrouped {
+    area: string;
+    count: number;
+    subAreas: ProductionSubArea[];
+}
+
+/**
+ * @description Respuesta del backend para áreas de producción agrupadas.
+ */
+export interface ProductionAreasGroupedResponse {
+    ok: boolean;
+    msg: ProductionAreaGrouped[];
+}
+
+/**
+ * @description Área de producción (formato plano).
+ */
+export interface ProductionArea {
+    _id: string;
+    active: boolean;
+    area: string;
+    subArea: string;
+    reportingManager: string;
+}
+
+/**
+ * @description Respuesta del backend para áreas de producción (formato plano).
+ */
+export interface ProductionAreasResponse {
+    ok: boolean;
+    msg: ProductionArea[];
 }

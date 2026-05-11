@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\sop-01-lt.ABBA\\\\Documents\" /b)",
+      "Read(//c/Users/sop-01-lt.ABBA/Documents/**)"
+    ]
+  }
+}
