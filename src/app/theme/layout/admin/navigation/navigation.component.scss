@@ -1,52 +1,129 @@
-/* Contenedor principal del logo y el botón de menú */
+/* Variables corporativas */
+$abba-blue: #004a99;
+$abba-gray: #64748b;
+
+/* Contenedor principal del logo en el sidebar */
 .m-header {
-  display: flex;       /* Habilita Flexbox */
-  align-items: center; /* Centra verticalmente logo y botón */
-  justify-content: flex-start; /* Alinea los elementos a la izquierda */
-  padding: 5px 0 5px 0; /* Ajuste el padding para reducir el espacio superior/inferior */
-  height: 60px; /* Opcional: define una altura fija para la barra de cabecera */
-  
-  /* Sombra alrededor para dar forma y profundidad */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), /* sombra principal */
-              0 0 15px rgba(0, 0, 0, 0.05); /* sombra difusa */
-  border-radius: 8px; /* bordes ligeramente redondeados para modernidad */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 15px 25px;
+  height: 80px; 
+  /* Agregamos una línea divisoria sutil para anclar el logo y separarlo del menú */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  background: linear-gradient(to bottom, #ffffff, #f8fafc);
 }
 
-/* Contenedor del logo */
-.b-brand {
-    padding: 0 10px 0 0; /* Agrega un pequeño espacio a la derecha del logo si es necesario */
-}
-
-/* Imagen del logo */
+/* Imagen del logo en el sidebar */
 .b-brand .logo-lg {
-  max-height: 35px; /* Altura que se ajusta a la cabecera */
-  max-width: 100px; /* Ancho limitado */
-  height: auto;
+  max-height: 40px;
+  width: auto;
+  transition: transform 0.3s ease;
+}
+.b-brand:hover .logo-lg {
+  transform: scale(1.02);
 }
 
+/* Sidebar General - Estructurado y con presencia */
 .app-main-header {
-    background-color: #54a5d1; 
-    
-    /* Sombra alrededor para un efecto moderno */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 
-                0 0 20px rgba(0, 0, 0, 0.07);
-    
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 8px; /* bordes redondeados */
+  background-color: #ffffff;
+  /* Aumentamos la sombra y definimos el borde para que NO se pierda y "flote" sobre el contenido */
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.06); 
+  border-right: 1px solid #e2e8f0; 
+  height: 100vh;
+  z-index: 1029;
+  position: relative; /* Asegura que la sombra se proyecte correctamente */
 }
 
-/* Si la barra tiene un color por defecto que necesitas anular */
+/* Navbar wrapper interno */
 .navbar-wrapper {
-    background-color: transparent !important;
+  background-color: transparent !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-/* Alternativa con fondo morado pálido y sombra mejorada */
-.app-main-header.pale-purple {
-    background-color: #a2b5c9; 
+/* Ajustes para el contenedor de items */
+.navbar-content {
+  padding: 15px 0;
+}
+
+/* 
+  ESTILOS PROFUNDOS (::ng-deep) PARA DAR IMPORTANCIA AL MENÚ
+  Evitamos la fatiga con colores claros, pero damos vida con interacciones.
+*/
+::ng-deep .coded-inner-navbar {
+  
+  /* Cabeceras de grupo (ej. "Módulos") */
+  li.nav-item.nav-caption {
+    label {
+      color: #94a3b8 !important;
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding-left: 25px;
+      margin-top: 10px;
+    }
+  }
+
+  /* Items del menú */
+  li.nav-item {
+    margin-bottom: 4px;
     
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12), 
-                0 0 25px rgba(0, 0, 0, 0.08);
+    > a {
+      border-radius: 8px;
+      margin: 0 15px; /* Separación de los bordes del sidebar */
+      padding: 12px 15px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: $abba-gray;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      
+      /* Iconos del menú */
+      .nav-icon {
+        color: #94a3b8;
+        transition: color 0.3s ease;
+      }
+
+      /* Efecto Hover: Le da vida sin ser invasivo */
+      &:hover {
+        background-color: #f1f5f9;
+        color: $abba-blue;
+        transform: translateX(4px); /* Pequeño salto a la derecha */
+        
+        .nav-icon {
+          color: $abba-blue;
+        }
+      }
+    }
     
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 8px;
+    /* Estado Activo: Clara indicación de dónde está el usuario */
+    &.active > a {
+      background: linear-gradient(90deg, rgba(0, 74, 153, 0.08) 0%, rgba(0, 74, 153, 0.02) 100%);
+      color: $abba-blue;
+      font-weight: 600;
+      border-right: 3px solid $abba-blue; /* Acento derecho corporativo */
+      border-radius: 8px 0 0 8px; /* Ajustamos el radio para el borde derecho */
+      box-shadow: inset 2px 0 0 0 rgba(0, 74, 153, 0.05);
+
+      .nav-icon {
+        color: $abba-blue;
+      }
+    }
+  }
+}
+
+/* Contenedor de la versión */
+.version {
+  padding: 15px 25px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+  background-color: #f8fafc;
+  
+  label {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
 }

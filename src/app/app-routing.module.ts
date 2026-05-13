@@ -12,7 +12,7 @@ const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: '/production',
+        redirectTo: '/auth/login',
         pathMatch: 'full'
       },
       {

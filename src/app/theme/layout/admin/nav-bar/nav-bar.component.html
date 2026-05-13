@@ -1,6 +1,18 @@
 <header class="pc-header coded-header">
   <app-nav-logo [navCollapsed]="navCollapsed" (NavCollapse)="navCollapse()" />
-  <div class="header-wrapper">
+  <div class="header-wrapper" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <app-nav-left (NavCollapsedMob)="navCollapseMob()" />
+    <div class="ms-auto d-flex align-items-center gap-3" style="padding-right: 15px;">
+      @if (authService.userData()) {
+        <div class="user-info text-end">
+          <h6 class="mb-0">{{ authService.userData()!.full_name }}</h6>
+          <small class="text-muted">{{ authService.userData()!.departament }}</small>
+        </div>
+      }
+      <button class="btn btn-danger btn-sm d-flex align-items-center gap-2" (click)="logout()">
+        <i class="ti ti-logout"></i>
+        <span>Cerrar sesión</span>
+      </button>
+    </div>
   </div>
 </header>

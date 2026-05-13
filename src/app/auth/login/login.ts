@@ -64,7 +64,18 @@ export class LoginComponent implements OnInit {
       next: (res) => {
         // El servicio ya guardó el token en localStorage internamente
         if (res.ok) {
-          this.router.navigate(['/production']);
+          // Obtener los datos del menú del usuario inmediatamente después del login exitoso
+          this.authService.getUserMenuData().subscribe({
+            next: () => {
+              this.router.navigate(['/production']);
+            },
+            error: (err) => {
+              this.loading = false;
+              console.error('❌ Error al obtener datos del usuario:', err);
+              // Podrías navegar de todas formas o mostrar un error
+              this.router.navigate(['/production']);
+            }
+          });
         } else {
           this.loading = false;
           this.error.set('Credenciales incorrectas');

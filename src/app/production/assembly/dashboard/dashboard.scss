@@ -53,6 +53,141 @@ body.berry-dark .tab-content {
 }
 
 // dashboard.scss
+$abba-blue: #004a99;
+$abba-dark-blue: #003366;
+$success-green: #10b981;
+$error-red: #dc2626;
+$warning-amber: #f59e0b;
+
+.abba-header-gradient {
+    background: linear-gradient(135deg, $abba-blue, $abba-dark-blue) !important;
+    color: white !important;
+    border: none;
+    
+    h4, h5, h6 {
+        color: white !important;
+    }
+
+    .text-muted {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+}
+
+// Nuevas tarjetas de métricas corporativas
+.abba-metric-card {
+    background: #ffffff;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-value {
+        color: $abba-dark-blue;
+        font-weight: 700;
+        font-size: 2.2rem;
+        line-height: 1.2;
+    }
+
+    .metric-label {
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    // Variaciones
+    &.primary {
+        border-bottom: 4px solid $abba-blue;
+        .metric-icon { color: $abba-blue; background: rgba($abba-blue, 0.1); }
+    }
+    &.success {
+        border-bottom: 4px solid $success-green;
+        .metric-icon { color: $success-green; background: rgba($success-green, 0.1); }
+    }
+    &.danger {
+        border-bottom: 4px solid $error-red;
+        .metric-icon { color: $error-red; background: rgba($error-red, 0.1); }
+    }
+    &.warning {
+        border-bottom: 4px solid $warning-amber;
+        .metric-icon { color: $warning-amber; background: rgba($warning-amber, 0.1); }
+    }
+
+    .metric-icon {
+        width: 55px;
+        height: 55px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        i { font-size: 28px; }
+    }
+}
+
+// Estilos de tabla corporativa
+.abba-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    
+    th {
+        padding: 14px 15px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        vertical-align: middle;
+
+        &.header-shift-1 {
+            background-color: rgba($abba-blue, 0.05);
+            color: $abba-blue;
+            border-bottom-color: rgba($abba-blue, 0.2);
+        }
+        
+        &.header-shift-2 {
+            background-color: rgba($warning-amber, 0.05);
+            color: darken($warning-amber, 15%);
+            border-bottom-color: rgba($warning-amber, 0.2);
+        }
+    }
+    
+    td {
+        padding: 12px 15px;
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        font-size: 0.85rem;
+    }
+
+    tbody tr {
+        transition: background-color 0.2s ease;
+        &:hover {
+            background-color: #f8fafc;
+        }
+    }
+
+    // Quitar el borde derecho de la última celda si están centradas
+    th, td {
+        border-right: 1px solid #f1f5f9;
+        &:last-child {
+            border-right: none;
+        }
+    }
+    // Quitar el borde izquierdo de la primera celda
+    th:first-child, td:first-child {
+        border-left: none;
+    }
+}
+
 app-bar-chart {
     display: block;
     width: 100%;

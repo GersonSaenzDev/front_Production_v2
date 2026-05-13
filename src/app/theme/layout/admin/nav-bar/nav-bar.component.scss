@@ -1,1 +1,59 @@
-// This file is intentionally left empty to allow customers to add custom CSS if needed.
+/* Variables corporativas */
+$abba-blue: #004a99;
+$abba-dark: #1e1e1e;
+
+:host {
+  display: block;
+}
+
+.pc-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  
+  /* Borde superior corporativo sutil y sofisticado */
+  border-top: 4px solid $abba-blue;
+  
+  .header-wrapper {
+    padding: 0 20px;
+  }
+
+  /* Estilos para la información del usuario logueado */
+  .user-info {
+    h6 {
+      color: $abba-blue;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    small {
+      color: #94a3b8 !important;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  /* Botón de cerrar sesión rediseñado */
+  .btn-danger {
+    background: transparent;
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 8px 16px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+
+    &:hover {
+      background: rgba(220, 38, 38, 0.05);
+      border-color: rgba(220, 38, 38, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    i {
+      font-size: 1.1rem;
+    }
+  }
+}

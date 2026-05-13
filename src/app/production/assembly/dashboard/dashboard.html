@@ -1,12 +1,12 @@
 <!-- app/production/assembly/dashboard/dashboard.html -->
 <div class="row">
     <div class="col-12 mb-4">
-        <div class="card bg-primary-subtle text-dark overflow-hidden"> 
+        <div class="card abba-header-gradient overflow-hidden"> 
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <h4 class="mb-1">Consultar por Fecha 📅</h4>
-                        <p class="text-muted mb-0 opacity-75 text-sm">
+                        <p class="text-muted mb-0 text-sm">
                             Fecha Seleccionada: 
                             <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong> 
                         </p>
@@ -25,60 +25,70 @@
         </div>
     </div>
 
-    <div class="col-xl-4 col-md-6">
-        <div class="card earning-card bg-light-secondary text-white overflow-hidden">
-            <span class="round secondary-round small"></span>
-            <span class="round secondary-round big"></span>
-            <div class="card-body">
-                <span class="text-secondary d-block f-34 f-w-500 my-2">
-                    {{ totalProductoTerminado | number }}
-                    <i class="ti ti-circle-arrow-up-right opacity-50"></i>
-                </span>
-                <p class="text-muted mb-0 opacity-50">Total Producto Terminado</p>
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="abba-metric-card primary">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="metric-value d-block">
+                            {{ totalProductoTerminado | number }}
+                        </span>
+                        <p class="metric-label mb-0 mt-2">Total Producto Terminado</p>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="ti ti-package"></i>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-4 col-md-6">
-        <div class="card earning-card bg-secondary-dark text-white overflow-hidden">
-            <span class="round secondary-round small"></span>
-            <span class="round secondary-round big"></span>
-            <div class="card-body">
-                <span class="text-white d-block f-34 f-w-500 my-2">
-                    {{ productoValidado | number }}
-                    <i class="ti ti-circle-arrow-up-right opacity-50"></i>
-                </span>
-                <p class=" mb-0 opacity-50">Producto Validado</p>
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="abba-metric-card success">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="metric-value d-block">
+                            {{ productoValidado | number }}
+                        </span>
+                        <p class="metric-label mb-0 mt-2">Producto Validado</p>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="ti ti-circle-check"></i>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-xl-4 col-md-12">
-        <div class="card total-income-card overflow-hidden bg-secondary-dark text-white shadow-hover mb-3" 
+        <div class="abba-metric-card danger mb-3" 
             style="cursor: pointer;" 
-            (click)="openErrorModal(errorModal)"> <div class="card-body">
+            (click)="openErrorModal(errorModal)"> 
+            <div class="card-body p-3">
                 <div class="d-flex align-items-center">
-                    <div class="avatar avatar-lg icon m-r-5">
-                        <i class="text-white ti ti-alert-circle f-24"></i>
+                    <div class="metric-icon me-3">
+                        <i class="ti ti-alert-circle"></i>
                     </div>
-                    <div class="ms-2">
-                        <h4 class="text-white f-w-600 mb-1">{{ productoConError | number }}</h4>
-                        <p class="mb-0 opacity-50 text-sm">Producto con Error (Ver detalles)</p>
+                    <div>
+                        <span class="metric-value d-block" style="font-size: 1.5rem;">{{ productoConError | number }}</span>
+                        <p class="metric-label mb-0">Producto con Error (Ver detalles)</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card total-income-card warning overflow-hidden shadow-hover" 
+        <div class="abba-metric-card warning mb-3" 
             style="cursor: pointer;" 
-            (click)="openErrorModal(errorModal)"> <div class="card-body">
+            (click)="openErrorModal(errorModal)"> 
+            <div class="card-body p-3">
                 <div class="d-flex align-items-center">
-                    <div class="avatar avatar-lg icon-warning m-r-5">
-                        <i class="text-warning ti ti-copy f-24"></i>
+                    <div class="metric-icon me-3">
+                        <i class="ti ti-copy"></i>
                     </div>
-                    <div class="ms-2">
-                        <h4 class="f-w-600 mb-1">{{ duplicados | number }}</h4>
-                        <p class="mb-0 opacity-50 text-sm">Duplicados (Ver detalles)</p>
+                    <div>
+                        <span class="metric-value d-block" style="font-size: 1.5rem;">{{ duplicados | number }}</span>
+                        <p class="metric-label mb-0">Duplicados (Ver detalles)</p>
                     </div>
                 </div>
             </div>
@@ -150,30 +160,30 @@
     </div> -->
 
     <div class="card">
-    <div class="card-header bg-light-secondary text-secondary">
-        <h5>Producción Detallada por Hora</h5>
+    <div class="card-header abba-header-gradient">
+        <h5 class="mb-0">Producción Detallada por Hora</h5>
     </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover table-bordered mb-0 text-center align-middle" style="font-size: 0.85rem;">
-                    <thead class="bg-light">
+                <table class="abba-table text-center">
+                    <thead>
                         <tr>
-                            <th rowspan="2" class="align-middle">Producto</th>
-                            <th rowspan="2" class="align-middle text-primary">Total</th>
+                            <th rowspan="2">Producto</th>
+                            <th rowspan="2" class="text-primary">Total</th>
                             
-                            <th colspan="8" class="text-center bg-primary-subtle text-primary border-bottom border-primary">
+                            <th colspan="8" class="text-center header-shift-1">
                                 TURNO 1 (06:00 - 13:30)
                             </th>
-                            <th colspan="8" class="text-center bg-warning-subtle text-warning border-bottom border-warning">
+                            <th colspan="8" class="text-center header-shift-2">
                                 TURNO 2 (14:00 - 21:30)
                             </th>
                         </tr>
                         <tr>
                             @for (h of shift1Hours; track h) {
-                                <th class="bg-light-primary">{{h}}:00</th>
+                                <th>{{h}}:00</th>
                             }
                             @for (h of shift2Hours; track h) {
-                                <th class="bg-light-warning">{{h}}:00</th>
+                                <th>{{h}}:00</th>
                             }
                         </tr>
                     </thead>
@@ -217,10 +227,10 @@
     
     <div class="col-12 mt-4">
         <div class="card">
-            <div class="card-header bg-light-secondary text-secondary">
+            <div class="card-header abba-header-gradient">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h5>Producción del día Detallada</h5>
+                        <h5 class="mb-0">Producción del día Detallada</h5>
                         <p class="text-muted mb-0">
                             Productos Seleccionado para {{ selectedDate | date:'shortDate':'':'es' }} (De {{ timeStart }} a {{ timeEnd }})
                         </p>
@@ -256,7 +266,7 @@
             </div>
             
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="abba-table">
                     <thead>
                         <tr>
                             <th>Código Producto</th>
@@ -297,8 +307,8 @@
     </div>
     <div class="modal-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+            <table class="abba-table">
+                <thead>
                     <tr>
                         <th class="ps-3">Hora</th>
                         <th>Barcode</th>

@@ -1,7 +1,7 @@
 // Angular import
-import { AfterViewInit, Component, inject } from '@angular/core';
+import { AfterViewInit, Component, inject, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule, Location, LocationStrategy } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { ChangeDetectorRef } from '@angular/core';
 
 // Project import
@@ -11,6 +11,7 @@ import { ConfigurationComponent } from './configuration/configuration.component'
 import { NavBarComponent } from './nav-bar/nav-bar.component';
 import { NavigationComponent } from './navigation/navigation.component';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
+import { AuthService } from 'src/app/services/auth-services';
 
 @Component({
   selector: 'app-admin',
@@ -18,10 +19,12 @@ import { BreadcrumbComponent } from '../../shared/components/breadcrumbs/breadcr
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'
 })
-export class AdminComponent implements AfterViewInit {
+export class AdminComponent implements AfterViewInit, OnDestroy {
   private location = inject(Location);
   private locationStrategy = inject(LocationStrategy);
   cdr = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
   // public props
   currentLayout!: string;
@@ -29,7 +32,13 @@ export class AdminComponent implements AfterViewInit {
   navCollapsedMob = false;
   windowWidth!: number;
 
+  private inactivityTimer: any;
+  private readonly INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 minutos
+
   // Constructor
+  constructor() {
+    this.resetInactivityTimer();
+  }
 
   // life cycle hook
 
@@ -47,6 +56,37 @@ export class AdminComponent implements AfterViewInit {
     this.windowWidth = window.innerWidth;
     this.navCollapsed = this.windowWidth >= 1025 ? BerryConfig.isCollapse_menu : false;
     this.cdr.detectChanges();
+  }
+
+  ngOnDestroy() {
+    this.clearInactivityTimer();
+  }
+
+  // Inactivity timeout logic
+  @HostListener('window:mousemove')
+  @HostListener('window:keydown')
+  @HostListener('window:click')
+  @HostListener('window:scroll')
+  @HostListener('window:touchstart')
+  resetInactivityTimer() {
+    this.clearInactivityTimer();
+    // Solo iniciamos el timer si estamos en el navegador
+    if (typeof window !== 'undefined') {
+      this.inactivityTimer = setTimeout(() => {
+        this.logoutDueToInactivity();
+      }, this.INACTIVITY_LIMIT_MS);
+    }
+  }
+
+  private clearInactivityTimer() {
+    if (this.inactivityTimer) {
+      clearTimeout(this.inactivityTimer);
+    }
+  }
+
+  private logoutDueToInactivity() {
+    this.authService.logout();
+    this.router.navigate(['/auth/login']);
   }
 
   // private method

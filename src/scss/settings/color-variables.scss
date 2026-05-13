@@ -4,13 +4,13 @@
 
 $preset-colors: (
   preset-1: (
-    body: #e3f2fd,
-    primary: #007FC3,
-    primary-dark: #00C1DE,
-    secondary: #407c8d,
-    secondary-dark: #003366,
-    tertiary: #365d68,
-    tertiary-dark: #182635
+    body: #f8fafc,
+    primary: #004a99, // abba-blue
+    primary-dark: #003366, // abba-blue darker
+    secondary: #575756, // abba-gray
+    secondary-dark: #1e1e1e, // abba-dark
+    tertiary: #94a3b8,
+    tertiary-dark: #475569
   )
 );
 $dark-preset-colors: (

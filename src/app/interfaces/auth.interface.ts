@@ -8,3 +8,14 @@ export interface AuthResponse {
   ok: boolean;
   msg: string; // Este es el token cifrado
 }
+
+export interface UserDataMenu {
+  full_name: string;
+  area: string;
+  departament: string;
+}
+
+export interface DataUserMenuResponse {
+  ok: boolean;
+  msg: UserDataMenu;
+}
