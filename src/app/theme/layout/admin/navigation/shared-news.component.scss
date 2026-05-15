@@ -1,0 +1,311 @@
+// VARIABLES CORPORATIVAS ABBA
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-dark: #1e1e1e;
+
+.news-form-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER PRINCIPAL
+// =======================
+.news-form-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .header-icon {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+    color: #fff;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.45rem;
+    letter-spacing: 0.3px;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+    font-weight: 400;
+  }
+}
+
+// =======================
+//  TARJETA DEL FORMULARIO
+// =======================
+.form-card {
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+// =======================
+//  ENCABEZADO DE SECCIÓN
+// =======================
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 2px solid $abba-blue-light;
+
+  .section-number {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba($abba-blue, 0.3);
+  }
+
+  .section-title {
+    color: $abba-blue-dark;
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+
+  .section-subtitle {
+    color: $abba-gray;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 2px;
+  }
+}
+
+.section-block {
+  margin-bottom: 2rem;
+
+  &:last-of-type {
+    margin-bottom: 0;
+  }
+}
+
+// =======================
+//  LABELS Y INPUTS
+// =======================
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: $abba-gray;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.4rem;
+
+  .required-mark {
+    color: $abba-blue;
+    font-weight: 700;
+    margin-left: 2px;
+  }
+}
+
+.form-control,
+.form-select {
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.94rem;
+  color: $abba-dark;
+  background-color: #f8fafc;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:focus {
+    border-color: $abba-blue;
+    background-color: #fff;
+    box-shadow: 0 0 0 4px rgba($abba-blue, 0.1);
+    outline: none;
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: #f1f5f9;
+    color: $abba-gray;
+    cursor: not-allowed;
+  }
+
+  &.is-invalid {
+    border-color: #dc2626;
+    background-color: #fef2f2;
+
+    &:focus {
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+    }
+  }
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 90px;
+}
+
+// =======================
+//  AUTOCOMPLETE
+// =======================
+.autocomplete-results {
+  position: absolute;
+  z-index: 1000;
+  width: calc(100% - 1.5rem);
+  max-height: 250px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.autocomplete-item {
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: $abba-dark;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: $abba-blue-light;
+    color: $abba-blue-dark;
+    font-weight: 500;
+  }
+}
+
+// =======================
+//  BOTÓN PRINCIPAL
+// =======================
+.btn-submit-news {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  box-shadow: 0 8px 20px rgba($abba-blue, 0.25);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba($abba-blue, 0.35);
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+// =======================
+//  ALERTS
+// =======================
+.alert-container {
+  animation: slideDown 0.3s ease-out;
+}
+
+.alert {
+  border-radius: 12px;
+  border: none;
+  border-left: 4px solid;
+  padding: 1rem 1.25rem;
+
+  &.alert-success {
+    border-left-color: #16a34a;
+    background-color: #f0fdf4;
+    color: #14532d;
+
+    i { color: #16a34a; }
+  }
+
+  &.alert-danger {
+    border-left-color: #dc2626;
+    background-color: #fef2f2;
+    color: #7f1d1d;
+
+    i { color: #dc2626; }
+  }
+
+  &.alert-info {
+    border-left-color: $abba-blue;
+    background-color: $abba-blue-light;
+    color: $abba-blue-dark;
+
+    .spinner-border { color: $abba-blue !important; }
+  }
+}
+
+.alert-heading {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-15px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// =======================
+//  CAMPO TOTAL PARADA
+// =======================
+.total-parada-input {
+  background: linear-gradient(135deg, $abba-blue-light 0%, #f0f6fd 100%) !important;
+  color: $abba-blue-dark !important;
+  font-weight: 600;
+  border-color: rgba($abba-blue, 0.2) !important;
+}

@@ -9,6 +9,7 @@ import {
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'src/app/services/auth-services';
+import { MenuAccessService } from 'src/app/services/menu-access.service';
 import { LoginRequest } from 'src/app/interfaces/auth.interface';
  // Importamos la interfaz
 
@@ -22,6 +23,7 @@ import { LoginRequest } from 'src/app/interfaces/auth.interface';
 export class LoginComponent implements OnInit {
   // --- Inyección de Dependencias ---
   private authService = inject(AuthService);
+  private menuAccessService = inject(MenuAccessService);
   private fb = inject(FormBuilder);
   private router = inject(Router); // ✅ Corregido: Inyectamos el Router
   private cd = inject(ChangeDetectorRef);
@@ -67,12 +69,13 @@ export class LoginComponent implements OnInit {
           // Obtener los datos del menú del usuario inmediatamente después del login exitoso
           this.authService.getUserMenuData().subscribe({
             next: () => {
-              this.router.navigate(['/production']);
+              const defaultRoute = this.menuAccessService.getDefaultRouteForUser();
+              this.router.navigate([defaultRoute]);
             },
             error: (err) => {
               this.loading = false;
               console.error('❌ Error al obtener datos del usuario:', err);
-              // Podrías navegar de todas formas o mostrar un error
+              // Intentar navegar con la ruta por defecto aunque haya error, o mandar a login
               this.router.navigate(['/production']);
             }
           });

@@ -1,3 +1,4 @@
+// app/theme/layout/admin/navigation/navigation.ts
 export interface NavigationItem {
   id: string;
   title: string;
@@ -106,6 +107,148 @@ export const NavigationItems: NavigationItem[] = [
         ]
       },
       {
+        id: 'prensas-collapse',
+        title: 'Prensas',
+        type: 'collapse',
+        icon: 'ti ti-layout-bottombar', // Un icono más acorde a prensas
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-prensas-item',
+            title: 'Novedades Prensas',
+            type: 'item',
+            url: 'production/presses/pressesNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-prensas-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/presses/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'vidrios-collapse',
+        title: 'Vidrios',
+        type: 'collapse',
+        icon: 'ti ti-maximize',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-vidrios-item',
+            title: 'Novedades Vidrios',
+            type: 'item',
+            url: 'production/glass/glassNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-vidrios-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/glass/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'recubrimientos-collapse',
+        title: 'Recubrimientos',
+        type: 'collapse',
+        icon: 'ti ti-color-swatch',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-recubrimientos-item',
+            title: 'Novedades Recubrimientos',
+            type: 'item',
+            url: 'production/covering/coveringNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-recubrimientos-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/covering/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'satelites-collapse',
+        title: 'Satélites',
+        type: 'collapse',
+        icon: 'ti ti-satellite',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-satelites-item',
+            title: 'Novedades Satélites',
+            type: 'item',
+            url: 'production/satellites/satellitesNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-satelites-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/satellites/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'etiquetas-collapse',
+        title: 'Generar Etiquetas',
+        type: 'collapse',
+        icon: 'ti ti-barcode', // Icono específico de código de barras
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'control-impresion-item',
+            title: 'Control Impresion',
+            type: 'item',
+            url: 'printing/dash',
+            breadcrumbs: false
+          },
+          {
+            id: 'parametros-etiquetas-item',
+            title: 'Parametros Etiquetas',
+            type: 'item',
+            url: 'printing/barcodeParameters',
+            breadcrumbs: false
+          },
+          {
+            id: 'impresion-etiquetas-real-item',
+            title: 'Impresion Etiquetas',
+            type: 'item',
+            url: 'printing/barcodePrinting',
+            breadcrumbs: false
+          },
+          {
+            id: 'leer-etiquetas-procesos-item',
+            title: 'Procesos',
+            type: 'item',
+            url: 'printing/readBarcode',
+            breadcrumbs: false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'logistica-group',
+    title: 'Logística',
+    type: 'group',
+    icon: 'ti ti-truck',
+    children: [
+      {
         id: 'bodega-collapse',
         title: 'Bodega',
         type: 'collapse',
@@ -161,24 +304,22 @@ export const NavigationItems: NavigationItem[] = [
         id: 'clientHome-collapse',
         title: 'Casa Cliente',
         type: 'collapse',
-        icon: 'ti ti-home-2', // <--- Icono más descriptivo para Casa Cliente
+        icon: 'ti ti-home-2',
         classes: 'nav-item',
         isMainParent: true,
         children: [
           {
-            id: 'alistamiento-pedidos-item',
+            id: 'control-casa-cliente-item',
             title: 'Control Casa Cliente',
             type: 'item',
             url: 'clientHome/dash',
-            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
           },
           {
-            id: 'alistamiento-pedidos-item',
+            id: 'control-pedidos-item',
             title: 'Control Pedidos',
             type: 'item',
             url: 'clientHome/orderControl',
-            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
           },
           {
@@ -186,65 +327,168 @@ export const NavigationItems: NavigationItem[] = [
             title: 'Pedidos Procesados',
             type: 'item',
             url: 'clientHome/processedOrders',
-            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
           },
           {
-            id: 'pedidos-procesados-item',
+            id: 'control-envios-item',
             title: 'Control de Envios',
             type: 'item',
             url: 'clientHome/shippingManagement',
-            // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
             breadcrumbs: false
-          },
-          // {
-          //   id: 'pedidos-procesados-item',
-          //   title: 'Pedidos a Producción',
-          //   type: 'item',
-          //   url: 'clientHome/productionOrders',
-          //   // icon: 'ti ti-package-export', // <--- Icono opcional para salida/alistamiento de pedidos
-          //   breadcrumbs: false
-          // },
+          }
         ]
       },
       {
-        id: 'etiquetas-collapse',
-        title: 'Generar Etiquetas',
+        id: 'almacen-collapse',
+        title: 'Almacén',
         type: 'collapse',
-        icon: 'ti ti-barcode', // Icono específico de código de barras
+        icon: 'ti ti-box',
         classes: 'nav-item',
         isMainParent: true,
         children: [
           {
-            id: 'control-impresion-item',
-            title: 'Control Impresion',
+            id: 'almacen-novedades-item',
+            title: 'Novedades Almacén',
             type: 'item',
-            url: 'printing/dash',
-            breadcrumbs: false
+            url: 'logistics/almacen/logisticsNews',
+            breadcrumbs: true
           },
           {
-            id: 'parametros-etiquetas-item',
-            title: 'Parametros Etiquetas',
+            id: 'almacen-view-news-item',
+            title: 'Visualizar Novedades',
             type: 'item',
-            url: 'printing/barcodeParameters',
-            breadcrumbs: false
-          },
-          {
-            id: 'impresion-etiquetas-real-item',
-            title: 'Impresion Etiquetas',
-            type: 'item',
-            url: 'printing/barcodePrinting',
-            breadcrumbs: false
-          },
-          {
-            id: 'leer-etiquetas-procesos-item',
-            title: 'Procesos',
-            type: 'item',
-            url: 'printing/readBarcode',
-            breadcrumbs: false
+            url: 'logistics/almacen/viewNews',
+            breadcrumbs: true
           }
         ]
       }
+    ]
+  },
+  {
+    id: 'almacen-group',
+    title: 'Almacén',
+    type: 'group',
+    icon: 'ti ti-box',
+    children: [
+      { id: 'almacen-novedades', title: 'Novedades Almacén', type: 'item', url: 'inventories/news', breadcrumbs: true }
+    ]
+  },
+  {
+    id: 'mantenimiento-group',
+    title: 'Mantenimiento',
+    type: 'group',
+    icon: 'ti ti-settings',
+    children: [
+      { id: 'mantenimiento-novedades', title: 'Novedades Mantenimiento', type: 'item', url: 'maintenance/maintenanceNews', breadcrumbs: true },
+      { id: 'mantenimiento-view-news', title: 'Visualizar Novedades', type: 'item', url: 'maintenance/viewNews', breadcrumbs: true }
+    ]
+  },
+  {
+    id: 'mecanizado-group',
+    title: 'Mecanizado',
+    type: 'group',
+    icon: 'ti ti-tool',
+    children: [
+      {
+        id: 'mecanizado-novedades-item',
+        title: 'Novedades Mecanizado',
+        type: 'item',
+        url: 'machining/machiningNews',
+        breadcrumbs: true
+      },
+      {
+        id: 'mecanizado-view-news-item',
+        title: 'Visualizar Novedades',
+        type: 'item',
+        url: 'machining/viewNews',
+        breadcrumbs: true
+      }
+    ]
+  },
+  {
+    id: 'ingenieria-group',
+    title: 'Ingeniería',
+    type: 'group',
+    icon: 'ti ti-cpu',
+    children: [
+      {
+        id: 'ingenieria-producto-collapse',
+        title: 'Ingeniería de Producto',
+        type: 'collapse',
+        icon: 'ti ti-box-seam',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'ingenieria-producto-novedades',
+            title: 'Novedades Ingeniería de Producto',
+            type: 'item',
+            url: 'engineering/product/engineeringNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'ingenieria-producto-view',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'engineering/product/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'ingenieria-industrial-collapse',
+        title: 'Ingeniería Industrial',
+        type: 'collapse',
+        icon: 'ti ti-building-factory-2',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'ingenieria-industrial-novedades',
+            title: 'Novedades Ingeniería Industrial',
+            type: 'item',
+            url: 'engineering/industrial/engineeringNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'ingenieria-industrial-view',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'engineering/industrial/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'recursos-humanos-group',
+    title: 'Recursos Humanos',
+    type: 'group',
+    icon: 'ti ti-users',
+    children: [
+      { id: 'rrhh-novedades', title: 'Novedades RRHH', type: 'item', url: 'human-resources/human-resourcesNews', breadcrumbs: true },
+      { id: 'rrhh-view-news', title: 'Visualizar Novedades', type: 'item', url: 'human-resources/viewNews', breadcrumbs: true }
+    ]
+  },
+  {
+    id: 'calidad-group',
+    title: 'Calidad',
+    type: 'group',
+    icon: 'ti ti-shield-check',
+    children: [
+      { id: 'calidad-novedades', title: 'Novedades Calidad', type: 'item', url: 'quality/qualityNews', breadcrumbs: true },
+      { id: 'calidad-view-news', title: 'Visualizar Novedades', type: 'item', url: 'quality/viewNews', breadcrumbs: true }
+    ]
+  },
+  {
+    id: 'sst-group',
+    title: 'SST',
+    type: 'group',
+    icon: 'ti ti-heart-rate-monitor',
+    children: [
+      { id: 'sst-novedades', title: 'Novedades SST', type: 'item', url: 'health-safety/health-safetyNews', breadcrumbs: true },
+      { id: 'sst-view-news', title: 'Visualizar Novedades', type: 'item', url: 'health-safety/viewNews', breadcrumbs: true }
     ]
   }
 ];

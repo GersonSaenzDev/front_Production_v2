@@ -1,4 +1,4 @@
-// Angular import
+// app/theme/layout/admin/navigation/navigation.component.ts
 import { Component, output } from '@angular/core';
 import { RouterModule } from '@angular/router';
 

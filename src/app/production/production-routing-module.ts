@@ -27,6 +27,51 @@ const routes: Routes = [
     path: 'viewNews',
     loadComponent: () => import('./assembly/view-news/view-news').then((c) => c.ViewNews)
   },
+  // Presses
+  {
+    path: 'presses/pressesNews',
+    loadComponent: () => import('./presses/presses-news/presses-news').then((c) => c.PressesNews)
+  },
+  {
+    path: 'presses/viewNews',
+    loadComponent: () => import('./presses/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Covering
+  {
+    path: 'covering/coveringNews',
+    loadComponent: () => import('./covering/covering-news/covering-news').then((c) => c.CoveringNews)
+  },
+  {
+    path: 'covering/viewNews',
+    loadComponent: () => import('./covering/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Satellites
+  {
+    path: 'satellites/satellitesNews',
+    loadComponent: () => import('./satellites/satellites-news/satellites-news').then((c) => c.SatellitesNews)
+  },
+  {
+    path: 'satellites/viewNews',
+    loadComponent: () => import('./satellites/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Glass
+  {
+    path: 'glass/glassNews',
+    loadComponent: () => import('./glass/glass-news/glass-news').then((c) => c.GlassNews)
+  },
+  {
+    path: 'glass/viewNews',
+    loadComponent: () => import('./glass/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Costs
+  {
+    path: 'costs/costsNews',
+    loadComponent: () => import('./costs/costs-news/costs-news').then((c) => c.CostsNews)
+  },
+  {
+    path: 'costs/viewNews',
+    loadComponent: () => import('./costs/view-news/view-news').then((c) => c.ViewNews)
+  },
 ];
 
 @NgModule({
