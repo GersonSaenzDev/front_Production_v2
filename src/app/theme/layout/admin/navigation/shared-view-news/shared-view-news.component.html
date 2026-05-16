@@ -1,0 +1,136 @@
+<div class="container-fluid py-4 news-view-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="news-view-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-list-search"></i>
+      </div>
+      <div class="header-text">
+        <h3 class="header-title mb-1">{{ displayTitle }}</h3>
+        <p class="header-subtitle mb-0">
+          Mostrando novedades para
+          <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+        </p>
+      </div>
+
+      <div class="header-actions">
+        <div class="filter-group">
+          <label for="headerNewsDate" class="filter-label">Fecha de consulta</label>
+          <input
+            type="date"
+            id="headerNewsDate"
+            class="form-control filter-input"
+            [(ngModel)]="selectedDate"
+            (ngModelChange)="onDateChange()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETA DE CONTENIDO -->
+  <div class="card view-card border-0 mt-4">
+    <div class="card-body p-4 p-md-5">
+
+      <!-- TOOLBAR -->
+      <div class="view-toolbar">
+        <div class="toolbar-title">
+          <h6 class="section-title mb-0">Novedades Reportadas</h6>
+          <small class="section-subtitle">Resumen y detalle del periodo seleccionado</small>
+        </div>
+
+        <div class="search-wrapper">
+          <i class="ti ti-search search-icon"></i>
+          <input
+            type="text"
+            class="form-control search-input"
+            placeholder="Buscar por categoría, línea, referencia..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilter()">
+        </div>
+      </div>
+
+      <!-- SUMMARY -->
+      <div
+        class="summary-counters"
+        *ngIf="categorySummaries.length > 0 && !isLoading">
+
+        <div
+          class="summary-card"
+          *ngFor="let summary of categorySummaries"
+          [ngClass]="getCategoryClass(summary.category)">
+
+          <span class="summary-time">{{ summary.totalTime }}</span>
+          <span class="summary-category">{{ summary.category }}</span>
+          <span class="summary-count">
+            {{ summary.count }} Novedad{{ summary.count > 1 ? 'es' : '' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-wrapper mt-3">
+        <table class="news-table">
+          <thead>
+            <tr>
+              <th scope="col">Categoría</th>
+              <th scope="col">Línea</th>
+              <th scope="col">Referencia</th>
+              <th scope="col">Tipo Parada</th>
+              <th scope="col">Horario</th>
+              <th scope="col">Tiempo Total</th>
+              <th scope="col">Responsable</th>
+              <th scope="col">Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="8" class="empty-cell">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Cargando novedades...
+              </td>
+            </tr>
+
+            <tr *ngIf="!isLoading && paginatedNews.length === 0">
+              <td colspan="8" class="empty-cell">
+                <i class="ti ti-database-off me-2"></i>
+                No se encontraron novedades para esta fecha.
+              </td>
+            </tr>
+
+            <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)">
+              <td>
+                <span class="cat-pill" [ngClass]="getCategoryClass(item.category)">
+                  {{ item.category }}
+                </span>
+              </td>
+              <td>{{ item.assemblyLine || item.origin?.location || '—' }}</td>
+              <td>{{ item.reference }}</td>
+              <td>{{ item.stopType || 'N/A' }}</td>
+              <td>{{ item.startTime }} - {{ item.endTime }}</td>
+              <td><strong class="time-value">{{ item.totalTime }}</strong></td>
+              <td>{{ item.responsible || 'N/A' }}</td>
+              <td class="detail-cell">{{ item.detail }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION -->
+      <div class="pagination-controls">
+        <button type="button" class="btn-pagination" (click)="prevPage()" [disabled]="currentPage === 1">
+          <i class="ti ti-chevron-left"></i> Anterior
+        </button>
+
+        <span class="page-indicator">
+          Página <strong>{{ currentPage }}</strong> de <strong>{{ totalPages }}</strong>
+        </span>
+
+        <button type="button" class="btn-pagination" (click)="nextPage()" [disabled]="currentPage === totalPages">
+          Siguiente <i class="ti ti-chevron-right"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,6 +1,6 @@
 // app/production/assembly/production-news/production-news.ts
 import { Component } from '@angular/core';
-import { SharedNewsComponent } from '../../../theme/layout/admin/navigation/shared-news.component';
+import { SharedNewsComponent } from '../../../theme/layout/admin/navigation/shared-news/shared-news.component';
 
 @Component({
   selector: 'app-production-news',

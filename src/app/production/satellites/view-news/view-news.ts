@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
+import { SharedViewNewsComponent } from '../../../theme/layout/admin/navigation/shared-view-news/shared-view-news.component';
 
 @Component({
   selector: 'app-view-news',
-  imports: [],
+  standalone: true,
+  imports: [SharedViewNewsComponent],
   templateUrl: './view-news.html',
   styleUrl: './view-news.scss'
 })
-export class ViewNews {
-
-}
+export class ViewNews {}

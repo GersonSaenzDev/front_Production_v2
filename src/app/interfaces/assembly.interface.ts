@@ -87,8 +87,10 @@ export interface ProductionNews {
   totalTime: string;
   detail: string;
   dateCreate: string;
-  responsible?: string; // 💡 Campo añadido de nuestra conversación (opcional)
-  __v?: number; // Campo de Mongoose (opcional)
+  responsible?: string;
+  origin?: { area: string; subArea?: string; location?: string };
+  assignment?: { currentArea: string; currentSubArea?: string };
+  __v?: number;
 }
 
 /**

@@ -127,9 +127,13 @@ export class MenuAccessService {
     // Logística
     if (area === 'LOGISTICA') {
       if (dept === 'LOGISTICA EXTERNA' && module === 'clientHome') return true;
+      if (dept === 'AUDITORIA' && module === 'clientHome') return true;
       if (dept === 'LOGISTICA INTERNA' && (module === 'inventories' || module === 'production')) return true;
       if (module === 'logistics') return true;
     }
+
+    if (area === 'PLANEACIÓN' && module === 'production') return true;
+    if (area === 'FINANCIERO' ) return true;
 
     return false;
   }
