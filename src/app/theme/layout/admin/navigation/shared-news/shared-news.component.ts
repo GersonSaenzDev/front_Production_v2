@@ -41,7 +41,7 @@ export class SharedNewsComponent implements OnInit {
   get displayTitle(): string {
     if (this.title) return this.title;
     const area = this.userArea;
-    return area ? `Registro de Novedades de ${area}` : 'Registro de Novedades';
+    return area ? `Registro de Novedades de ${area}: ${this.authService.userData()?.departament} ` : 'Registro de Novedades';
   }
 
   get displaySubtitle(): string {

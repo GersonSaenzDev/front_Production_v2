@@ -365,22 +365,35 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
-    id: 'almacen-group',
-    title: 'Almacén',
-    type: 'group',
-    icon: 'ti ti-box',
-    children: [
-      { id: 'almacen-novedades', title: 'Novedades Almacén', type: 'item', url: 'inventories/news', breadcrumbs: true }
-    ]
-  },
-  {
     id: 'mantenimiento-group',
     title: 'Mantenimiento',
     type: 'group',
     icon: 'ti ti-settings',
     children: [
-      { id: 'mantenimiento-novedades', title: 'Novedades Mantenimiento', type: 'item', url: 'maintenance/maintenanceNews', breadcrumbs: true },
-      { id: 'mantenimiento-view-news', title: 'Visualizar Novedades', type: 'item', url: 'maintenance/viewNews', breadcrumbs: true }
+      {
+        id: 'mantenimiento-collapse',
+        title: 'Mantenimiento',
+        type: 'collapse',
+        icon: 'ti ti-settings-cog',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'mantenimiento-novedades',
+            title: 'Novedades Mantenimiento',
+            type: 'item',
+            url: 'maintenance/maintenanceNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'mantenimiento-view-news',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'maintenance/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
     ]
   },
   {
@@ -390,18 +403,28 @@ export const NavigationItems: NavigationItem[] = [
     icon: 'ti ti-tool',
     children: [
       {
-        id: 'mecanizado-novedades-item',
-        title: 'Novedades Mecanizado',
-        type: 'item',
-        url: 'machining/machiningNews',
-        breadcrumbs: true
-      },
-      {
-        id: 'mecanizado-view-news-item',
-        title: 'Visualizar Novedades',
-        type: 'item',
-        url: 'machining/viewNews',
-        breadcrumbs: true
+        id: 'mecanizado-collapse',
+        title: 'Mecanizado',
+        type: 'collapse',
+        icon: 'ti ti-tool',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'mecanizado-novedades-item',
+            title: 'Novedades Mecanizado',
+            type: 'item',
+            url: 'machining/machiningNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'mecanizado-view-news-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'machining/viewNews',
+            breadcrumbs: true
+          }
+        ]
       }
     ]
   },
@@ -467,8 +490,30 @@ export const NavigationItems: NavigationItem[] = [
     type: 'group',
     icon: 'ti ti-users',
     children: [
-      { id: 'rrhh-novedades', title: 'Novedades RRHH', type: 'item', url: 'human-resources/human-resourcesNews', breadcrumbs: true },
-      { id: 'rrhh-view-news', title: 'Visualizar Novedades', type: 'item', url: 'human-resources/viewNews', breadcrumbs: true }
+      {
+        id: 'rrhh-collapse',
+        title: 'Recursos Humanos',
+        type: 'collapse',
+        icon: 'ti ti-user-cog',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'rrhh-novedades',
+            title: 'Novedades RRHH',
+            type: 'item',
+            url: 'human-resources/human-resourcesNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'rrhh-view-news',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'human-resources/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
     ]
   },
   {
@@ -477,8 +522,30 @@ export const NavigationItems: NavigationItem[] = [
     type: 'group',
     icon: 'ti ti-shield-check',
     children: [
-      { id: 'calidad-novedades', title: 'Novedades Calidad', type: 'item', url: 'quality/qualityNews', breadcrumbs: true },
-      { id: 'calidad-view-news', title: 'Visualizar Novedades', type: 'item', url: 'quality/viewNews', breadcrumbs: true }
+      {
+        id: 'calidad-collapse',
+        title: 'Calidad',
+        type: 'collapse',
+        icon: 'ti ti-shield-check',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'calidad-novedades',
+            title: 'Novedades Calidad',
+            type: 'item',
+            url: 'quality/qualityNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'calidad-view-news',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'quality/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
     ]
   },
   {
@@ -487,8 +554,30 @@ export const NavigationItems: NavigationItem[] = [
     type: 'group',
     icon: 'ti ti-heart-rate-monitor',
     children: [
-      { id: 'sst-novedades', title: 'Novedades SST', type: 'item', url: 'health-safety/health-safetyNews', breadcrumbs: true },
-      { id: 'sst-view-news', title: 'Visualizar Novedades', type: 'item', url: 'health-safety/viewNews', breadcrumbs: true }
+      {
+        id: 'sst-collapse',
+        title: 'SST',
+        type: 'collapse',
+        icon: 'ti ti-heart-rate-monitor',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'sst-novedades',
+            title: 'Novedades SST',
+            type: 'item',
+            url: 'health-safety/health-safetyNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'sst-view-news',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'health-safety/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
     ]
   }
 ];
