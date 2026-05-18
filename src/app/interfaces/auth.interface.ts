@@ -13,6 +13,9 @@ export interface UserDataMenu {
   full_name: string;
   area: string;
   departament: string;
+  uid?: string;
+  userApp?: string;
+  subArea?: string;
 }
 
 export interface DataUserMenuResponse {

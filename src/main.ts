@@ -6,7 +6,8 @@ import { AppRoutingModule } from './app/app-routing.module';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { AppComponent } from './app/app.component';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 
 // 1. IMPORTAR TOASTR
 import { provideToastr } from 'ngx-toastr';
@@ -20,7 +21,7 @@ bootstrapApplication(AppComponent, {
     importProvidersFrom(BrowserModule, AppRoutingModule), 
     provideAnimations(),
     provideAnimationsAsync(),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([authInterceptor])),
     
     // 2. AGREGAR LA CONFIGURACIÓN DE TOASTR AQUÍ
     provideToastr({

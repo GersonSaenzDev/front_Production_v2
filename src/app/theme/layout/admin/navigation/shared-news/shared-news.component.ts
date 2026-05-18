@@ -1,12 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, Input, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
 import { debounceTime, filter, switchMap, tap } from 'rxjs';
 import { ReferenceItem } from '../../../../../interfaces/assembly.interface';
 import {
+  Machine,
   ProductionArea,
   ProductionAreaGrouped,
   ProductionNewsRequest,
+  ProductionNewsResponse,
   ProductionSubArea
 } from '../../../../../interfaces/production-news.interface';
 import { AuthService } from '../../../../../services/auth-services';
@@ -29,6 +32,7 @@ export class SharedNewsComponent implements OnInit {
   private dashboardService = inject(DashboardServices);
   private fb = inject(FormBuilder);
   private newsServices = inject(NewsServices);
+  private toastr = inject(ToastrService);
 
   get userArea(): string {
     return this.authService.userData()?.area || this.defaultOriginArea || '';
@@ -97,11 +101,13 @@ export class SharedNewsComponent implements OnInit {
   isOriginEnsamble = false;
   showDropdown: boolean = false;
 
+  machinesByArea: Machine[] = [];
+  predictiveMachineList: Machine[] = [];
+  showMachineDropdown: boolean = false;
+
   isSubmitting: boolean = false;
-  submitSuccess: boolean = false;
-  submitError: string = '';
-  successMessage: string = '';
   private isSelecting: boolean = false;
+  private isSelectingMachine: boolean = false;
 
   constructor() {}
 
@@ -112,6 +118,9 @@ export class SharedNewsComponent implements OnInit {
       originArea: [this.defaultOriginArea, Validators.required],
       originSubArea: [''],
       lineaNovedad: [{ value: '', disabled: true }],
+      machineCode: [''],
+      machineName: [{ value: '', disabled: true }],
+      partCode: [''],
       assignmentArea: ['', Validators.required],
       assignmentSubArea: ['', Validators.required],
       productReference: ['', Validators.required],
@@ -124,6 +133,7 @@ export class SharedNewsComponent implements OnInit {
 
     this.loadProductionAreas();
     this.setupReferenceSearch();
+    this.setupMachineSearch();
 
     this.novedadForm.get('categoriaNovedad')?.valueChanges.subscribe(value => {
       this.handleCategoriaChange(value);
@@ -219,6 +229,75 @@ export class SharedNewsComponent implements OnInit {
       this.novedadForm.patchValue({ assignmentArea: '', assignmentSubArea: '' });
       this.availableAssignmentSubAreas = [];
     }
+
+    this.novedadForm.get('machineCode')?.setValue('', { emitEvent: false });
+    this.novedadForm.get('machineName')?.setValue('', { emitEvent: false });
+    this.predictiveMachineList = [];
+    this.showMachineDropdown = false;
+    this.loadMachinesByArea(area);
+  }
+
+  private loadMachinesByArea(area: string): void {
+    if (!area) {
+      this.machinesByArea = [];
+      return;
+    }
+    this.newsServices.getMachinesByArea({ area: area.toUpperCase() }).subscribe({
+      next: (res) => {
+        this.machinesByArea = res.ok ? res.msg : [];
+      },
+      error: (err) => {
+        console.error('Error cargando máquinas por área:', err);
+        this.machinesByArea = [];
+      }
+    });
+  }
+
+  private setupMachineSearch(): void {
+    this.novedadForm.get('machineCode')?.valueChanges
+      .pipe(
+        debounceTime(200),
+        filter(() => !this.isSelectingMachine)
+      )
+      .subscribe((term: string) => {
+        const t = (term || '').toString().trim().toLowerCase();
+        if (t.length < 1) {
+          this.predictiveMachineList = [];
+          this.showMachineDropdown = false;
+          this.novedadForm.get('machineName')?.setValue('', { emitEvent: false });
+          return;
+        }
+        this.predictiveMachineList = this.machinesByArea
+          .filter(m =>
+            (m.machineCode || '').toLowerCase().includes(t) ||
+            (m.machineName || '').toLowerCase().includes(t)
+          )
+          .slice(0, 20);
+        this.showMachineDropdown = this.predictiveMachineList.length > 0;
+      });
+  }
+
+  resolveMachineName(machine: Machine): string {
+    return (machine.machineName || '').trim() || 'Definir Nombre';
+  }
+
+  selectMachine(machine: Machine): void {
+    this.isSelectingMachine = true;
+    const name = this.resolveMachineName(machine);
+    this.novedadForm.get('machineCode')?.setValue(machine.machineCode, { emitEvent: false });
+    this.novedadForm.get('machineName')?.setValue(name, { emitEvent: false });
+    this.predictiveMachineList = [];
+    this.showMachineDropdown = false;
+    setTimeout(() => this.isSelectingMachine = false, 300);
+  }
+
+  onMachineBlur(): void {
+    setTimeout(() => this.showMachineDropdown = false, 120);
+  }
+
+  onMachineFocus(): void {
+    if (this.isSelectingMachine) return;
+    if (this.predictiveMachineList.length > 0) this.showMachineDropdown = true;
   }
 
   handleAssignmentAreaChange(area: string): void {
@@ -261,11 +340,9 @@ export class SharedNewsComponent implements OnInit {
   }
 
   onSubmit(): void {
-    this.submitSuccess = false;
-    this.submitError = '';
-
     if (this.novedadForm.invalid) {
       this.novedadForm.markAllAsTouched();
+      this.toastr.warning('Revise los campos obligatorios del formulario', 'Atención');
       return;
     }
 
@@ -273,13 +350,23 @@ export class SharedNewsComponent implements OnInit {
     const [year, month, day] = formValues.fecha.split('-');
     const newsDate = `${day}/${month}/${year}`;
 
+    const machineCode = (formValues.machineCode || '').toString().trim();
+    const machineName = (formValues.machineName || '').toString().trim();
+    const partCode = (formValues.partCode || '').toString().trim();
+
     const request: ProductionNewsRequest = {
       newsDate,
       category: formValues.categoriaNovedad,
       reference: formValues.productReference,
       detail: formValues.detalle,
       reportedBy: { userApp: 'system-form', area: formValues.originArea, subArea: formValues.originSubArea || '' },
-      origin: { area: formValues.originArea, subArea: formValues.originSubArea || '', location: this.isOriginEnsamble ? (formValues.lineaNovedad || '') : '' },
+      origin: {
+        area: formValues.originArea,
+        subArea: formValues.originSubArea || '',
+        location: this.isOriginEnsamble ? (formValues.lineaNovedad || '') : '',
+        ...(machineCode ? { machine: { code: machineCode, name: machineName || 'Definir Nombre' } } : {}),
+        ...(partCode ? { part: { code: partCode, name: '' } } : {})
+      },
       assignment: { currentArea: formValues.assignmentArea, currentSubArea: formValues.assignmentSubArea || '' }
     };
 
@@ -289,25 +376,30 @@ export class SharedNewsComponent implements OnInit {
 
     const validation = this.newsServices.validateProductionNews(request);
     if (!validation.valid) {
-      this.submitError = validation.errors.join(', ');
+      this.toastr.warning(validation.errors.join('. '), 'Datos incompletos');
       return;
     }
 
     this.isSubmitting = true;
     this.newsServices.createProductionNews(request).subscribe({
-      next: (response) => {
+      next: (response: ProductionNewsResponse) => {
         this.isSubmitting = false;
-        this.submitSuccess = true;
-        this.successMessage = response.msg;
-        setTimeout(() => {
-          this.resetForm();
-          this.submitSuccess = false;
-          this.successMessage = '';
-        }, 3000);
+        if (!response?.ok) {
+          const tokenError = response?.tokenError ? ` (${response.tokenError})` : '';
+          const errorMsg = (response?.msg || 'Error al registrar la novedad') + tokenError;
+          this.toastr.error(errorMsg, 'Error al registrar');
+          return;
+        }
+        const createdId = response.data?._id || '';
+        const successMsg = createdId
+          ? `${response.msg} (ID: ${createdId})`
+          : response.msg;
+        this.toastr.success(successMsg, 'Novedad registrada');
+        this.resetForm();
       },
       error: (error) => {
         this.isSubmitting = false;
-        this.submitError = error.message || 'Error al registrar la novedad';
+        this.toastr.error(error?.message || 'Error al registrar la novedad', 'Fallo de conexión');
       }
     });
   }
@@ -319,6 +411,9 @@ export class SharedNewsComponent implements OnInit {
       originArea: this.defaultOriginArea,
       originSubArea: '',
       lineaNovedad: '',
+      machineCode: '',
+      machineName: '',
+      partCode: '',
       assignmentArea: '',
       assignmentSubArea: '',
       productReference: '',
@@ -330,6 +425,8 @@ export class SharedNewsComponent implements OnInit {
     });
     this.predictiveList = [];
     this.showDropdown = false;
+    this.predictiveMachineList = [];
+    this.showMachineDropdown = false;
     if (this.defaultOriginArea) this.handleOriginAreaChange(this.defaultOriginArea);
   }
 

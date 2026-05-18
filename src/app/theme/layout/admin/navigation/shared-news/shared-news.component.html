@@ -18,40 +18,6 @@
   <div class="card form-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">
 
-      <!-- ALERTAS -->
-      <div class="alert-container mb-4" *ngIf="submitSuccess || submitError || isSubmitting">
-        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm"
-             role="alert" *ngIf="submitSuccess">
-          <i class="ti ti-circle-check fs-3 me-3"></i>
-          <div class="flex-grow-1">
-            <h5 class="alert-heading mb-1">¡Novedad Registrada Exitosamente!</h5>
-            <p class="mb-0">{{ successMessage }}</p>
-          </div>
-          <button type="button" class="btn-close" (click)="submitSuccess = false" aria-label="Close"></button>
-        </div>
-
-        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm"
-             role="alert" *ngIf="submitError">
-          <i class="ti ti-alert-circle fs-3 me-3"></i>
-          <div class="flex-grow-1">
-            <h5 class="alert-heading mb-1">Error al Registrar Novedad</h5>
-            <p class="mb-0">{{ submitError }}</p>
-          </div>
-          <button type="button" class="btn-close" (click)="submitError = ''" aria-label="Close"></button>
-        </div>
-
-        <div class="alert alert-info alert-dismissible fade show d-flex align-items-center shadow-sm"
-             role="alert" *ngIf="isSubmitting">
-          <div class="spinner-border spinner-border-sm me-3" role="status">
-            <span class="visually-hidden">Cargando...</span>
-          </div>
-          <div class="flex-grow-1">
-            <h5 class="alert-heading mb-1">Procesando...</h5>
-            <p class="mb-0">Registrando la novedad, por favor espere.</p>
-          </div>
-        </div>
-      </div>
-
       <form [formGroup]="novedadForm" (ngSubmit)="onSubmit()">
 
         <!-- SECCIÓN 1: INFORMACIÓN GENERAL -->
@@ -113,6 +79,34 @@
                 <option value="" disabled>Seleccione la línea</option>
                 <option *ngFor="let linea of lineasNovedad" [value]="linea">{{ linea }}</option>
               </select>
+            </div>
+
+            <ng-container *ngIf="machinesByArea.length > 0">
+              <div class="col-md-6 position-relative">
+                <label for="machineCode" class="form-label">Código de Máquina / Equipo</label>
+                <input type="text" id="machineCode" class="form-control" formControlName="machineCode"
+                       placeholder="Escriba el código de la máquina"
+                       (focus)="onMachineFocus()" (blur)="onMachineBlur()" autocomplete="off">
+                <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
+                  <div class="autocomplete-item" *ngFor="let m of predictiveMachineList" (mousedown)="selectMachine(m)">
+                    <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="machineName" class="form-label">Nombre de Máquina / Equipo</label>
+                <input type="text" id="machineName" class="form-control" formControlName="machineName"
+                       placeholder="Se completa al seleccionar el código" readonly>
+              </div>
+            </ng-container>
+
+            <div class="col-md-6">
+              <label for="partCode" class="form-label">Código de Parte</label>
+              <input type="text" id="partCode" class="form-control" formControlName="partCode"
+                     placeholder="Escriba el código de la parte"
+                     [ngClass]="{'is-invalid': isFieldInvalid('partCode')}"
+                     autocomplete="off">
             </div>
           </div>
         </div>

@@ -1,8 +1,9 @@
+// src/app/theme/layout/admin/navigation/shared-view-news/shared-view-news.component.ts
 import { CommonModule, registerLocaleData } from '@angular/common';
 import { Component, inject, Input, LOCALE_ID, OnInit } from '@angular/core';
 import localeEs from '@angular/common/locales/es';
 import { FormsModule } from '@angular/forms';
-import { ProductionNews } from '../../../../../interfaces/assembly.interface';
+import { NewsReplyPayload, NewsUserRef, ProductionNews } from '../../../../../interfaces/assembly.interface';
 import { AuthService } from '../../../../../services/auth-services';
 import { DashboardServices } from '../../../../../services/dashboard-services';
 
@@ -42,6 +43,20 @@ export class SharedViewNewsComponent implements OnInit {
   public pageSize: number = 10;
   public totalPages: number = 1;
 
+  public showResponseModal: boolean = false;
+  public isSubmittingResponse: boolean = false;
+  public responseError: string = '';
+  public selectedNews: ProductionNews | null = null;
+  public responseForm: {
+    observation: string;
+    actionTaken: string;
+    rootCause: string;
+    closeNews: boolean;
+    needsRedirect: boolean;
+    redirectArea: string;
+    redirectSubArea: string;
+  } = this.buildEmptyResponseForm();
+
   get effectiveArea(): string {
     return this.defaultArea || this.authService.userData()?.area || '';
   }
@@ -62,18 +77,22 @@ export class SharedViewNewsComponent implements OnInit {
   }
 
   private loadAllData(date: string): void {
+    const area = this.effectiveArea;
+    if (!area) {
+      this.allNews = [];
+      this.categorySummaries = [];
+      this.applyFilter();
+      return;
+    }
+
     this.isLoading = true;
     this.allNews = [];
     this.categorySummaries = [];
 
-    this.dashboardService.viewNews(date).subscribe({
+    this.dashboardService.viewNews(date, area).subscribe({
       next: (response) => {
-        if (response.ok && response.msg) {
-          this.allNews = this.filterByArea(response.msg);
-          this.calculateCategorySummaries();
-        } else {
-          this.allNews = [];
-        }
+        this.allNews = response.ok && response.msg ? response.msg : [];
+        this.calculateCategorySummaries();
       },
       error: () => {
         this.allNews = [];
@@ -88,20 +107,12 @@ export class SharedViewNewsComponent implements OnInit {
     });
   }
 
-  private filterByArea(news: ProductionNews[]): ProductionNews[] {
-    const area = this.effectiveArea;
-    if (!area) return news;
-    return news.filter(
-      (n) => n.origin?.area === area || n.assignment?.currentArea === area || n.assemblyLine === area
-    );
-  }
-
   private calculateCategorySummaries(): void {
     const summaryMap = new Map<string, { totalMinutes: number; count: number }>();
 
     for (const item of this.allNews) {
       const category = item.category;
-      const timeInMinutes = this.parseTimeToMinutes(item.totalTime);
+      const timeInMinutes = this.parseTimeToMinutes(this.getStopTotalTime(item));
       const current = summaryMap.get(category) || { totalMinutes: 0, count: 0 };
       current.totalMinutes += timeInMinutes;
       current.count += 1;
@@ -136,14 +147,24 @@ export class SharedViewNewsComponent implements OnInit {
 
   public applyFilter(): void {
     const term = this.searchTerm.toLowerCase();
-    this.filteredNews = this.allNews.filter(
-      (item) =>
-        item.category.toLowerCase().includes(term) ||
-        (item.assemblyLine || '').toLowerCase().includes(term) ||
-        item.reference.toLowerCase().includes(term) ||
-        (item.responsible || '').toLowerCase().includes(term) ||
-        (item.detail || '').toLowerCase().includes(term)
-    );
+    this.filteredNews = this.allNews.filter((item) => {
+      const haystack = [
+        item.category,
+        item.reference,
+        item.detail,
+        item.origin?.area,
+        item.origin?.subArea,
+        item.origin?.location,
+        item.origin?.machineCode,
+        item.origin?.machineName,
+        item.origin?.reportedBy?.name,
+        item.stop?.stopType
+      ]
+        .filter((v): v is string => !!v)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(term);
+    });
     this.currentPage = 1;
     this.updatePagination();
   }
@@ -183,6 +204,158 @@ export class SharedViewNewsComponent implements OnInit {
       default:
         return 'row-default';
     }
+  }
+
+  public getStatusClass(item: ProductionNews): string {
+    if (item.isClosed) return 'status-closed';
+    if (item.hasResponse) return 'status-responded';
+    return 'status-pending';
+  }
+
+  public getStatusLabel(item: ProductionNews): string {
+    if (item.isClosed) return 'Cerrada';
+    if (item.hasResponse) return 'Respondida';
+    return 'Pendiente';
+  }
+
+  public getMachineLabel(item: ProductionNews): string {
+    const code = item.origin?.machineCode;
+    const name = item.origin?.machineName;
+    if (code && name) return `${code} — ${name}`;
+    return code || name || '—';
+  }
+
+  public getOriginLabel(item: ProductionNews): string {
+    const parts = [item.origin?.area, item.origin?.subArea, item.origin?.location].filter((v): v is string => !!v);
+    return parts.length ? parts.join(' / ') : '—';
+  }
+
+  public getStopSchedule(item: ProductionNews): string {
+    const start = item.stop?.startTime || item.startTime;
+    const end = item.stop?.endTime || item.endTime;
+    if (!start && !end) return '—';
+    return `${start || '—'} - ${end || '—'}`;
+  }
+
+  public getStopTotalTime(item: ProductionNews): string {
+    return item.stop?.totalTime || item.totalTime || '';
+  }
+
+  // ============================================================
+  //  MODAL DE RESPUESTA
+  // ============================================================
+
+  public openResponseModal(item: ProductionNews): void {
+    if (item.isClosed) return;
+    this.selectedNews = item;
+    this.responseForm = this.buildEmptyResponseForm();
+    this.responseError = '';
+    this.showResponseModal = true;
+  }
+
+  public closeResponseModal(): void {
+    if (this.isSubmittingResponse) return;
+    this.showResponseModal = false;
+    this.selectedNews = null;
+    this.responseError = '';
+  }
+
+  public onRedirectToggle(): void {
+    if (this.responseForm.needsRedirect) {
+      this.responseForm.closeNews = false;
+    } else {
+      this.responseForm.redirectArea = '';
+      this.responseForm.redirectSubArea = '';
+    }
+  }
+
+  public submitResponse(): void {
+    if (!this.selectedNews) return;
+
+    const observation = this.responseForm.observation.trim();
+    const actionTaken = this.responseForm.actionTaken.trim();
+
+    if (!observation || !actionTaken) {
+      this.responseError = 'La observación y la acción tomada son obligatorias.';
+      return;
+    }
+
+    if (this.responseForm.needsRedirect && !this.responseForm.redirectArea.trim()) {
+      this.responseError = 'Debes indicar el área de destino para redireccionar.';
+      return;
+    }
+
+    const payload: NewsReplyPayload = {
+      newsId: this.selectedNews._id,
+      response: {
+        observation,
+        actionTaken,
+        rootCause: this.responseForm.rootCause.trim(),
+        respondedBy: this.buildRespondedBy(),
+        respondedAt: this.buildTimestamp()
+      },
+      needsRedirect: this.responseForm.needsRedirect,
+      redirectTo: {
+        area: this.responseForm.needsRedirect ? this.responseForm.redirectArea.trim() : '',
+        subArea: this.responseForm.needsRedirect ? this.responseForm.redirectSubArea.trim() : ''
+      },
+      closeNews: this.responseForm.closeNews
+    };
+
+    this.isSubmittingResponse = true;
+    this.responseError = '';
+
+    this.dashboardService.replyNews(payload).subscribe({
+      next: (response) => {
+        if (!response.ok) {
+          this.responseError = response.msg || 'No se pudo registrar la respuesta.';
+          return;
+        }
+        this.showResponseModal = false;
+        this.selectedNews = null;
+        this.onDateChange();
+      },
+      error: (err: Error) => {
+        this.responseError = err.message || 'Error al registrar la respuesta.';
+      },
+      complete: () => {
+        this.isSubmittingResponse = false;
+      }
+    });
+  }
+
+  private buildRespondedBy(): NewsUserRef {
+    const user = this.authService.userData();
+    return {
+      uid: user?.uid || '',
+      userApp: user?.userApp || '',
+      name: user?.full_name || '',
+      area: user?.area || this.effectiveArea,
+      subArea: user?.subArea || user?.departament || ''
+    };
+  }
+
+  private buildTimestamp(): string {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+  }
+
+  private buildEmptyResponseForm() {
+    return {
+      observation: '',
+      actionTaken: '',
+      rootCause: '',
+      closeNews: true,
+      needsRedirect: false,
+      redirectArea: '',
+      redirectSubArea: ''
+    };
   }
 
   private formatDate(date: Date): string {

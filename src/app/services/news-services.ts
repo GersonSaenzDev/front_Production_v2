@@ -12,7 +12,9 @@ import {
     WarehouseNewsRequest,
     WarehouseNewsResponse,
     ProductionAreasGroupedResponse,
-    ProductionAreasResponse
+    ProductionAreasResponse,
+    MachinesByAreaRequest,
+    MachinesByAreaResponse
 } from '../interfaces/production-news.interface';
 
 @Injectable({
@@ -27,6 +29,7 @@ export class NewsServices {
     private readonly WAREHOUSE_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/newsWarehouse`;
     private readonly PRODUCTION_AREAS_GROUPED_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionAreas/grouped`;
     private readonly PRODUCTION_AREAS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionAreas`;
+    private readonly MACHINES_BY_AREA_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/master/machinesByArea`;
 
     /**
      * @description Manejo centralizado de errores HTTP.
@@ -93,6 +96,24 @@ export class NewsServices {
                 catchError(this.handleError.bind(this)),
                 map(response => {
                     console.log('NEWS SERVICES - CONTROL: Respuesta del backend (productionAreas/grouped):', response);
+                    return response;
+                })
+            );
+    }
+
+    /**
+     * @description Obtiene el listado de máquinas asociadas a un área específica.
+     * @param {MachinesByAreaRequest} body - Objeto con el área a consultar.
+     * @returns {Observable<MachinesByAreaResponse>}
+     */
+    getMachinesByArea(body: MachinesByAreaRequest): Observable<MachinesByAreaResponse> {
+        console.log('NEWS SERVICES - CONTROL: Petición a machinesByArea con body:', body);
+
+        return this.http.post<MachinesByAreaResponse>(this.MACHINES_BY_AREA_ENDPOINT, body)
+            .pipe(
+                catchError(this.handleError.bind(this)),
+                map(response => {
+                    console.log('NEWS SERVICES - CONTROL: Respuesta del backend (machinesByArea):', response);
                     return response;
                 })
             );

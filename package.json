@@ -1,6 +1,6 @@
 {
   "name": "Indusel_Production",
-  "version": "2.1.255",
+  "version": "3.0.269",
   "description": "Indusel Development Team - Production Environment",
   "author": "Indusel Development Team",
   "private": true,
@@ -36,6 +36,7 @@
     "ngx-scrollbar": "18.0.0",
     "ngx-toastr": "19.0.0",
     "rxjs": "~7.8.2",
+    "socket.io-client": "4.8.3",
     "tslib": "2.8.1",
     "xlsx": "^0.18.5",
     "zone.js": "~0.15.1"

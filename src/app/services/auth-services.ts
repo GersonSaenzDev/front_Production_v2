@@ -1,9 +1,10 @@
 // Archivo: src/app/services/auth-services.ts
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { Observable, tap, catchError, throwError, map } from 'rxjs';
+import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { AuthResponse, LoginRequest, DataUserMenuResponse, UserDataMenu } from '../interfaces/auth.interface';
+import { SocketService } from './socket-service';
 
 
 @Injectable({
@@ -12,7 +13,8 @@ import { AuthResponse, LoginRequest, DataUserMenuResponse, UserDataMenu } from '
 export class AuthService {
   // Inyección de dependencias moderna
   private readonly http = inject(HttpClient);
-  
+  private readonly socket = inject(SocketService);
+
   private readonly AUTH_KEY = 'x-token';
   private readonly API_URL = `${environment.backendUrl}${environment.api}/login`;
 
@@ -20,7 +22,12 @@ export class AuthService {
   public isAuthenticated = signal<boolean>(this.checkToken());
   public userData = signal<UserDataMenu | null>(this.getInitialUserData());
 
-  constructor() {}
+  constructor() {
+    // Si la app arranca con un token ya guardado (refresh de pestana), reconectamos el socket.
+    if (this.isAuthenticated()) {
+      this.socket.connect(this.getToken());
+    }
+  }
 
   /**
    * Realiza el login y almacena el token si la respuesta es exitosa.
@@ -34,6 +41,12 @@ export class AuthService {
         if (response.ok && response.msg) {
           this.saveToken(response.msg);
           this.isAuthenticated.set(true);
+          // Abrir el canal de eventos en tiempo real con el token recien emitido.
+          this.socket.connect(response.msg);
+          // Refrescamos los datos del usuario para llenar uid, userApp, subArea, etc.
+          this.getUserMenuData().subscribe({
+            error: (err) => console.error('No se pudo refrescar userData tras el login:', err)
+          });
         }
       }),
       catchError(this.handleError) // Referencia al método de abajo
@@ -73,6 +86,8 @@ export class AuthService {
       localStorage.removeItem('user-data');
       this.isAuthenticated.set(false);
       this.userData.set(null);
+      // Cerrar el canal en tiempo real al cerrar sesion.
+      this.socket.disconnect();
     }
   }
 

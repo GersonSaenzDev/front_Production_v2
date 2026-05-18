@@ -3,15 +3,17 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { 
-    CardAssemblyResponse, 
-    TopProductsResponse, 
-    ChartDataResponse, 
-    ChartData, 
-    TopProductsItem, 
+import {
+    CardAssemblyResponse,
+    TopProductsResponse,
+    ChartDataResponse,
+    ChartData,
+    TopProductsItem,
     ReferenceSearchResponse,
-    ProductionNewsResponse // 💡 AJUSTE: Importamos la nueva interfaz de respuesta
-} from '../interfaces/assembly.interface'; 
+    ProductionNewsResponse,
+    NewsReplyPayload,
+    NewsReplyResponse
+} from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
 
@@ -31,16 +33,20 @@ export class DashboardServices {
   private readonly TOTAL_PRODUCTION_HOURS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/totalProductsDayHours`;
   private readonly FINAL_INVENTORY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/finalInventoryReport`;
   private readonly RECORDS_ERROR_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/recordsWithError`;
+  private readonly REPLY_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/replyNew`;
 
 
   private handleError(error: any) {
-    let errorMessage = 'Ocurrió un error desconocido en el servicio.';
-    if (error.error && error.error.msg) {
-      errorMessage = error.error.msg;
-    } else if (error.message) {
-      errorMessage = error.message;
+    // Error de negocio: el backend respondió con el contrato { ok: false, msg }.
+    // Pasamos el `msg` tal cual para que el componente lo muestre limpio
+    // (ej: "PRNEWS-43: La novedad ya esta cerrada.").
+    if (error?.error?.msg) {
+      return throwError(() => new Error(error.error.msg));
     }
-    return throwError(() => new Error(`Falló la consulta al backend: ${errorMessage}`));
+    // Error de transporte / servidor caído / desconocido: prefijamos para que
+    // sea evidente que no es un mensaje del dominio.
+    const fallback = error?.message || 'Ocurrió un error desconocido en el servicio.';
+    return throwError(() => new Error(`Falló la consulta al backend: ${fallback}`));
   }
 
   getCardMetrics(date: string): Observable<CardAssemblyResponse> {
@@ -120,15 +126,14 @@ export class DashboardServices {
   // --- 👇 AQUÍ ESTÁ EL MÉTODO ACTUALIZADO 👇 ---
 
   /**
-   * @description Obtiene todas las novedades de producción para una fecha específica.
+   * @description Obtiene todas las novedades de producción para una fecha y área específica.
    * @param {string} date - La fecha de consulta en formato 'DD/MM/YYYY'.
+   * @param {string} area - El área asignada actual (ej: 'Mantenimiento').
    * @returns {Observable<ProductionNewsResponse>} - Respuesta del backend con la lista de novedades.
    */
-  viewNews(date: string): Observable<ProductionNewsResponse> {
-      // 💡 AJUSTE: El body ahora es { "date": "..." }
-      const body = { date };
+  viewNews(date: string, area: string): Observable<ProductionNewsResponse> {
+      const body = { date, area };
 
-      // 💡 AJUSTE: El tipo de respuesta esperado es <ProductionNewsResponse>
       return this.http.post<ProductionNewsResponse>(this.VIEW_NEWS_ENDPOINT, body)
           .pipe(
               catchError(this.handleError.bind(this)),
@@ -199,6 +204,16 @@ export class DashboardServices {
    * @param {string} date - Fecha en formato 'DD/MM/YYYY'.
    * @returns {Observable<ErrorRecordsResponse>}
    */
+  /**
+   * @description Registra la respuesta dada a una novedad de producción.
+   * @param {NewsReplyPayload} payload - Body con `newsId`, `response`, `needsRedirect`, `redirectTo`, `closeNews`.
+   * @returns {Observable<NewsReplyResponse>} - Respuesta con `{ ok, msg, data?: { _id } }`.
+   */
+  replyNews(payload: NewsReplyPayload): Observable<NewsReplyResponse> {
+    return this.http.post<NewsReplyResponse>(this.REPLY_NEWS_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
   getRecordsWithError(date: string): Observable<ErrorRecordsResponse> {
     
     // El backend espera la estructura { "date": "..." }

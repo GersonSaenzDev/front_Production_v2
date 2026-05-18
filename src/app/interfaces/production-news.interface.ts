@@ -13,12 +13,31 @@ export interface NewsActor {
 }
 
 /**
+ * @description Máquina/equipo reportado por el área origen.
+ */
+export interface NewsOriginMachine {
+    code: string;
+    name: string;
+}
+
+/**
+ * @description Parte/pieza reportada por el área origen.
+ *              `name` queda vacío hasta que se conecte el servicio de búsqueda.
+ */
+export interface NewsOriginPart {
+    code: string;
+    name: string;
+}
+
+/**
  * @description Bloque ORIGEN: identifica al área que reporta la novedad.
  */
 export interface NewsOrigin {
     area: string;
     subArea?: string;
     location?: string;        // Línea/máquina/celda (solo aplica para área Ensamble)
+    machine?: NewsOriginMachine;
+    part?: NewsOriginPart;
 }
 
 /**
@@ -73,6 +92,7 @@ export interface ProductionNewsResponse {
     ok: boolean;
     msg: string;
     data?: ProductionNewsData;
+    tokenError?: string;
 }
 
 /**
@@ -169,4 +189,35 @@ export interface ProductionArea {
 export interface ProductionAreasResponse {
     ok: boolean;
     msg: ProductionArea[];
+}
+
+/**
+ * @description Estructura de datos para consultar máquinas por área.
+ */
+export interface MachinesByAreaRequest {
+    area: string;
+}
+
+/**
+ * @description Máquina asociada a un área de producción.
+ */
+export interface Machine {
+    machineCode: string;
+    centerCode: string;
+    locationCode: string;
+    brand: string;
+    capacity: string;
+    centerName: string;
+    locationName: string;
+    machineName: string;
+    model: string;
+    type: string;
+}
+
+/**
+ * @description Respuesta del backend para máquinas por área.
+ */
+export interface MachinesByAreaResponse {
+    ok: boolean;
+    msg: Machine[];
 }

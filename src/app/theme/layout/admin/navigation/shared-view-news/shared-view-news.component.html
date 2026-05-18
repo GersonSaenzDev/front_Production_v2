@@ -44,7 +44,7 @@
           <input
             type="text"
             class="form-control search-input"
-            placeholder="Buscar por categoría, línea, referencia..."
+            placeholder="Buscar por categoría, máquina, referencia, origen..."
             [(ngModel)]="searchTerm"
             (input)="applyFilter()">
         </div>
@@ -73,44 +73,65 @@
         <table class="news-table">
           <thead>
             <tr>
+              <th scope="col">Reportado</th>
               <th scope="col">Categoría</th>
-              <th scope="col">Línea</th>
-              <th scope="col">Referencia</th>
               <th scope="col">Tipo Parada</th>
+              <th scope="col">Origen</th>
+              <th scope="col">Máquina</th>
+              <th scope="col">Ref.</th>
+              <th scope="col">Reportado por</th>
               <th scope="col">Horario</th>
-              <th scope="col">Tiempo Total</th>
-              <th scope="col">Responsable</th>
+              <th scope="col">Total</th>
+              <th scope="col">Estado</th>
               <th scope="col">Detalle</th>
+              <th scope="col" class="action-col">Acción</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngIf="isLoading">
-              <td colspan="8" class="empty-cell">
+              <td colspan="12" class="empty-cell">
                 <span class="spinner-border spinner-border-sm me-2"></span>
                 Cargando novedades...
               </td>
             </tr>
 
             <tr *ngIf="!isLoading && paginatedNews.length === 0">
-              <td colspan="8" class="empty-cell">
+              <td colspan="12" class="empty-cell">
                 <i class="ti ti-database-off me-2"></i>
                 No se encontraron novedades para esta fecha.
               </td>
             </tr>
 
             <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)">
+              <td class="reported-cell">{{ item.origin?.reportedAt || item.dateCreate || '—' }}</td>
               <td>
                 <span class="cat-pill" [ngClass]="getCategoryClass(item.category)">
                   {{ item.category }}
                 </span>
               </td>
-              <td>{{ item.assemblyLine || item.origin?.location || '—' }}</td>
+              <td>{{ item.stop?.stopType || item.stopType || 'N/A' }}</td>
+              <td class="origin-cell">{{ getOriginLabel(item) }}</td>
+              <td class="machine-cell">{{ getMachineLabel(item) }}</td>
               <td>{{ item.reference }}</td>
-              <td>{{ item.stopType || 'N/A' }}</td>
-              <td>{{ item.startTime }} - {{ item.endTime }}</td>
-              <td><strong class="time-value">{{ item.totalTime }}</strong></td>
-              <td>{{ item.responsible || 'N/A' }}</td>
-              <td class="detail-cell">{{ item.detail }}</td>
+              <td>{{ item.origin?.reportedBy?.name || '—' }}</td>
+              <td>{{ getStopSchedule(item) }}</td>
+              <td><strong class="time-value">{{ getStopTotalTime(item) || '—' }}</strong></td>
+              <td>
+                <span class="status-pill" [ngClass]="getStatusClass(item)">
+                  {{ getStatusLabel(item) }}
+                </span>
+              </td>
+              <td class="detail-cell" [title]="item.detail">{{ item.detail }}</td>
+              <td class="action-col">
+                <button
+                  type="button"
+                  class="btn-respond"
+                  (click)="openResponseModal(item)"
+                  [disabled]="item.isClosed">
+                  <i class="ti ti-message-circle-2"></i>
+                  Responder
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -131,6 +152,162 @@
         </button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL DE RESPUESTA                                          -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showResponseModal" (click)="closeResponseModal()">
+  <div class="response-modal" (click)="$event.stopPropagation()">
+
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title">Responder novedad</h5>
+        <small class="modal-subtitle" *ngIf="selectedNews">
+          {{ selectedNews.category }} · Ref. {{ selectedNews.reference }}
+        </small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeResponseModal()" [disabled]="isSubmittingResponse">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body" *ngIf="selectedNews">
+
+      <div class="news-summary">
+        <div class="summary-row">
+          <span class="summary-label">Origen:</span>
+          <span class="summary-value">{{ getOriginLabel(selectedNews) }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Máquina:</span>
+          <span class="summary-value">{{ getMachineLabel(selectedNews) }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Reportado por:</span>
+          <span class="summary-value">{{ selectedNews.origin?.reportedBy?.name || '—' }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Horario parada:</span>
+          <span class="summary-value">
+            {{ getStopSchedule(selectedNews) }} · Total {{ getStopTotalTime(selectedNews) || '—' }}
+          </span>
+        </div>
+        <div class="summary-row summary-detail">
+          <span class="summary-label">Detalle:</span>
+          <span class="summary-value">{{ selectedNews.detail }}</span>
+        </div>
+      </div>
+
+      <form class="response-form" (ngSubmit)="submitResponse()" novalidate>
+
+        <div class="form-group">
+          <label for="observation" class="form-label required">Observación</label>
+          <textarea
+            id="observation"
+            class="form-control"
+            rows="3"
+            placeholder="Describe el diagnóstico o análisis realizado..."
+            [(ngModel)]="responseForm.observation"
+            name="observation"
+            [disabled]="isSubmittingResponse"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="actionTaken" class="form-label required">Acción tomada</label>
+          <textarea
+            id="actionTaken"
+            class="form-control"
+            rows="2"
+            placeholder="¿Qué se hizo para resolver la novedad?"
+            [(ngModel)]="responseForm.actionTaken"
+            name="actionTaken"
+            [disabled]="isSubmittingResponse"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="rootCause" class="form-label">Causa raíz (opcional)</label>
+          <input
+            id="rootCause"
+            type="text"
+            class="form-control"
+            placeholder="Ej: Falla en sensor neumático"
+            [(ngModel)]="responseForm.rootCause"
+            name="rootCause"
+            [disabled]="isSubmittingResponse">
+        </div>
+
+        <div class="form-flags">
+          <label class="flag-option">
+            <input
+              type="checkbox"
+              [(ngModel)]="responseForm.needsRedirect"
+              name="needsRedirect"
+              (change)="onRedirectToggle()"
+              [disabled]="isSubmittingResponse">
+            <span>Redireccionar a otra área</span>
+          </label>
+
+          <label class="flag-option">
+            <input
+              type="checkbox"
+              [(ngModel)]="responseForm.closeNews"
+              name="closeNews"
+              [disabled]="responseForm.needsRedirect || isSubmittingResponse">
+            <span>Cerrar novedad al responder</span>
+          </label>
+        </div>
+
+        <div class="redirect-fields" *ngIf="responseForm.needsRedirect">
+          <div class="form-group">
+            <label for="redirectArea" class="form-label required">Área destino</label>
+            <input
+              id="redirectArea"
+              type="text"
+              class="form-control"
+              placeholder="Ej: Calidad"
+              [(ngModel)]="responseForm.redirectArea"
+              name="redirectArea"
+              [disabled]="isSubmittingResponse">
+          </div>
+          <div class="form-group">
+            <label for="redirectSubArea" class="form-label">SubÁrea destino (opcional)</label>
+            <input
+              id="redirectSubArea"
+              type="text"
+              class="form-control"
+              placeholder="Ej: Laboratorio"
+              [(ngModel)]="responseForm.redirectSubArea"
+              name="redirectSubArea"
+              [disabled]="isSubmittingResponse">
+          </div>
+        </div>
+
+        <div class="response-error" *ngIf="responseError">
+          <i class="ti ti-alert-circle me-1"></i>
+          {{ responseError }}
+        </div>
+
+        <div class="response-actions">
+          <button
+            type="button"
+            class="btn-cancel"
+            (click)="closeResponseModal()"
+            [disabled]="isSubmittingResponse">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="btn-submit"
+            [disabled]="isSubmittingResponse">
+            <span class="spinner-border spinner-border-sm me-2" *ngIf="isSubmittingResponse"></span>
+            {{ isSubmittingResponse ? 'Enviando...' : 'Enviar respuesta' }}
+          </button>
+        </div>
+
+      </form>
     </div>
   </div>
 </div>
