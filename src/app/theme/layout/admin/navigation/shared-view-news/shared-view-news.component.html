@@ -73,64 +73,86 @@
         <table class="news-table">
           <thead>
             <tr>
-              <th scope="col">Reportado</th>
-              <th scope="col">Categoría</th>
-              <th scope="col">Tipo Parada</th>
-              <th scope="col">Origen</th>
-              <th scope="col">Máquina</th>
-              <th scope="col">Ref.</th>
-              <th scope="col">Reportado por</th>
-              <th scope="col">Horario</th>
-              <th scope="col">Total</th>
+              <th scope="col">Categoría / Reporte</th>
+              <th scope="col">Origen / Máquina</th>
+              <th scope="col">Horario / Total</th>
               <th scope="col">Estado</th>
-              <th scope="col">Detalle</th>
-              <th scope="col" class="action-col">Acción</th>
+              <th scope="col" class="action-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngIf="isLoading">
-              <td colspan="12" class="empty-cell">
+              <td colspan="5" class="empty-cell">
                 <span class="spinner-border spinner-border-sm me-2"></span>
                 Cargando novedades...
               </td>
             </tr>
 
             <tr *ngIf="!isLoading && paginatedNews.length === 0">
-              <td colspan="12" class="empty-cell">
+              <td colspan="5" class="empty-cell">
                 <i class="ti ti-database-off me-2"></i>
                 No se encontraron novedades para esta fecha.
               </td>
             </tr>
 
             <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)">
-              <td class="reported-cell">{{ item.origin?.reportedAt || item.dateCreate || '—' }}</td>
-              <td>
-                <span class="cat-pill" [ngClass]="getCategoryClass(item.category)">
-                  {{ item.category }}
-                </span>
+              <!-- Categoría + Tipo Parada · subtítulo con fecha de reporte -->
+              <td class="cell-stacked">
+                <div class="cell-main">
+                  <span class="cat-pill" [ngClass]="getCategoryClass(item.category)">
+                    {{ item.category }}
+                  </span>
+                  <span class="cell-tag">{{ item.stop?.stopType || item.stopType || 'N/A' }}</span>
+                </div>
+                <small class="cell-sub">
+                  <i class="ti ti-clock-hour-4"></i>
+                  {{ item.origin?.reportedAt || item.dateCreate || '—' }}
+                </small>
               </td>
-              <td>{{ item.stop?.stopType || item.stopType || 'N/A' }}</td>
-              <td class="origin-cell">{{ getOriginLabel(item) }}</td>
-              <td class="machine-cell">{{ getMachineLabel(item) }}</td>
-              <td>{{ item.reference }}</td>
-              <td>{{ item.origin?.reportedBy?.name || '—' }}</td>
-              <td>{{ getStopSchedule(item) }}</td>
-              <td><strong class="time-value">{{ getStopTotalTime(item) || '—' }}</strong></td>
+
+              <!-- Origen + Máquina -->
+              <td class="cell-stacked">
+                <span class="cell-main-text" [title]="getOriginLabel(item)">{{ getOriginLabel(item) }}</span>
+                <small class="cell-sub" [title]="getMachineLabel(item)">
+                  <i class="ti ti-settings-cog"></i>
+                  {{ getMachineLabel(item) }}
+                </small>
+              </td>
+
+              <!-- Horario + Total -->
+              <td class="cell-stacked cell-schedule">
+                <span class="cell-main-text">{{ getStopSchedule(item) }}</span>
+                <strong class="time-value">{{ getStopTotalTime(item) || '—' }}</strong>
+              </td>
+
+              <!-- Estado -->
               <td>
                 <span class="status-pill" [ngClass]="getStatusClass(item)">
                   {{ getStatusLabel(item) }}
                 </span>
               </td>
-              <td class="detail-cell" [title]="item.detail">{{ item.detail }}</td>
+
+              <!-- Acciones -->
               <td class="action-col">
-                <button
-                  type="button"
-                  class="btn-respond"
-                  (click)="openResponseModal(item)"
-                  [disabled]="item.isClosed">
-                  <i class="ti ti-message-circle-2"></i>
-                  Responder
-                </button>
+                <div class="action-group">
+                  <button
+                    type="button"
+                    class="btn-detail"
+                    (click)="openDetailModal(item)"
+                    title="Ver detalle completo">
+                    <i class="ti ti-eye"></i>
+                    <span class="btn-label">Ver detalle</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-respond"
+                    (click)="openResponseModal(item)"
+                    [disabled]="item.isClosed"
+                    title="Responder novedad">
+                    <i class="ti ti-message-circle-2"></i>
+                    <span class="btn-label">Responder</span>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -152,6 +174,110 @@
         </button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL DE DETALLE                                            -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showDetailModal" (click)="closeDetailModal()">
+  <div class="response-modal detail-modal" (click)="$event.stopPropagation()">
+
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title">Detalle de la novedad</h5>
+        <small class="modal-subtitle" *ngIf="detailNews">
+          {{ detailNews.category }} · Ref. {{ detailNews.reference || '—' }}
+        </small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeDetailModal()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body" *ngIf="detailNews">
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-tag"></i> Categoría</span>
+          <span class="detail-value">
+            <span class="cat-pill" [ngClass]="getCategoryClass(detailNews.category)">
+              {{ detailNews.category }}
+            </span>
+          </span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-alert-octagon"></i> Tipo Parada</span>
+          <span class="detail-value">{{ detailNews.stop?.stopType || detailNews.stopType || 'N/A' }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-circle-check"></i> Estado</span>
+          <span class="detail-value">
+            <span class="status-pill" [ngClass]="getStatusClass(detailNews)">
+              {{ getStatusLabel(detailNews) }}
+            </span>
+          </span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-hash"></i> Referencia</span>
+          <span class="detail-value">{{ detailNews.reference || '—' }}</span>
+        </div>
+
+        <div class="detail-item detail-item-wide">
+          <span class="detail-label"><i class="ti ti-map-pin"></i> Origen</span>
+          <span class="detail-value">{{ getOriginLabel(detailNews) }}</span>
+        </div>
+
+        <div class="detail-item detail-item-wide">
+          <span class="detail-label"><i class="ti ti-settings-cog"></i> Máquina</span>
+          <span class="detail-value">{{ getMachineLabel(detailNews) }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-user"></i> Reportado por</span>
+          <span class="detail-value">{{ detailNews.origin?.reportedBy?.name || '—' }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-calendar"></i> Fecha reporte</span>
+          <span class="detail-value">{{ detailNews.origin?.reportedAt || detailNews.dateCreate || '—' }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-clock-play"></i> Horario</span>
+          <span class="detail-value">{{ getStopSchedule(detailNews) }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-hourglass"></i> Total</span>
+          <span class="detail-value">
+            <strong class="time-value">{{ getStopTotalTime(detailNews) || '—' }}</strong>
+          </span>
+        </div>
+
+        <div class="detail-item detail-item-full">
+          <span class="detail-label"><i class="ti ti-file-description"></i> Detalle</span>
+          <p class="detail-value detail-text">{{ detailNews.detail || 'Sin detalle registrado.' }}</p>
+        </div>
+      </div>
+
+      <div class="response-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetailModal()">
+          Cerrar
+        </button>
+        <button
+          type="button"
+          class="btn-submit"
+          (click)="openResponseFromDetail()"
+          [disabled]="detailNews.isClosed">
+          <i class="ti ti-message-circle-2 me-1"></i>
+          Responder
+        </button>
+      </div>
     </div>
   </div>
 </div>

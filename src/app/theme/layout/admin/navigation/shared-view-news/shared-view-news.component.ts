@@ -44,9 +44,11 @@ export class SharedViewNewsComponent implements OnInit {
   public totalPages: number = 1;
 
   public showResponseModal: boolean = false;
+  public showDetailModal: boolean = false;
   public isSubmittingResponse: boolean = false;
   public responseError: string = '';
   public selectedNews: ProductionNews | null = null;
+  public detailNews: ProductionNews | null = null;
   public responseForm: {
     observation: string;
     actionTaken: string;
@@ -239,6 +241,27 @@ export class SharedViewNewsComponent implements OnInit {
 
   public getStopTotalTime(item: ProductionNews): string {
     return item.stop?.totalTime || item.totalTime || '';
+  }
+
+  // ============================================================
+  //  MODAL DE DETALLE
+  // ============================================================
+
+  public openDetailModal(item: ProductionNews): void {
+    this.detailNews = item;
+    this.showDetailModal = true;
+  }
+
+  public closeDetailModal(): void {
+    this.showDetailModal = false;
+    this.detailNews = null;
+  }
+
+  public openResponseFromDetail(): void {
+    if (!this.detailNews) return;
+    const item = this.detailNews;
+    this.closeDetailModal();
+    this.openResponseModal(item);
   }
 
   // ============================================================
