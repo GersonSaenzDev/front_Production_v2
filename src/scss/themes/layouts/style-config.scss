@@ -1,6 +1,8 @@
 /**  =====================
     Customize css start
 ==========================  **/
+@use 'sass:color';
+@use 'sass:map';
 
 $style-block-width: 375px;
 
@@ -226,7 +228,7 @@ $style-block-width: 375px;
     @each $name, $value in $preset-colors {
       > a {
         &[data-value='preset-#{$i}'] {
-          background: linear-gradient(135deg, map-get($value, 'primary') 50%, map-get($value, 'secondary') 50%);
+          background: linear-gradient(135deg, map.get($value, 'primary') 50%, map.get($value, 'secondary') 50%);
         }
       }
 
@@ -374,7 +376,7 @@ $style-block-width: 375px;
       span {
         &:nth-child(1),
         &:nth-child(3) {
-          background: lighten($dark, 8%);
+          background: color.adjust($dark, $lightness: 8%);
         }
 
         &:nth-child(2),

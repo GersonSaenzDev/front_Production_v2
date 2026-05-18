@@ -1,3 +1,5 @@
+@use 'sass:map';
+
 // Variables
 //
 // Variables should follow the `$component-state-property-size` formula for
@@ -378,7 +380,7 @@ $form-bg: #f0f3f6;
 $theme-color: linear-gradient(-135deg, #673ab7 0%, #673ab7 100%);
 $theme-color2: linear-gradient(-135deg, #899fd4 0%, #a389d4 100%);
 
-$theme-colors: map-merge(
+$theme-colors: map.merge(
   (
     'primary': $primary,
     'secondary': $secondary,

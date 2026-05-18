@@ -1,3 +1,4 @@
+@use 'sass:map';
 // main framework
 @import 'settings/color-variables';
 @import 'node_modules/bootstrap/scss/functions';
@@ -10,10 +11,10 @@
 @each $name, $value in $preset-colors {
   [part='#{$name}'] {
     $pc-body: #eef2f6;
-    $pc-primary: map-get($value, 'primary');
-    $pc-primary-dark: map-get($value, 'primary-dark');
-    $pc-secondary: map-get($value, 'secondary');
-    $pc-secondary-dark: map-get($value, 'secondary-dark');
+    $pc-primary: map.get($value, 'primary');
+    $pc-primary-dark: map.get($value, 'primary-dark');
+    $pc-secondary: map.get($value, 'secondary');
+    $pc-secondary-dark: map.get($value, 'secondary-dark');
 
     $pctheme-colors: (
       'primary': $pc-primary,

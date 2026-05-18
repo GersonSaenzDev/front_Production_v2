@@ -1,6 +1,7 @@
 // ============================
 //     header css start
 // ============================
+@use 'sass:color';
 
 .pc-header {
   background: $header-background;
@@ -176,7 +177,7 @@
         weight: 400;
       }
 
-      color: transparentize($header-color, 0.3);
+      color: color.adjust($header-color, $alpha: -0.3);
     }
   }
 

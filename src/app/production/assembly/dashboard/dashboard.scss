@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 .nav-tabs {
   border-bottom: none !important;
 }
@@ -155,7 +157,7 @@ $warning-amber: #f59e0b;
         
         &.header-shift-2 {
             background-color: rgba($warning-amber, 0.05);
-            color: darken($warning-amber, 15%);
+            color: color.adjust($warning-amber, $lightness: -15%);
             border-bottom-color: rgba($warning-amber, 0.2);
         }
     }

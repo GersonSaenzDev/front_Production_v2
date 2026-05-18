@@ -6,11 +6,12 @@ Support: berry@gmail.com
 File: style.css
 =========================================================================
 =================================================================================== */
+@use 'sass:map';
 // theme font
 // main framework
 $menu-styler: 280px;
 $pct-colors: ();
-$pct-colors: map-merge(
+$pct-colors: map.merge(
   (
     'primary': $primary,
     'success': $success,
