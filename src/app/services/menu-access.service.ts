@@ -90,6 +90,7 @@ export class MenuAccessService {
     const title = rawTitle?.toUpperCase().trim() || '';
 
     if (area === 'PRODUCCION') {
+      if (dept === 'COSTOS' && title === 'GENERAR ETIQUETAS') return true;
       return title === dept;
     }
 
@@ -116,6 +117,7 @@ export class MenuAccessService {
 
     // Regla: Si el módulo coincide con el área (en minúscula o mapeado), permitimos acceso
     if (area === 'PRODUCCION' && module === 'production') return true;
+    if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
     if (area === 'INGENIERIA INDUSTRIAL' && module === 'engineering') return true;
     if (area === 'SST' && module === 'health-safety') return true;
