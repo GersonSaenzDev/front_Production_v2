@@ -81,25 +81,23 @@
               </select>
             </div>
 
-            <ng-container *ngIf="machinesByArea.length > 0">
-              <div class="col-md-6 position-relative">
-                <label for="machineCode" class="form-label">Código de Máquina / Equipo</label>
-                <input type="text" id="machineCode" class="form-control" formControlName="machineCode"
-                       placeholder="Escriba el código de la máquina"
-                       (focus)="onMachineFocus()" (blur)="onMachineBlur()" autocomplete="off">
-                <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
-                  <div class="autocomplete-item" *ngFor="let m of predictiveMachineList" (mousedown)="selectMachine(m)">
-                    <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
-                  </div>
+            <div class="col-md-6 position-relative">
+              <label for="machineCode" class="form-label">Código de Máquina / Equipo</label>
+              <input type="text" id="machineCode" class="form-control" formControlName="machineCode"
+                     placeholder="Escriba el código de la máquina"
+                     (focus)="onMachineFocus()" (blur)="onMachineBlur()" autocomplete="off">
+              <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
+                <div class="autocomplete-item" *ngFor="let m of predictiveMachineList" (mousedown)="selectMachine(m)">
+                  <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
                 </div>
               </div>
+            </div>
 
-              <div class="col-md-6">
-                <label for="machineName" class="form-label">Nombre de Máquina / Equipo</label>
-                <input type="text" id="machineName" class="form-control" formControlName="machineName"
-                       placeholder="Se completa al seleccionar el código" readonly>
-              </div>
-            </ng-container>
+            <div class="col-md-6">
+              <label for="machineName" class="form-label">Nombre de Máquina / Equipo</label>
+              <input type="text" id="machineName" class="form-control" formControlName="machineName"
+                     placeholder="Se completa al seleccionar el código" readonly>
+            </div>
 
             <div class="col-md-6">
               <label for="partCode" class="form-label">Código de Parte</label>

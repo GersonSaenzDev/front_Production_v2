@@ -1,0 +1,1265 @@
+// src/assets/images/user/indusel.staffs_Produccion.json
+[{
+  "_id": {
+    "$oid": "691f7828bbe1b89809ecb154"
+  },
+  "document": "80896599",
+  "full_name": "Brayan Delgado Tarazona",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "TROQUELADORAS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 2",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "27/03/2026, 16:37:28",
+        "observation": "Cambio de asignación - Depto: [ACABADOS ESMALTE] -> [TROQUELADORAS], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [ANDERSON TOVAR DIAZ] -> [ANDERSON TOVAR DIAZ]. ",
+        "_id": {
+          "$oid": "69c6f8985c2bfa7c2bb23b93"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    },
+    "shiftChange": {
+      "dateUpdate": "11/05/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 1",
+      "workShiftNew": "Turno 2",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 11/05/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f782abbe1b89809ecb1f0"
+  },
+  "document": "6075767",
+  "full_name": "Annabella Lisseth Rodriguez Alvarado",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ACABADOS PINTURA",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 1",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": "",
+    "corporateEmail": "acabados@indusel.com.co",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "16/04/2026, 08:50:58",
+        "observation": "Cambio de asignación - Depto: [ACABADOS PINTURA] -> [PRODUCCION], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69e0e942e74443d11021e07f"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f782abbe1b89809ecb220"
+  },
+  "document": "80321309",
+  "full_name": "Candido Guevara Murillo",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "MECANIZADO VARIOS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 2",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "13/03/2026, 10:45:59",
+        "observation": "Cambio de asignación - Depto: [ARSOL] -> [MECANIZADO VARIOS], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [JORGE ENRIQUE BRAVO RIOS] -> [JORGE ENRIQUE BRAVO RIOS]. ",
+        "_id": {
+          "$oid": "69b43137bafb37ebcb41bacf"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    },
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 4",
+      "workShiftNew": "Turno 2",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f782bbbe1b89809ecb238"
+  },
+  "document": "80140731",
+  "full_name": "Edward Smith Soler Guevara",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "HIDRAULICAS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 2",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "18/03/2026, 09:14:48",
+        "observation": "Cambio de asignación - Depto: [ARSOL] -> [HIDRAULICAS], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69bab35861d208dbc8d7920c"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f782bbbe1b89809ecb256"
+  },
+  "document": "1063491913",
+  "full_name": "Jeraldin Perez Martinez",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "RIELES",
+    "area": "PRODUCCION",
+    "reportingManager": "JUAN FELIPE TORRES VILLAMIL",
+    "workShift": "Turno 8",
+    "position": "SUPERVISOR DE PRODUCCION",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "18/03/2026, 11:41:05",
+        "observation": "Cambio de asignación - Depto: [CORTE] -> [RIELES], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69bad5a161d208dbc8d79a28"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7831bbe1b89809ecb4b4"
+  },
+  "document": "1012325088",
+  "full_name": "Jorge Enrique Bravo Rios",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "FUNDICION",
+    "area": "PRODUCCION",
+    "reportingManager": "JORGE ENRIQUE BRAVO RIOS",
+    "workShift": "Turno 4",
+    "position": "JEFE DE SATELITES",
+    "diner": "",
+    "corporateEmail": "jsatelites@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 2",
+      "workShiftNew": "Turno 4",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7833bbe1b89809ecb53e"
+  },
+  "document": "1062677657",
+  "full_name": "Deimer Rafael Berrocal Garces",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "OXYPLAST",
+    "area": "PRODUCCION",
+    "reportingManager": "DEIMER RAFAEL BERROCAL GARCES",
+    "workShift": "Turno 6",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": ""
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7834bbe1b89809ecb5ce"
+  },
+  "document": "1012414555",
+  "full_name": "Anderson Tovar Diaz",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "HIDRAULICAS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 1",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": "",
+    "corporateEmail": "prensasprensas21@gmail.com"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7834bbe1b89809ecb5d4"
+  },
+  "document": "1012432103",
+  "full_name": "Anderson Villamizar Buitrago",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "HIDRAULICAS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDERSON TOVAR DIAZ",
+    "workShift": "Turno 3",
+    "position": "OPERARIO",
+    "diner": "",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 2",
+      "workShiftNew": "Turno 1",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7834bbe1b89809ecb5e6"
+  },
+  "document": "80440197",
+  "full_name": "Tomas Galindo Gil",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ARSOL",
+    "area": "PRODUCCION",
+    "reportingManager": "TOMAS GALINDO GIL",
+    "workShift": "Turno 1",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "18/03/2026, 08:52:11",
+        "observation": "Cambio de asignación - Depto: [TROQUELADORAS] -> [ARSOL], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69baae0b61d208dbc8d791da"
+        }
+      },
+      {
+        "dateUpdate": "18/03/2026, 09:25:02",
+        "observation": "Cambio de asignación - Depto: [ARSOL] -> [ARSOL], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69bab5be61d208dbc8d79256"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7836bbe1b89809ecb688"
+  },
+  "document": "1024481403",
+  "full_name": "Edgar Ivan Martinez Romero",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "VIDRIOS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 1",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": ""
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7837bbe1b89809ecb6d6"
+  },
+  "document": "3064540",
+  "full_name": "Carlos Julio Rodriguez Beltran",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "PARRILLAS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 1",
+    "position": "SUPERVISOR  DE PRODUCCION",
+    "diner": ""
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7838bbe1b89809ecb70c"
+  },
+  "document": "1012353012",
+  "full_name": "Maria Fernanda Cruz Osorio",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ALMACEN GENERAL",
+    "area": "ALMACEN",
+    "reportingManager": "YUDY ANDREA RINCON HERNANDEZ",
+    "workShift": "Turno 8",
+    "position": "JEFE DE ALMACEN",
+    "diner": "",
+    "corporateEmail": "alamacen@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7838bbe1b89809ecb730"
+  },
+  "document": "79593754",
+  "full_name": "Juan Carlos Daza Gutierrez",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ASEGURAMIENTO CALIDAD",
+    "area": "CALIDAD",
+    "reportingManager": "JENNY CONSTANZA GACHARNA PIÑEROS",
+    "workShift": "Turno 10",
+    "position": "JEFE SISTEMA DE GESTIÑN",
+    "diner": "",
+    "corporateEmail": "luz.arenas@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7838bbe1b89809ecb73c"
+  },
+  "document": "80409702",
+  "full_name": "Jose Alfredo Ladino Leiva",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ASEGURAMIENTO CALIDAD",
+    "area": "CALIDAD",
+    "reportingManager": "JENNY CONSTANZA GACHARNA PIÑEROS",
+    "workShift": "Turno 4",
+    "position": "JEFE CONTROL CALIDAD",
+    "diner": "",
+    "corporateEmail": "dca@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7838bbe1b89809ecb748"
+  },
+  "document": "80271929",
+  "full_name": "Andres Florez Obregon",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "PRODUCCION",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 8",
+    "position": "DIRECTOR DE PRODUCCION",
+    "diner": "",
+    "corporateEmail": "direccionproduccion@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7838bbe1b89809ecb74e"
+  },
+  "document": "1012390652",
+  "full_name": "William Yesid Gutierrez Sierra",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ENSAMBLE",
+    "area": "PRODUCCION",
+    "reportingManager": "WILLIAM YESID GUTIERREZ SIERRA",
+    "workShift": "Turno 4",
+    "position": "JEFE PROGRAMACION",
+    "diner": "",
+    "corporateEmail": "planeacion.produccion@indusel.com.co",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "16/03/2026, 11:41:22",
+        "observation": "Cambio de asignación - Depto: [PRODUCCION] -> [ENSAMBLE], Área: [PRODUCCION] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69b832b2602897ca16742fc1"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7839bbe1b89809ecb778"
+  },
+  "document": "79334903",
+  "full_name": "Edgar Oriel Cortes Bello",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "MANTENIMIENTO",
+    "area": "MANTENIMIENTO",
+    "reportingManager": "EDGAR RODRIGUEZ MALAGON",
+    "workShift": "Turno 4",
+    "position": "JEFE DE DEPARTAMENTO",
+    "diner": "",
+    "shiftChange": {
+      "dateUpdate": "20/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 1",
+      "workShiftNew": "Turno 4",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 20/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783abbe1b89809ecb7de"
+  },
+  "document": "11387437",
+  "full_name": "Edgar Rodriguez Malagon",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "MANTENIMIENTO",
+    "area": "MANTENIMIENTO",
+    "reportingManager": "EDGAR RODRIGUEZ MALAGON",
+    "workShift": "Turno 10",
+    "position": "JEFE DE MANTENIMIENTO",
+    "diner": "",
+    "corporateEmail": "mantenimiento@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "20/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 8",
+      "workShiftNew": "Turno 10",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 20/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783abbe1b89809ecb820"
+  },
+  "document": "1022329587",
+  "full_name": "Alder Herrera Santander",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "MECANICA",
+    "area": "PRODUCCION",
+    "reportingManager": "ALDER HERRERA SANTANDER",
+    "workShift": "Turno 1",
+    "position": "MATRICERO      ",
+    "diner": "",
+    "corporateEmail": "mecanica@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 2",
+      "workShiftNew": "Turno 1",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783bbbe1b89809ecb85c"
+  },
+  "document": "53095665",
+  "full_name": "Liliana Maria Romero Farfan",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "LABORATORIO DE ENSAYOS",
+    "area": "LABORATORIO DE ENSAYOS",
+    "reportingManager": "LILIANA MARIA ROMERO FARFAN",
+    "workShift": "Turno 4",
+    "position": "JEFE LABORATORIO DE ENSAYOS",
+    "diner": "",
+    "corporateEmail": "lae@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 8",
+      "workShiftNew": "Turno 4",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783cbbe1b89809ecb89e"
+  },
+  "document": "1022416542",
+  "full_name": "Fredy Andree Riveros Rivera",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "INGENIERIA DE PRODUCTO",
+    "area": "INGENIERIA DE PRODUCTO",
+    "reportingManager": "FREDY ANDREE RIVEROS RIVERA",
+    "workShift": "Turno 8",
+    "position": "JEFE DE INGENIERIA DE PRODUCTO",
+    "diner": "",
+    "corporateEmail": "mp@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783cbbe1b89809ecb8b0"
+  },
+  "document": "1001087952",
+  "full_name": "Juan Felipe Torres Villamil",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "RIELES",
+    "area": "PRODUCCION",
+    "reportingManager": "JUAN FELIPE TORRES VILLAMIL",
+    "workShift": "Turno 8",
+    "position": "INGENIERO DE PRODUCTO",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "18/03/2026, 11:40:47",
+        "observation": "Cambio de asignación - Depto: [INGENIERIA DE PRODUCTO] -> [RIELES], Área: [INGENIERIA DE PRODUCTO] -> [PRODUCCION], Jefe: [Sin Jefe Asignado] -> [Sin Jefe Asignado]. ",
+        "_id": {
+          "$oid": "69bad58f61d208dbc8d79a10"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    },
+    "corporateEmail": "ding3@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783cbbe1b89809ecb8c2"
+  },
+  "document": "1026594123",
+  "full_name": "Karen Dayanna Cano Robayo",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "COSTOS",
+    "area": "PRODUCCION",
+    "reportingManager": "KAREN DAYANNA CANO ROBAYO",
+    "workShift": "Turno 8",
+    "position": "JEFE DE COSTOS",
+    "diner": "",
+    "corporateEmail": "costos@indusel.com.co",
+    "departmentHead": false,
+    "updateStaffAssignment": [],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783cbbe1b89809ecb8d4"
+  },
+  "document": "1192765469",
+  "full_name": "Miguel Santiago Guzman Rodriguez",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "AUDITORIA",
+    "area": "FINANCIERO",
+    "reportingManager": "DIANA MILENA VARGAS ARCILA",
+    "workShift": "Turno 4",
+    "position": "ANALISTA DE AUDITORIA",
+    "diner": "",
+    "corporateEmail": "auditoria@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783cbbe1b89809ecb8e6"
+  },
+  "document": "39629102",
+  "full_name": "Diana Milena Vargas Arcila",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "FINANCIERO",
+    "area": "FINANCIERO",
+    "reportingManager": "JACOBO KERPEL SPRINTIS",
+    "workShift": "Turno 8",
+    "position": "JEFE FINANCIERA",
+    "diner": "",
+    "corporateEmail": "dfc@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783dbbe1b89809ecb8ec"
+  },
+  "document": "39662349",
+  "full_name": "Elva Consuelo Vega Silva",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "TESORERIA",
+    "area": "FINANCIERO",
+    "reportingManager": "JACOBO  KERPEL SPRINTIS",
+    "workShift": "Turno 8",
+    "position": "JEFE DE TESORERIA",
+    "diner": "",
+    "corporateEmail": "cf@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783dbbe1b89809ecb8f8"
+  },
+  "document": "19414698",
+  "full_name": "Jacobo Kerpel Sprintis",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "GERENCIAS",
+    "area": "GERENCIA",
+    "reportingManager": "JACOBO KERPEL SPRINTIS",
+    "workShift": "Turno 1",
+    "position": "GERENTE GENERAL",
+    "diner": "",
+    "corporateEmail": "jacobo.kerpel@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783dbbe1b89809ecb8fe"
+  },
+  "document": "79622529",
+  "full_name": "William Alexander Martinez Chaves",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "GERENCIAS",
+    "area": "GERENCIA",
+    "reportingManager": "WILLIAM ALEXANDER MARTINEZ CHAVES",
+    "workShift": "Turno 1",
+    "position": "GERENTE GENERAL",
+    "diner": "",
+    "corporateEmail": "alexander.martinez@indusel.com"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783dbbe1b89809ecb910"
+  },
+  "document": "1010164401",
+  "full_name": "Yudy Andrea Rincon Hernandez",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "COMPRAS",
+    "area": "COMPRAS",
+    "reportingManager": "JACOBO KERPEL SPRINTIS",
+    "workShift": "Turno 8",
+    "position": "JEFE DE MATERIALES",
+    "diner": "",
+    "corporateEmail": "dce@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "23/03/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 4",
+      "workShiftNew": "Turno 8",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 23/03/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783ebbe1b89809ecb96a"
+  },
+  "document": "1012423920",
+  "full_name": "Fabian Andres Rodriguez Calvo",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "ENSAMBLE",
+    "area": "PRODUCCION",
+    "reportingManager": "WILLIAM YESID GUTIERREZ SIERRA",
+    "workShift": "Turno 2",
+    "position": "JEFE ENSAMBLE",
+    "diner": "",
+    "corporateEmail": "ensamble@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783ebbe1b89809ecb9a6"
+  },
+  "document": "79490283",
+  "full_name": "Neil Franz Gongora Correa",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "SEGURIDAD INDUSTRIAL",
+    "area": "SEGURIDAD INDUSTRIAL",
+    "reportingManager": "NEIL FRANZ GONGORA CORREA",
+    "workShift": "Turno 5",
+    "position": "JEFE DE SEGURIDAD Y ST",
+    "diner": "",
+    "corporateEmail": "si@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "20/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 8",
+      "workShiftNew": "Turno 5",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 20/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783fbbe1b89809ecb9ac"
+  },
+  "document": "18392331",
+  "full_name": "Francisco Javier Mancera",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "CORTE",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 2",
+    "position": "OPERARIO",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "16/03/2026, 14:16:25",
+        "observation": "Cambio de asignación - Depto: [SEGURIDAD INDUSTRIAL] -> [CORTE], Área: [SEGURIDAD INDUSTRIAL] -> [PRODUCCION], Jefe: [TOMAS GALINDO GIL] -> [TOMAS GALINDO GIL]. ",
+        "_id": {
+          "$oid": "69b85709602897ca16743373"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    },
+    "shiftChange": {
+      "dateUpdate": "11/05/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 1",
+      "workShiftNew": "Turno 2",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 11/05/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f783fbbe1b89809ecb9ca"
+  },
+  "document": "80441723",
+  "full_name": "Juan Carlos Salcedo Osorio",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "SERVICIO AL CLIENTE",
+    "area": "SERVICIO AL CLIENTE",
+    "reportingManager": "JUAN CARLOS SALCEDO OSORIO",
+    "workShift": "Turno 5",
+    "position": "COORDINADOR DE SECCION",
+    "diner": "",
+    "corporateEmail": "servicio@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "06/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 8",
+      "workShiftNew": "Turno 9",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 06/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7840bbe1b89809ecba18"
+  },
+  "document": "1006822458",
+  "full_name": "Dayana Michelle Martinez Solano",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Indusel",
+    "departament": "MADERAS",
+    "area": "PRODUCCION",
+    "reportingManager": "DAYANA MICHELLE MARTINEZ SOLANO",
+    "workShift": "Turno 4",
+    "position": "JEFE PRODUCCION DE MUEBLE",
+    "diner": "",
+    "corporateEmail": "ebanisteria@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 8",
+      "workShiftNew": "Turno 4",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7849bbe1b89809ecbd78"
+  },
+  "document": "13016990",
+  "full_name": "Harold Javier Herrera Jurado",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "LOGISTICA DE PROCESOS",
+    "area": "PRODUCCION",
+    "reportingManager": "ANDRES FLOREZ OBREGON",
+    "workShift": "Turno 2",
+    "position": "SUPERVISOR DE PRODUCCION",
+    "diner": "",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 4",
+      "workShiftNew": "Turno 2",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7866bbe1b89809ecc80a"
+  },
+  "document": "6453394",
+  "full_name": "Braulio Hamilkar Contreras Rondon",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "ACABADOS PINTURA",
+    "area": "PRODUCCION",
+    "reportingManager": "ANNABELLA LISSETH RODRIGUEZ ALVARADO",
+    "workShift": "Turno 2",
+    "position": "OPERARIO",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "14/03/2026, 16:34:14",
+        "observation": "Cambio de asignación - Depto: [ALMACEN GENERAL] -> [ACABADOS PINTURA], Área: [ALMACEN] -> [PRODUCCION], Jefe: [ANNABELLA LISSETH RODRIGUEZ ALVARADO] -> [ANNABELLA LISSETH RODRIGUEZ ALVARADO]. ",
+        "_id": {
+          "$oid": "69b5d456bafb37ebcb41d38c"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    },
+    "shiftChange": {
+      "dateUpdate": "16/05/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 1",
+      "workShiftNew": "Turno 2",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 16/05/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f786bbbe1b89809ecca0e"
+  },
+  "document": "1020825911",
+  "full_name": "Angiee Carolyn Peña Cañon",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "INGENIERIA INDUSTRIAL",
+    "area": "INGENIERIA INDUSTRIAL",
+    "reportingManager": "ANGIEE CAROLYN PEÑA CAÑON",
+    "workShift": "Turno 4",
+    "position": "JEFE DE INGENIERIA INDUSTRIAL",
+    "diner": "",
+    "corporateEmail": "dingind@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f786fbbe1b89809eccb52"
+  },
+  "document": "1030701232",
+  "full_name": "Carolay Rodriguez Martinez",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "GESTION AMBIENTAL",
+    "area": "GESTION AMBIENTAL",
+    "reportingManager": "JACOBO KERPEL SPRINTIS",
+    "workShift": "Turno 4",
+    "position": "COORDINADORA AMBIENTAL",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "14/04/2026, 16:00:42",
+        "observation": "Cambio de asignación - Depto: [GESTION AMBIENTAL] -> [GESTION AMBIENTAL], Área: [AMBIENTAL] -> [GESTION AMBIENTAL], Jefe: [CAROLAY RODRIGUEZ MARTINEZ] -> [CAROLAY RODRIGUEZ MARTINEZ]. ",
+        "_id": {
+          "$oid": "69deaafa55112992245191f9"
+        }
+      }
+    ],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f786fbbe1b89809eccb58"
+  },
+  "document": "1033727447",
+  "full_name": "Jaiber Olivera Henao",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "ACABADOS ESMALTE",
+    "area": "PRODUCCION",
+    "reportingManager": "JAIBER OLIVERA HENAO",
+    "workShift": "Turno 2",
+    "position": "OPERARIO",
+    "diner": ""
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7873bbe1b89809ecccc3"
+  },
+  "document": "52177931",
+  "full_name": "Nohra May Galindo Ramirez",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "P&M",
+    "departament": "VENTAS",
+    "area": "VENTAS",
+    "reportingManager": "NOHRA MAY GALINDO RAMIREZ",
+    "workShift": "Turno 8",
+    "position": "JEFE DE DEPARTAMENTO",
+    "diner": "",
+    "corporateEmail": "dv@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7874bbe1b89809eccd04"
+  },
+  "document": "1012415130",
+  "full_name": "Linda Yuleth Leon Velasco",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "P&M",
+    "departament": "LOGISTICA INTERNA",
+    "area": "LOGISTICA",
+    "reportingManager": "LINDA YULETH LEON VELASCO",
+    "workShift": "Turno 4",
+    "position": "JEFE LOGISTICA",
+    "diner": "",
+    "corporateEmail": "logistica.nacionalindusel@indusel.com.co",
+    "shiftChange": {
+      "dateUpdate": "27/04/2026, 04:00:00",
+      "updateUser": "SISTEMA_CRON",
+      "workShiftInitial": "Turno 8",
+      "workShiftNew": "Turno 4",
+      "changeMethod": "Automatico",
+      "observation": "Cambio programado ejecutado automáticamente el 27/04/2026"
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f7878bbe1b89809ecce0d"
+  },
+  "document": "79790581",
+  "full_name": "Diego Andres Oviedo Anaya",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "VENTAS",
+    "area": "OXYPLAST VENTAS",
+    "reportingManager": "JOSE LUIS QUINTERO RUEDA",
+    "workShift": "Turno 11",
+    "position": "KAM",
+    "diner": "",
+    "corporateEmail": "oxy@indusel.com.co"
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "691f787abbe1b89809ecceb2"
+  },
+  "document": "1030567055",
+  "full_name": "Mayerli Mendoza Marin",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "EMPLEADO",
+    "trialPeriod": "",
+    "company": "Staff 1A",
+    "departament": "MERCADEO",
+    "area": "MERCADEO",
+    "reportingManager": "JACOBO KERPEL SPRINTIS",
+    "workShift": "Turno 8",
+    "position": "COORDINADOR DE MERCADEO",
+    "diner": "",
+    "departmentHead": false,
+    "updateStaffAssignment": [],
+    "versatility": {
+      "certifications": [],
+      "multitasking": false,
+      "taskingList": []
+    }
+  },
+  "status": true
+},
+{
+  "_id": {
+    "$oid": "69bbece361d208dbc8d7a159"
+  },
+  "document": "52106166",
+  "full_name": "Jenny Constanza Gacharna Piñeros",
+  "typeUser": "Jefe",
+  "staffAssignment": {
+    "jobTitle": "Empleado",
+    "trialPeriod": "SI",
+    "company": "Staff 1A",
+    "departament": "ASEGURAMIENTO CALIDAD",
+    "area": "CALIDAD",
+    "reportingManager": "JENNY CONSTANZA GACHARNA PIÑEROS",
+    "workShift": "Turno 4",
+    "position": "JEFE CONTROL CALIDAD",
+    "diner": "",
+    "departmentHead": false,
+    "versatility": {
+      "multitasking": false,
+      "taskingList": [],
+      "certifications": []
+    },
+    "updateStaffAssignment": [
+      {
+        "dateUpdate": "31/03/2026, 11:45:54",
+        "observation": "Cambio de asignación - Depto: [MECANICA] -> [MECANICA], Área: [ASEGURAMIENTO CALIDAD] -> [CALIDAD], Jefe: [ALDER HERRERA SANTANDER] -> [ALDER HERRERA SANTANDER]. ",
+        "_id": {
+          "$oid": "69cbfa420256b45e62109397"
+        }
+      },
+      {
+        "dateUpdate": "31/03/2026, 11:46:32",
+        "observation": "Cambio de asignación - Depto: [MECANICA] -> [ASEGURAMIENTO CALIDAD], Área: [CALIDAD] -> [CALIDAD], Jefe: [JOSE ALFREDO LADINO LEIVA] -> [JOSE ALFREDO LADINO LEIVA]. ",
+        "_id": {
+          "$oid": "69cbfa680256b45e621093a9"
+        }
+      }
+    ]
+  },
+  "status": true
+}]

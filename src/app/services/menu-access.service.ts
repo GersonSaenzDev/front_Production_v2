@@ -45,10 +45,16 @@ export class MenuAccessService {
     'ALMACÉN': ['ALMACEN', 'LOGISTICA'],
     'MANTENIMIENTO': ['MANTENIMIENTO'],
     'MECANIZADO': ['MECANIZADO', 'MECANICA'],
-    'INGENIERÍA': ['INGENIERIA INDUSTRIAL','INGENIERIA PRODUCTO'],
+    'INGENIERÍA': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'RECURSOS HUMANOS': ['TH', 'RECURSOS HUMANOS'],
     'CALIDAD': ['CALIDAD'],
-    'SST': ['SST']
+    'SST': ['SST', 'SEGURIDAD INDUSTRIAL']
+  };
+
+  // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
+  // Útil cuando un usuario está en area=PRODUCCION pero su dept pertenece a otro grupo
+  private readonly GROUP_DEPT_MAP: Record<string, string[]> = {
+    'MECANIZADO': ['MECANICA']
   };
 
   hasAccessToNavItem(item: any): boolean {
@@ -63,7 +69,7 @@ export class MenuAccessService {
     }
 
     if (item.type === 'group') {
-      return this.canAccessGroup(item.title, area);
+      return this.canAccessGroup(item.title, area, dept);
     }
 
     if (item.type === 'collapse') {
@@ -75,15 +81,18 @@ export class MenuAccessService {
 
   private isManagerWithFullAccess(area: string, dept: string): boolean {
     return area === 'GERENCIA' &&
-      (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'ANALISTA DE PRESUPUESTO');
+      (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'ANALISTA DE PRESUPUESTO' || dept === 'GERENCIAS');
   }
 
-  private canAccessGroup(rawTitle: string, area: string): boolean {
+  private canAccessGroup(rawTitle: string, area: string, dept: string): boolean {
     const title = rawTitle?.toUpperCase().trim() || '';
     const allowedAreas = this.GROUP_AREA_MAP[title];
     // Si el grupo no está mapeado (ej. Panel de Control), se muestra a cualquier usuario
     if (!allowedAreas) return true;
-    return allowedAreas.includes(area);
+    if (allowedAreas.includes(area)) return true;
+    // Override por departamento (ej. dept MECANICA en area PRODUCCION accede a Mecanizado)
+    const allowedDepts = this.GROUP_DEPT_MAP[title];
+    return allowedDepts ? allowedDepts.includes(dept) : false;
   }
 
   private canAccessCollapse(rawTitle: string, area: string, dept: string): boolean {
@@ -91,6 +100,9 @@ export class MenuAccessService {
 
     if (area === 'PRODUCCION') {
       if (dept === 'COSTOS' && title === 'GENERAR ETIQUETAS') return true;
+      if (dept === 'HIDRAULICAS' && title === 'GENERAR ETIQUETAS') return true;
+      if (dept === 'HIDRAULICAS' && title === 'PRENSAS') return true;
+      if ((dept === 'ARSOL' || dept === 'ACABADOS PINTURA' || dept === 'ACABADOS ESMALTE') && title === 'RECUBRIMIENTOS') return true;
       return title === dept;
     }
 
@@ -107,7 +119,7 @@ export class MenuAccessService {
     const area = user.area?.toUpperCase().trim() || '';
     const dept = user.departament?.toUpperCase().trim() || '';
 
-    if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'ANALISTA DE PRESUPUESTO')) {
+    if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'ANALISTA DE PRESUPUESTO' || dept === 'GERENCIAS')) {
       return true;
     }
 
@@ -118,12 +130,14 @@ export class MenuAccessService {
     // Regla: Si el módulo coincide con el área (en minúscula o mapeado), permitimos acceso
     if (area === 'PRODUCCION' && module === 'production') return true;
     if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
+    if (area === 'PRODUCCION' && dept === 'HIDRAULICAS' && module === 'production') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
-    if (area === 'INGENIERIA INDUSTRIAL' && module === 'engineering') return true;
-    if (area === 'SST' && module === 'health-safety') return true;
+    if ((area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') && module === 'engineering') return true;
+    if ((area === 'SST' || area === 'SEGURIDAD INDUSTRIAL') && module === 'health-safety') return true;
     if ((area === 'TH' || area === 'RECURSOS HUMANOS') && module === 'human-resources') return true;
     if (area === 'MANTENIMIENTO' && module === 'maintenance') return true;
     if ((area === 'MECANIZADO' || area === 'MECANICA') && module === 'machining') return true;
+    if (dept === 'MECANICA' && module === 'machining') return true;
     if (area === 'ALMACEN' && module === 'inventories') return true;
 
     // Logística
