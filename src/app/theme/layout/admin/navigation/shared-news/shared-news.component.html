@@ -61,7 +61,7 @@
               <label for="originArea" class="form-label">Área Origen <span class="required-mark">*</span></label>
               <select id="originArea" class="form-select" formControlName="originArea" [ngClass]="{'is-invalid': isFieldInvalid('originArea')}">
                 <option value="" disabled>Seleccione el área que reporta</option>
-                <option *ngFor="let area of groupedAreas" [value]="area.area">{{ area.area }}</option>
+                <option *ngFor="let area of groupedAreas" [value]="area.area">{{ displayArea(area.area) }}</option>
               </select>
             </div>
 
@@ -124,7 +124,7 @@
               <label for="assignmentArea" class="form-label">Área Destino <span class="required-mark">*</span></label>
               <select id="assignmentArea" class="form-select" formControlName="assignmentArea" [ngClass]="{'is-invalid': isFieldInvalid('assignmentArea')}">
                 <option value="" disabled>Seleccione el área destino</option>
-                <option *ngFor="let area of availableAssignmentAreas" [value]="area.area">{{ area.area }}</option>
+                <option *ngFor="let area of availableAssignmentAreas" [value]="area.area">{{ displayArea(area.area) }}</option>
               </select>
             </div>
 

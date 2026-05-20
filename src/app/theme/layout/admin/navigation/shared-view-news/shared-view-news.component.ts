@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { NewsReplyPayload, NewsUserRef, ProductionNews } from '../../../../../interfaces/assembly.interface';
 import { AuthService } from '../../../../../services/auth-services';
 import { DashboardServices } from '../../../../../services/dashboard-services';
+import { displayArea } from '../area-display.util';
 
 registerLocaleData(localeEs, 'es');
 
@@ -65,7 +66,7 @@ export class SharedViewNewsComponent implements OnInit {
 
   get displayTitle(): string {
     if (this.title) return this.title;
-    const area = this.effectiveArea;
+    const area = displayArea(this.effectiveArea);
     return area ? `Consultar Novedades de ${area}` : 'Consultar Novedades';
   }
 
@@ -228,7 +229,7 @@ export class SharedViewNewsComponent implements OnInit {
   }
 
   public getOriginLabel(item: ProductionNews): string {
-    const parts = [item.origin?.area, item.origin?.subArea, item.origin?.location].filter((v): v is string => !!v);
+    const parts = [displayArea(item.origin?.area), item.origin?.subArea, item.origin?.location].filter((v): v is string => !!v);
     return parts.length ? parts.join(' / ') : '—';
   }
 

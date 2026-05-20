@@ -108,6 +108,15 @@ const routes: Routes = [
     path: 'laboratory/viewNews',
     loadComponent: () => import('./laboratory/view-news/view-news').then((c) => c.ViewNews)
   },
+  // Pipes (Tubería)
+  {
+    path: 'pipes/pipesNews',
+    loadComponent: () => import('./pipes/pipes-news/pipes-news').then((c) => c.PipesNews)
+  },
+  {
+    path: 'pipes/viewNews',
+    loadComponent: () => import('./pipes/view-news/view-news').then((c) => c.ViewNews)
+  },
 ];
 
 @NgModule({

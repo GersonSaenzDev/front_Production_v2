@@ -108,7 +108,7 @@ export const NavigationItems: NavigationItem[] = [
       },
       {
         id: 'prensas-collapse',
-        title: 'Prensas',
+        title: 'Crudo',
         type: 'collapse',
         icon: 'ti ti-layout-bottombar', // Un icono más acorde a prensas
         classes: 'nav-item',
@@ -116,7 +116,7 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'novedades-prensas-item',
-            title: 'Novedades Prensas',
+            title: 'Novedades Crudo',
             type: 'item',
             url: 'production/presses/pressesNews',
             breadcrumbs: true
@@ -156,7 +156,7 @@ export const NavigationItems: NavigationItem[] = [
       },
       {
         id: 'recubrimientos-collapse',
-        title: 'Recubrimientos',
+        title: 'Acabados',
         type: 'collapse',
         icon: 'ti ti-color-swatch',
         classes: 'nav-item',
@@ -164,7 +164,7 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'novedades-recubrimientos-item',
-            title: 'Novedades Recubrimientos',
+            title: 'Novedades Acabados',
             type: 'item',
             url: 'production/covering/coveringNews',
             breadcrumbs: true
@@ -364,6 +364,38 @@ export const NavigationItems: NavigationItem[] = [
             title: 'Visualizar Novedades',
             type: 'item',
             url: 'production/laboratory/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'tuberia-group',
+    title: 'Tubería',
+    type: 'group',
+    icon: 'ti ti-pipe',
+    children: [
+      {
+        id: 'tuberia-collapse',
+        title: 'Tubería',
+        type: 'collapse',
+        icon: 'ti ti-pipe',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-tuberia-item',
+            title: 'Novedades Tubería',
+            type: 'item',
+            url: 'production/pipes/pipesNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-tuberia-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/pipes/viewNews',
             breadcrumbs: true
           }
         ]

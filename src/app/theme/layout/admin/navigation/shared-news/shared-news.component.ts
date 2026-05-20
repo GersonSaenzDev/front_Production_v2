@@ -1,3 +1,4 @@
+// src/app/theme/layout/admin/navigation/shared-news/shared-news.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, inject, Input, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,6 +16,7 @@ import {
 import { AuthService } from '../../../../../services/auth-services';
 import { DashboardServices } from '../../../../../services/dashboard-services';
 import { NewsServices } from '../../../../../services/news-services';
+import { displayArea } from '../area-display.util';
 
 @Component({
   selector: 'app-shared-news',
@@ -40,16 +42,21 @@ export class SharedNewsComponent implements OnInit {
 
   get displayTitle(): string {
     if (this.title) return this.title;
-    const area = this.userArea;
+    const area = displayArea(this.userArea);
     return area ? `Registro de Novedades de ${area}: ${this.authService.userData()?.departament} ` : 'Registro de Novedades';
   }
 
   get displaySubtitle(): string {
     if (this.subtitle) return this.subtitle;
-    const area = this.userArea;
+    const area = displayArea(this.userArea);
     return area
       ? `Reportar incidentes o novedades del área de ${area}.`
       : 'Reportar incidentes o novedades.';
+  }
+
+  /** Etiqueta visible para un área real (solo display; el valor guardado no cambia). */
+  displayArea(realName: string | null | undefined): string {
+    return displayArea(realName);
   }
 
   categoriasNovedad = [

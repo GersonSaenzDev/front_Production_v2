@@ -54,7 +54,8 @@ export class MenuAccessService {
     'OXYPLAST': [],
     'COMPRAS': [],
     'GESTIÓN AMBIENTAL': [],
-    'LABORATORIO DE ENSAYOS': []
+    'LABORATORIO DE ENSAYOS': [],
+    'TUBERÍA': []
   };
 
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
@@ -68,9 +69,9 @@ export class MenuAccessService {
   // - modules: módulos a los que puede rutear (el guard usa esto).
   // Todos incluyen 'production' para poder ver el Dashboard (ruta /production) como pantalla principal.
   private readonly DEPARTMENT_ACCESS: Record<string, { navTitles: string[]; modules: AppModule[] }> = {
-    'TROQUELADORAS': { navTitles: ['PRENSAS'], modules: ['production'] },
-    'PARRILLAS': { navTitles: ['PRENSAS'], modules: ['production'] },
-    'CORTE': { navTitles: ['PRENSAS'], modules: ['production'] },
+    'TROQUELADORAS': { navTitles: ['CRUDO'], modules: ['production'] },
+    'PARRILLAS': { navTitles: ['CRUDO'], modules: ['production'] },
+    'CORTE': { navTitles: ['CRUDO'], modules: ['production'] },
     'MECANIZADO VARIOS': { navTitles: ['SATÉLITES'], modules: ['production'] },
     'FUNDICION': { navTitles: ['SATÉLITES'], modules: ['production'] },
     'OXYPLAST': { navTitles: ['OXYPLAST'], modules: ['production'] },
@@ -81,7 +82,8 @@ export class MenuAccessService {
     'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
-    'LABORATORIO DE ENSAYOS': { navTitles: ['LABORATORIO DE ENSAYOS'], modules: ['production'] }
+    'LABORATORIO DE ENSAYOS': { navTitles: ['LABORATORIO DE ENSAYOS'], modules: ['production'] },
+    'TUB-COND-CUAL': { navTitles: ['TUBERÍA'], modules: ['production'] }
   };
 
   hasAccessToNavItem(item: any): boolean {
@@ -146,9 +148,9 @@ export class MenuAccessService {
     if (area === 'PRODUCCION') {
       if (dept === 'COSTOS' && title === 'GENERAR ETIQUETAS') return true;
       if (dept === 'HIDRAULICAS' && title === 'GENERAR ETIQUETAS') return true;
-      if (dept === 'HIDRAULICAS' && title === 'PRENSAS') return true;
-      if (dept === 'TROQUELADORAS' && title === 'PRENSAS') return true;
-      if ((dept === 'ARSOL' || dept === 'ACABADOS PINTURA' || dept === 'ACABADOS ESMALTE') && title === 'RECUBRIMIENTOS') return true;
+      if (dept === 'HIDRAULICAS' && title === 'CRUDO') return true;
+      if (dept === 'TROQUELADORAS' && title === 'CRUDO') return true;
+      if ((dept === 'ARSOL' || dept === 'ACABADOS PINTURA' || dept === 'ACABADOS ESMALTE') && title === 'ACABADOS') return true;
       return title === dept;
     }
 
