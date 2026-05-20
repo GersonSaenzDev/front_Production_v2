@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/services/menu-access.service.ts
 import { Injectable, inject } from '@angular/core';
 import { UserDataMenu } from '../interfaces/auth.interface';
@@ -52,7 +53,8 @@ export class MenuAccessService {
     // Grupos exclusivos por departamento (ver DEPARTMENT_ACCESS): ningún área los habilita
     'OXYPLAST': [],
     'COMPRAS': [],
-    'GESTIÓN AMBIENTAL': []
+    'GESTIÓN AMBIENTAL': [],
+    'LABORATORIO': []
   };
 
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
@@ -78,7 +80,8 @@ export class MenuAccessService {
     'MECANICA': { navTitles: ['MECANIZADO'], modules: ['production', 'machining'] },
     'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
-    'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] }
+    'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
+    'LABORATORIO': { navTitles: ['LABORATORIO'], modules: ['production'] }
   };
 
   hasAccessToNavItem(item: any): boolean {

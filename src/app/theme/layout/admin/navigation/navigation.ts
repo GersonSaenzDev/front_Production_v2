@@ -339,6 +339,38 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    id: 'laboratorio-group',
+    title: 'Laboratorio',
+    type: 'group',
+    icon: 'ti ti-flask',
+    children: [
+      {
+        id: 'laboratorio-collapse',
+        title: 'Laboratorio',
+        type: 'collapse',
+        icon: 'ti ti-flask',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-laboratorio-item',
+            title: 'Novedades Laboratorio',
+            type: 'item',
+            url: 'production/laboratory/laboratoryNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-laboratorio-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/laboratory/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'logistica-group',
     title: 'Logística',
     type: 'group',

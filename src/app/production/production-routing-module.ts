@@ -99,6 +99,15 @@ const routes: Routes = [
     path: 'environmental/viewNews',
     loadComponent: () => import('./environmental/view-news/view-news').then((c) => c.ViewNews)
   },
+  // Laboratory (Laboratorio)
+  {
+    path: 'laboratory/laboratoryNews',
+    loadComponent: () => import('./laboratory/laboratory-news/laboratory-news').then((c) => c.LaboratoryNews)
+  },
+  {
+    path: 'laboratory/viewNews',
+    loadComponent: () => import('./laboratory/view-news/view-news').then((c) => c.ViewNews)
+  },
 ];
 
 @NgModule({
