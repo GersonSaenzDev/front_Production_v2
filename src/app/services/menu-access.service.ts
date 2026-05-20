@@ -48,13 +48,37 @@ export class MenuAccessService {
     'INGENIERÍA': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'RECURSOS HUMANOS': ['TH', 'RECURSOS HUMANOS'],
     'CALIDAD': ['CALIDAD'],
-    'SST': ['SST', 'SEGURIDAD INDUSTRIAL']
+    'SST': ['SST', 'SEGURIDAD INDUSTRIAL'],
+    // Grupos exclusivos por departamento (ver DEPARTMENT_ACCESS): ningún área los habilita
+    'OXYPLAST': [],
+    'COMPRAS': [],
+    'GESTIÓN AMBIENTAL': []
   };
 
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
   // Útil cuando un usuario está en area=PRODUCCION pero su dept pertenece a otro grupo
   private readonly GROUP_DEPT_MAP: Record<string, string[]> = {
     'MECANIZADO': ['MECANICA']
+  };
+
+  // Acceso por DEPARTAMENTO (en MAYÚSCULAS). Tiene prioridad sobre la lógica por área.
+  // - navTitles: títulos de los collapse del menú lateral que puede ver (en MAYÚSCULAS).
+  // - modules: módulos a los que puede rutear (el guard usa esto).
+  // Todos incluyen 'production' para poder ver el Dashboard (ruta /production) como pantalla principal.
+  private readonly DEPARTMENT_ACCESS: Record<string, { navTitles: string[]; modules: AppModule[] }> = {
+    'TROQUELADORAS': { navTitles: ['PRENSAS'], modules: ['production'] },
+    'PARRILLAS': { navTitles: ['PRENSAS'], modules: ['production'] },
+    'CORTE': { navTitles: ['PRENSAS'], modules: ['production'] },
+    'MECANIZADO VARIOS': { navTitles: ['SATÉLITES'], modules: ['production'] },
+    'FUNDICION': { navTitles: ['SATÉLITES'], modules: ['production'] },
+    'OXYPLAST': { navTitles: ['OXYPLAST'], modules: ['production'] },
+    'COSTOS': { navTitles: ['GENERAR ETIQUETAS'], modules: ['production', 'printing'] },
+    'COMPRAS': { navTitles: ['COMPRAS'], modules: ['production'] },
+    'GESTION AMBIENTAL': { navTitles: ['GESTIÓN AMBIENTAL'], modules: ['production'] },
+    'MECANICA': { navTitles: ['MECANIZADO'], modules: ['production', 'machining'] },
+    'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
+    'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
+    'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] }
   };
 
   hasAccessToNavItem(item: any): boolean {
@@ -68,6 +92,12 @@ export class MenuAccessService {
       return true;
     }
 
+    // Prioridad: acceso configurado por departamento
+    const deptAccess = this.DEPARTMENT_ACCESS[dept];
+    if (deptAccess) {
+      return this.canAccessNavItemByDepartment(item, deptAccess.navTitles);
+    }
+
     if (item.type === 'group') {
       return this.canAccessGroup(item.title, area, dept);
     }
@@ -76,6 +106,18 @@ export class MenuAccessService {
       return this.canAccessCollapse(item.title, area, dept);
     }
 
+    return true;
+  }
+
+  // Filtro de menú para usuarios mapeados por departamento.
+  // Los grupos se dejan pasar (la limpieza de grupos vacíos en nav-content los descarta
+  // si ningún collapse sobrevive); el filtro fino ocurre a nivel de collapse.
+  private canAccessNavItemByDepartment(item: any, navTitles: string[]): boolean {
+    if (item.type === 'collapse') {
+      const title = item.title?.toUpperCase().trim() || '';
+      return navTitles.includes(title);
+    }
+    // groups e items (el Dashboard de "Panel de Control" siempre visible)
     return true;
   }
 
@@ -102,6 +144,7 @@ export class MenuAccessService {
       if (dept === 'COSTOS' && title === 'GENERAR ETIQUETAS') return true;
       if (dept === 'HIDRAULICAS' && title === 'GENERAR ETIQUETAS') return true;
       if (dept === 'HIDRAULICAS' && title === 'PRENSAS') return true;
+      if (dept === 'TROQUELADORAS' && title === 'PRENSAS') return true;
       if ((dept === 'ARSOL' || dept === 'ACABADOS PINTURA' || dept === 'ACABADOS ESMALTE') && title === 'RECUBRIMIENTOS') return true;
       return title === dept;
     }
@@ -127,10 +170,16 @@ export class MenuAccessService {
       return false;
     }
 
+    // Prioridad: acceso configurado por departamento
+    const deptAccess = this.DEPARTMENT_ACCESS[dept];
+    if (deptAccess) {
+      return deptAccess.modules.includes(module);
+    }
+
     // Regla: Si el módulo coincide con el área (en minúscula o mapeado), permitimos acceso
     if (area === 'PRODUCCION' && module === 'production') return true;
     if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
-    if (area === 'PRODUCCION' && dept === 'HIDRAULICAS' && module === 'production') return true;
+    if (area === 'PRODUCCION' && (dept === 'HIDRAULICAS' || dept === 'TROQUELADORAS') && module === 'production') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
     if ((area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') && module === 'engineering') return true;
     if ((area === 'SST' || area === 'SEGURIDAD INDUSTRIAL') && module === 'health-safety') return true;

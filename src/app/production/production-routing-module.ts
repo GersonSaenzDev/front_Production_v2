@@ -72,6 +72,33 @@ const routes: Routes = [
     path: 'costs/viewNews',
     loadComponent: () => import('./costs/view-news/view-news').then((c) => c.ViewNews)
   },
+  // Oxyplast
+  {
+    path: 'oxyplast/oxyplastNews',
+    loadComponent: () => import('./oxyplast/oxyplast-news/oxyplast-news').then((c) => c.OxyplastNews)
+  },
+  {
+    path: 'oxyplast/viewNews',
+    loadComponent: () => import('./oxyplast/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Purchases (Compras)
+  {
+    path: 'purchases/purchasesNews',
+    loadComponent: () => import('./purchases/purchases-news/purchases-news').then((c) => c.PurchasesNews)
+  },
+  {
+    path: 'purchases/viewNews',
+    loadComponent: () => import('./purchases/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Environmental (Gestión Ambiental)
+  {
+    path: 'environmental/environmentalNews',
+    loadComponent: () => import('./environmental/environmental-news/environmental-news').then((c) => c.EnvironmentalNews)
+  },
+  {
+    path: 'environmental/viewNews',
+    loadComponent: () => import('./environmental/view-news/view-news').then((c) => c.ViewNews)
+  },
 ];
 
 @NgModule({

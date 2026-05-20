@@ -243,6 +243,102 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    id: 'oxyplast-group',
+    title: 'Oxyplast',
+    type: 'group',
+    icon: 'ti ti-spray',
+    children: [
+      {
+        id: 'oxyplast-collapse',
+        title: 'Oxyplast',
+        type: 'collapse',
+        icon: 'ti ti-spray',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-oxyplast-item',
+            title: 'Novedades Oxyplast',
+            type: 'item',
+            url: 'production/oxyplast/oxyplastNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-oxyplast-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/oxyplast/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'compras-group',
+    title: 'Compras',
+    type: 'group',
+    icon: 'ti ti-shopping-cart',
+    children: [
+      {
+        id: 'compras-collapse',
+        title: 'Compras',
+        type: 'collapse',
+        icon: 'ti ti-shopping-cart',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-compras-item',
+            title: 'Novedades Compras',
+            type: 'item',
+            url: 'production/purchases/purchasesNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-compras-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/purchases/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ambiental-group',
+    title: 'Gestión Ambiental',
+    type: 'group',
+    icon: 'ti ti-leaf',
+    children: [
+      {
+        id: 'ambiental-collapse',
+        title: 'Gestión Ambiental',
+        type: 'collapse',
+        icon: 'ti ti-leaf',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-ambiental-item',
+            title: 'Novedades Ambiental',
+            type: 'item',
+            url: 'production/environmental/environmentalNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-ambiental-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/environmental/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'logistica-group',
     title: 'Logística',
     type: 'group',
