@@ -340,13 +340,13 @@ export const NavigationItems: NavigationItem[] = [
   },
   {
     id: 'laboratorio-group',
-    title: 'Laboratorio',
+    title: 'Laboratorio de Ensayos',
     type: 'group',
     icon: 'ti ti-flask',
     children: [
       {
         id: 'laboratorio-collapse',
-        title: 'Laboratorio',
+        title: 'Laboratorio de Ensayos',
         type: 'collapse',
         icon: 'ti ti-flask',
         classes: 'nav-item',
@@ -354,7 +354,7 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'novedades-laboratorio-item',
-            title: 'Novedades Laboratorio',
+            title: 'Novedades Laboratorio de Ensayos',
             type: 'item',
             url: 'production/laboratory/laboratoryNews',
             breadcrumbs: true

@@ -54,7 +54,7 @@ export class MenuAccessService {
     'OXYPLAST': [],
     'COMPRAS': [],
     'GESTIÓN AMBIENTAL': [],
-    'LABORATORIO': []
+    'LABORATORIO DE ENSAYOS': []
   };
 
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
@@ -81,7 +81,7 @@ export class MenuAccessService {
     'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
-    'LABORATORIO': { navTitles: ['LABORATORIO'], modules: ['production'] }
+    'LABORATORIO DE ENSAYOS': { navTitles: ['LABORATORIO DE ENSAYOS'], modules: ['production'] }
   };
 
   hasAccessToNavItem(item: any): boolean {
