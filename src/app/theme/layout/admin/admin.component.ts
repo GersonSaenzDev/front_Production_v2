@@ -33,7 +33,7 @@ export class AdminComponent implements AfterViewInit, OnDestroy {
   windowWidth!: number;
 
   private inactivityTimer: any;
-  private readonly INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 minutos
+  private readonly INACTIVITY_LIMIT_MS = 35 * 60 * 1000; // 35 minutos
 
   // Constructor
   constructor() {
