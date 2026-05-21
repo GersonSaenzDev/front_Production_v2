@@ -77,6 +77,23 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    id: 'estadistico-group',
+    title: 'Estadístico',
+    type: 'group',
+    icon: 'ti ti-chart-histogram', // Icono de estadísticas
+    children: [
+      {
+        id: 'estadistico-novedades-item',
+        title: 'Visualizar Novedades',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/stadistics',
+        icon: 'ti ti-report-analytics',
+        breadcrumbs: false
+      }
+    ]
+  },
+  {
     id: 'produccion-group',
     title: 'Producción',
     type: 'group',

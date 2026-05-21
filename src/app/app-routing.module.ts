@@ -72,6 +72,11 @@ const routes: Routes = [
         canActivate: [roleGuard],
         loadChildren: () => import('./logistics/logistics-module').then((m) => m.LogisticsModule)
       },
+      {
+        path: 'stadistics',
+        canActivate: [roleGuard],
+        loadChildren: () => import('./stadistics/stadistics-module').then((m) => m.StadisticsModule)
+      },
     ]
   },
   
