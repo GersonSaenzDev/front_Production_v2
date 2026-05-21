@@ -95,9 +95,9 @@ export class MenuAccessService {
 
     const isStadistics = this.isStadisticsNavItem(item);
 
-    // ANALISTA DE PRESUPUESTO: únicamente ve el menú Estadístico
+    // ANALISTA DE PRESUPUESTO: solo ve el Dashboard y el menú Estadístico
     if (this.isBudgetAnalyst(area, dept)) {
-      return isStadistics;
+      return isStadistics || this.isDashboardNavItem(item);
     }
 
     if (this.isManagerWithFullAccess(area, dept)) {
@@ -158,6 +158,15 @@ export class MenuAccessService {
     return item.url === '/stadistics';
   }
 
+  // Identifica el grupo "Panel de Control" y su item "Dashboard" (/production).
+  private isDashboardNavItem(item: any): boolean {
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group') {
+      return title === 'PANEL DE CONTROL';
+    }
+    return item.url === '/production';
+  }
+
   private canAccessGroup(rawTitle: string, area: string, dept: string): boolean {
     const title = rawTitle?.toUpperCase().trim() || '';
     const allowedAreas = this.GROUP_AREA_MAP[title];
@@ -198,6 +207,11 @@ export class MenuAccessService {
       return true;
     }
 
+    // ANALISTA DE PRESUPUESTO: solo el Dashboard (production); el Estadístico (/stadistics) va fuera de validModules
+    if (this.isBudgetAnalyst(area, dept)) {
+      return module === 'production';
+    }
+
     if (module === 'all') {
       return false;
     }
@@ -236,15 +250,6 @@ export class MenuAccessService {
   }
 
   getDefaultRouteForUser(): string {
-    const userData = this.authService.userData();
-    const area = userData?.area?.toUpperCase().trim() || '';
-    const dept = userData?.departament?.toUpperCase().trim() || '';
-
-    // ANALISTA DE PRESUPUESTO no tiene módulos asignados; su pantalla es el Estadístico
-    if (this.isBudgetAnalyst(area, dept)) {
-      return '/stadistics';
-    }
-
     const routes = this.getAllowedRoutes();
     if (routes.length > 0) {
       return routes[0];
