@@ -41,7 +41,9 @@ export class MenuAccessService {
   // Los grupos no listados aquí son visibles para todos (ej. "Panel de Control")
   private readonly GROUP_AREA_MAP: Record<string, string[]> = {
     'PLANEACIÓN': ['PRODUCCION'],
-    'PRODUCCIÓN': ['PRODUCCION'],
+    // INGENIERIA INDUSTRIAL entra al grupo Producción para ver "Visualizar Ensamble";
+    // el collapse Ensamble es el único que sobrevive (ver canAccessCollapse).
+    'PRODUCCIÓN': ['PRODUCCION', 'INGENIERIA INDUSTRIAL'],
     'LOGÍSTICA': ['LOGISTICA'],
     'ALMACÉN': ['ALMACEN', 'LOGISTICA'],
     'MANTENIMIENTO': ['MANTENIMIENTO'],
@@ -196,6 +198,12 @@ export class MenuAccessService {
       return false;
     }
 
+    // INGENIERIA INDUSTRIAL ve sus dos collapses de Ingeniería + el collapse "Ensamble"
+    // de Producción (para "Visualizar Ensamble"); el resto de Producción queda oculto.
+    if (area === 'INGENIERIA INDUSTRIAL') {
+      return ['INGENIERÍA DE PRODUCTO', 'INGENIERÍA INDUSTRIAL', 'ENSAMBLE'].includes(title);
+    }
+
     return true;
   }
 
@@ -216,16 +224,22 @@ export class MenuAccessService {
       return false;
     }
 
+    // El Dashboard vive en el módulo 'production' y es la pantalla principal de la app
+    // (la raíz '' redirige a /production). Por eso CUALQUIER usuario autenticado puede
+    // entrar a /production; el menú sigue restringiendo qué sub-secciones de Producción ve.
+    if (module === 'production') {
+      return true;
+    }
+
     // Prioridad: acceso configurado por departamento
     const deptAccess = this.DEPARTMENT_ACCESS[dept];
     if (deptAccess) {
       return deptAccess.modules.includes(module);
     }
 
-    // Regla: Si el módulo coincide con el área (en minúscula o mapeado), permitimos acceso
-    if (area === 'PRODUCCION' && module === 'production') return true;
+    // Regla: Si el módulo coincide con el área (en minúscula o mapeado), permitimos acceso.
+    // El módulo 'production' (Dashboard) ya se concedió arriba a todos, por eso no se repite aquí.
     if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
-    if (area === 'PRODUCCION' && (dept === 'HIDRAULICAS' || dept === 'TROQUELADORAS') && module === 'production') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
     if ((area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') && module === 'engineering') return true;
     if ((area === 'SST' || area === 'SEGURIDAD INDUSTRIAL') && module === 'health-safety') return true;
@@ -239,11 +253,10 @@ export class MenuAccessService {
     if (area === 'LOGISTICA') {
       if (dept === 'LOGISTICA EXTERNA' && module === 'clientHome') return true;
       if (dept === 'AUDITORIA' && module === 'clientHome') return true;
-      if (dept === 'LOGISTICA INTERNA' && (module === 'inventories' || module === 'production')) return true;
+      if (dept === 'LOGISTICA INTERNA' && module === 'inventories') return true;
       if (module === 'logistics') return true;
     }
 
-    if (area === 'PLANEACIÓN' && module === 'production') return true;
     if (area === 'FINANCIERO' ) return true;
 
     return false;
