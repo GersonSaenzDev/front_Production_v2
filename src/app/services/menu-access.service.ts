@@ -93,8 +93,20 @@ export class MenuAccessService {
     const area = userData.area?.toUpperCase().trim() || '';
     const dept = userData.departament?.toUpperCase().trim() || '';
 
+    const isStadistics = this.isStadisticsNavItem(item);
+
+    // ANALISTA DE PRESUPUESTO: únicamente ve el menú Estadístico
+    if (this.isBudgetAnalyst(area, dept)) {
+      return isStadistics;
+    }
+
     if (this.isManagerWithFullAccess(area, dept)) {
       return true;
+    }
+
+    // El menú Estadístico es exclusivo de Desarrollo/Gerencias y Analista de Presupuesto
+    if (isStadistics) {
+      return false;
     }
 
     // Prioridad: acceso configurado por departamento
@@ -128,7 +140,22 @@ export class MenuAccessService {
 
   private isManagerWithFullAccess(area: string, dept: string): boolean {
     return area === 'GERENCIA' &&
-      (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'ANALISTA DE PRESUPUESTO' || dept === 'GERENCIAS');
+      (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS');
+  }
+
+  // ANALISTA DE PRESUPUESTO solo puede ver/entrar al menú Estadístico.
+  private isBudgetAnalyst(area: string, dept: string): boolean {
+    return area === 'GERENCIA' && dept === 'ANALISTA DE PRESUPUESTO';
+  }
+
+  // Identifica el grupo "Estadístico" y su item "Visualizar Novedades" (/stadistics).
+  // Menú exclusivo de Desarrollo/Gerencias y Analista de Presupuesto.
+  private isStadisticsNavItem(item: any): boolean {
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group') {
+      return title === 'ESTADÍSTICO';
+    }
+    return item.url === '/stadistics';
   }
 
   private canAccessGroup(rawTitle: string, area: string, dept: string): boolean {
@@ -167,7 +194,7 @@ export class MenuAccessService {
     const area = user.area?.toUpperCase().trim() || '';
     const dept = user.departament?.toUpperCase().trim() || '';
 
-    if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'ANALISTA DE PRESUPUESTO' || dept === 'GERENCIAS')) {
+    if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS')) {
       return true;
     }
 
@@ -209,6 +236,15 @@ export class MenuAccessService {
   }
 
   getDefaultRouteForUser(): string {
+    const userData = this.authService.userData();
+    const area = userData?.area?.toUpperCase().trim() || '';
+    const dept = userData?.departament?.toUpperCase().trim() || '';
+
+    // ANALISTA DE PRESUPUESTO no tiene módulos asignados; su pantalla es el Estadístico
+    if (this.isBudgetAnalyst(area, dept)) {
+      return '/stadistics';
+    }
+
     const routes = this.getAllowedRoutes();
     if (routes.length > 0) {
       return routes[0];
