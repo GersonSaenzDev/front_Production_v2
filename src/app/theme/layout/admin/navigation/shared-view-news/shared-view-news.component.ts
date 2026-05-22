@@ -233,6 +233,11 @@ export class SharedViewNewsComponent implements OnInit {
     return parts.length ? parts.join(' / ') : '—';
   }
 
+  public getAssignmentLabel(item: ProductionNews): string {
+    const parts = [displayArea(item.assignment?.currentArea), item.assignment?.currentSubArea].filter((v): v is string => !!v);
+    return parts.length ? parts.join(' / ') : '—';
+  }
+
   public getStopSchedule(item: ProductionNews): string {
     const start = item.stop?.startTime || item.startTime;
     const end = item.stop?.endTime || item.endTime;

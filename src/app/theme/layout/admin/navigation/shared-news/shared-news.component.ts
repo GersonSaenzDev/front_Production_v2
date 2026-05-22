@@ -60,7 +60,7 @@ export class SharedNewsComponent implements OnInit {
   }
 
   categoriasNovedad = [
-    'Parada de Línea',
+    'Parada de Proceso',
     'Reporte de Calidad',
     'Reporte de Ingenieria',
     'Reporte de Material',
@@ -188,7 +188,7 @@ export class SharedNewsComponent implements OnInit {
     const finControl = this.novedadForm.get('horaFin');
     const tipoControl = this.novedadForm.get('tipoNovedad');
 
-    this.isLineaParada = value === 'Parada de Línea';
+    this.isLineaParada = value === 'Parada de Proceso';
 
     if (this.isLineaParada) {
       inicioControl?.setValidators(Validators.required);
