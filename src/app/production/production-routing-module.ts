@@ -117,6 +117,24 @@ const routes: Routes = [
     path: 'pipes/viewNews',
     loadComponent: () => import('./pipes/view-news/view-news').then((c) => c.ViewNews)
   },
+  // Wood (Maderas)
+  {
+    path: 'wood/woodNews',
+    loadComponent: () => import('./wood/wood-news/wood-news').then((c) => c.WoodNews)
+  },
+  {
+    path: 'wood/viewNews',
+    loadComponent: () => import('./wood/view-news/view-news').then((c) => c.ViewNews)
+  },
+  // Rails (Rieles)
+  {
+    path: 'rails/railsNews',
+    loadComponent: () => import('./rails/rails-news/rails-news').then((c) => c.RailsNews)
+  },
+  {
+    path: 'rails/viewNews',
+    loadComponent: () => import('./rails/view-news/view-news').then((c) => c.ViewNews)
+  },
 ];
 
 @NgModule({

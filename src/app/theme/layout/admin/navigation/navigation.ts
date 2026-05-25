@@ -420,6 +420,70 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    id: 'maderas-group',
+    title: 'Maderas',
+    type: 'group',
+    icon: 'ti ti-tree',
+    children: [
+      {
+        id: 'maderas-collapse',
+        title: 'Maderas',
+        type: 'collapse',
+        icon: 'ti ti-tree',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-maderas-item',
+            title: 'Novedades Maderas',
+            type: 'item',
+            url: 'production/wood/woodNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-maderas-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/wood/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'rieles-group',
+    title: 'Rieles',
+    type: 'group',
+    icon: 'ti ti-train',
+    children: [
+      {
+        id: 'rieles-collapse',
+        title: 'Rieles',
+        type: 'collapse',
+        icon: 'ti ti-train',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'novedades-rieles-item',
+            title: 'Novedades Rieles',
+            type: 'item',
+            url: 'production/rails/railsNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'visualizar-rieles-item',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'production/rails/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'logistica-group',
     title: 'Logística',
     type: 'group',

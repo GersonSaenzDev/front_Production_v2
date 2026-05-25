@@ -194,6 +194,7 @@ export class SharedViewNewsComponent implements OnInit {
 
   public getCategoryClass(category: string): string {
     switch (category) {
+      case 'Parada de Proceso':
       case 'Parada de Línea':
       case 'Parada de Linea':
         return 'row-parada';

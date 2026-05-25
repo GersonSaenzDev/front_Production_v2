@@ -102,7 +102,7 @@ export interface EstadisticNewsAuditTrail {
 export interface EstadisticNews {
     _id: string;
     newsDate: string;                 // "DD/MM/YYYY"
-    category: string;                 // Ej: "Parada de Línea", "Reporte de Material"
+    category: string;                 // Ej: "Parada de Proceso", "Reporte de Material"
     reference: string;
     detail: string;
     origin: EstadisticNewsOrigin;

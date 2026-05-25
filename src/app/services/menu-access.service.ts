@@ -57,7 +57,9 @@ export class MenuAccessService {
     'COMPRAS': [],
     'GESTIÓN AMBIENTAL': [],
     'LABORATORIO DE ENSAYOS': [],
-    'TUBERÍA': []
+    'TUBERÍA': [],
+    'MADERAS': [],
+    'RIELES': []
   };
 
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
@@ -85,7 +87,9 @@ export class MenuAccessService {
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LABORATORIO DE ENSAYOS': { navTitles: ['LABORATORIO DE ENSAYOS'], modules: ['production'] },
-    'TUB-COND-CUAL': { navTitles: ['TUBERÍA'], modules: ['production'] }
+    'TUB-COND-CUAL': { navTitles: ['TUBERÍA'], modules: ['production'] },
+    'MADERAS': { navTitles: ['MADERAS'], modules: ['production'] },
+    'RIELES': { navTitles: ['RIELES'], modules: ['production'] }
   };
 
   hasAccessToNavItem(item: any): boolean {

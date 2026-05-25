@@ -4,7 +4,6 @@ import { Component, inject, Input, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { debounceTime, filter, switchMap, tap } from 'rxjs';
-import { ReferenceItem } from '../../../../../interfaces/assembly.interface';
 import {
   Machine,
   ProductionArea,

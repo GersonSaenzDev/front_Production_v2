@@ -176,12 +176,17 @@ export class NewsServices {
             errors.push('La línea de ensamble es obligatoria cuando el área que reporta es Ensamble');
         }
 
-        if (newsData.category === 'Parada de Linea' || newsData.category === 'Parada de Línea') {
+        // Acepta el valor nuevo ('Parada de Proceso') y los legacy ('Parada de Linea'/'Parada de Línea').
+        if (
+            newsData.category === 'Parada de Proceso' ||
+            newsData.category === 'Parada de Linea' ||
+            newsData.category === 'Parada de Línea'
+        ) {
             const stop = newsData.stop;
-            if (!stop?.stopType) errors.push('El tipo de parada es obligatorio para Parada de Línea');
-            if (!stop?.startTime) errors.push('La hora de inicio es obligatoria para Parada de Línea');
-            if (!stop?.endTime) errors.push('La hora de fin es obligatoria para Parada de Línea');
-            if (!stop?.totalTime) errors.push('El tiempo total es obligatorio para Parada de Línea');
+            if (!stop?.stopType) errors.push('El tipo de parada es obligatorio para Parada de Proceso');
+            if (!stop?.startTime) errors.push('La hora de inicio es obligatoria para Parada de Proceso');
+            if (!stop?.endTime) errors.push('La hora de fin es obligatoria para Parada de Proceso');
+            if (!stop?.totalTime) errors.push('El tiempo total es obligatorio para Parada de Proceso');
         }
 
         return {

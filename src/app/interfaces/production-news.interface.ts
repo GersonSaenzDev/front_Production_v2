@@ -49,7 +49,7 @@ export interface NewsAssignment {
 }
 
 /**
- * @description Bloque PARADA: aplica solo cuando category === 'Parada de Línea'.
+ * @description Bloque PARADA: aplica solo cuando category === 'Parada de Proceso'.
  */
 export interface NewsStop {
     stopType: string;
@@ -65,14 +65,14 @@ export interface NewsStop {
  */
 export interface ProductionNewsRequest {
     newsDate: string;                 // Formato: "DD/MM/YYYY"
-    category: string;                 // Ej: "Parada de Línea", "Reporte de Calidad"
+    category: string;                 // Ej: "Parada de Proceso", "Reporte de Calidad"
     reference: string;                // Referencia del producto (obligatoria)
     detail: string;                   // Detalle de la novedad (mínimo 50 caracteres)
 
     reportedBy: NewsActor;            // Identidad del usuario que reporta
     origin: NewsOrigin;               // Área que reporta
     assignment: NewsAssignment;       // Área a la que se le carga la novedad
-    stop?: NewsStop;                  // Solo si category === 'Parada de Línea'
+    stop?: NewsStop;                  // Solo si category === 'Parada de Proceso'
 
     // -----------------------------------------------------------------
     // CAMPOS LEGACY (opcionales — se mantienen mientras el backend los acepte)
