@@ -147,7 +147,6 @@ export class NewsServices {
 
         if (!newsData.newsDate) errors.push('La fecha de novedad es obligatoria');
         if (!newsData.category) errors.push('La categoría es obligatoria');
-        if (!newsData.reference) errors.push('La referencia es obligatoria');
         if (!newsData.detail) errors.push('El detalle es obligatorio');
         if (newsData.detail && newsData.detail.trim().length < 50) {
             errors.push('El detalle debe tener al menos 50 caracteres');
@@ -172,11 +171,7 @@ export class NewsServices {
             errors.push('El área que reporta no puede ser la misma a la que se le carga la novedad');
         }
 
-        if (newsData.origin?.area === 'Ensamble' && !newsData.origin.location) {
-            errors.push('La línea de ensamble es obligatoria cuando el área que reporta es Ensamble');
-        }
-
-        // Acepta el valor nuevo ('Parada de Proceso') y los legacy ('Parada de Linea'/'Parada de Línea').
+// Acepta el valor nuevo ('Parada de Proceso') y los legacy ('Parada de Linea'/'Parada de Línea').
         if (
             newsData.category === 'Parada de Proceso' ||
             newsData.category === 'Parada de Linea' ||

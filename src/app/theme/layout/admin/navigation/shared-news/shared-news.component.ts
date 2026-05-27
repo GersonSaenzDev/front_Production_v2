@@ -129,7 +129,7 @@ export class SharedNewsComponent implements OnInit {
       partCode: [''],
       assignmentArea: ['', Validators.required],
       assignmentSubArea: ['', Validators.required],
-      productReference: ['', Validators.required],
+      productReference: [''],
       tipoNovedad: [''],
       horaInicio: [{ value: '', disabled: true }],
       horaFin: [{ value: '', disabled: true }],
@@ -222,7 +222,7 @@ export class SharedNewsComponent implements OnInit {
     this.isOriginEnsamble = area === 'Ensamble';
     const lineaControl = this.novedadForm.get('lineaNovedad');
     if (this.isOriginEnsamble) {
-      lineaControl?.setValidators(Validators.required);
+      lineaControl?.clearValidators();
       lineaControl?.enable();
     } else {
       lineaControl?.clearValidators();

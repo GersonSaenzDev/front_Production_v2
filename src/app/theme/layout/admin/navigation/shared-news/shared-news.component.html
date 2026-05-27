@@ -74,7 +74,7 @@
             </div>
 
             <div class="col-md-6" *ngIf="isOriginEnsamble">
-              <label for="lineaNovedad" class="form-label">Línea con Novedad <span class="required-mark">*</span></label>
+              <label for="lineaNovedad" class="form-label">Línea con Novedad</label>
               <select id="lineaNovedad" class="form-select" formControlName="lineaNovedad" [ngClass]="{'is-invalid': isFieldInvalid('lineaNovedad')}">
                 <option value="" disabled>Seleccione la línea</option>
                 <option *ngFor="let linea of lineasNovedad" [value]="linea">{{ linea }}</option>
@@ -152,7 +152,7 @@
 
           <div class="row g-4">
             <div class="col-md-6 position-relative">
-              <label for="productReference" class="form-label">Referencia en Producción <span class="required-mark">*</span></label>
+              <label for="productReference" class="form-label">Referencia en Producción</label>
               <input type="text" id="productReference" class="form-control" formControlName="productReference" placeholder="Escriba código o nombre de referencia" [ngClass]="{'is-invalid': isFieldInvalid('productReference')}" (focus)="onFocus()" (blur)="onBlur()" autocomplete="off">
               <div class="autocomplete-results" *ngIf="predictiveList.length > 0 && showDropdown">
                 <div class="autocomplete-item" *ngFor="let item of predictiveList" (mousedown)="selectReference(item)">{{ item }}</div>
