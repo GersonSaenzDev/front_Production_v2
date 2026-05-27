@@ -110,7 +110,12 @@ export class MenuAccessService {
       return true;
     }
 
-    // El menú Estadístico es exclusivo de Desarrollo/Gerencias y Analista de Presupuesto
+    // PLANEACIÓN (Producción) ve el menú Estadístico además de su acceso normal
+    if (isStadistics && area === 'PRODUCCION' && dept === 'PLANEACION') {
+      return true;
+    }
+
+    // El menú Estadístico es exclusivo de Desarrollo/Gerencias, Analista de Presupuesto y Planeación
     if (isStadistics) {
       return false;
     }
@@ -193,6 +198,7 @@ export class MenuAccessService {
       if (dept === 'HIDRAULICAS' && title === 'CRUDO') return true;
       if (dept === 'TROQUELADORAS' && title === 'CRUDO') return true;
       if ((dept === 'ARSOL' || dept === 'ACABADOS PINTURA' || dept === 'ACABADOS ESMALTE') && title === 'ACABADOS') return true;
+      if (dept === 'PLANEACION' && title === 'ENSAMBLE') return true;
       return title === dept;
     }
 
