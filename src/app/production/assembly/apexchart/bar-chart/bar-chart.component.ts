@@ -46,17 +46,27 @@ export class BarChartComponent implements OnChanges { // 👈 Implementar OnChan
    * @returns Opciones parciales de ApexCharts.
    */
   private getUpdatedChartOptions(data: ChartData): Partial<ApexOptions> {
+      // Serie "Programados": cantidad planeada del día. Los productos que NO están en la
+      // planeación se pintan en ROJO (#dc2626) con valor 0; el resto en morado (#673ab7).
+      const plannedValues = data.planned ?? data.valid;
+      const PLANNED_COLOR = '#673ab7';
+      const MISSING_COLOR = '#dc2626';
+      const plannedSeries = (plannedValues ?? []).map((value, i) => ({
+          x: data.categories[i],
+          y: value,
+          fillColor: data.plannedMissing?.[i] ? MISSING_COLOR : PLANNED_COLOR
+      }));
+
       return {
           series: [
               {
                   name: 'Producidos', // Etiqueta para el total producido (incluye error)
-                  data: data.produced 
+                  data: data.categories.map((category, i) => ({ x: category, y: data.produced[i] }))
               },
               {
-                  name: 'Programados', // Etiqueta para el total válido
-                  data: data.valid 
+                  name: 'Programados', // Cantidad planeada del día (rojo si no hay planeación)
+                  data: plannedSeries
               }
-              // Hemos reducido a 2 series para reflejar Producidos y Válidos
           ],
           dataLabels: {
               enabled: false
@@ -93,10 +103,20 @@ export class BarChartComponent implements OnChanges { // 👈 Implementar OnChan
           xaxis: {
               type: 'category',
               // 🎯 Usar las categorías (nombres de productos) del backend
-              categories: data.categories 
+              categories: data.categories
           },
           tooltip: {
-              theme: 'light'
+              theme: 'light',
+              y: {
+                  formatter: (value: number, opts?: { seriesIndex: number; dataPointIndex: number }): string => {
+                      // Serie "Programados" (índice 1): si el producto no está en la planeación,
+                      // mostramos "Sin planeación" en lugar del 0.
+                      if (opts?.seriesIndex === 1 && data.plannedMissing?.[opts.dataPointIndex]) {
+                          return 'Sin planeación';
+                      }
+                      return new Intl.NumberFormat('es').format(value ?? 0);
+                  }
+              }
           }
       };
   }

@@ -1,0 +1,420 @@
+// VARIABLES CORPORATIVAS ABBA
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-dark: #1e1e1e;
+
+.planning-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER PRINCIPAL
+// =======================
+.planning-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .header-icon {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+    color: #fff;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.45rem;
+    letter-spacing: 0.3px;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+    font-weight: 400;
+  }
+}
+
+// =======================
+//  PESTAÑAS
+// =======================
+.planning-tabs {
+  display: inline-flex;
+  gap: 0.4rem;
+  background: #fff;
+  padding: 0.4rem;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+
+  .tab-btn {
+    border: none;
+    background: transparent;
+    color: $abba-gray;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 0.6rem 1.3rem;
+    border-radius: 10px;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+
+    &:hover {
+      background: $abba-blue-light;
+      color: $abba-blue-dark;
+    }
+
+    &.active {
+      background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba($abba-blue, 0.3);
+    }
+  }
+}
+
+// =======================
+//  TARJETA DEL FORMULARIO
+// =======================
+.form-card {
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+// =======================
+//  ENCABEZADO DE SECCIÓN
+// =======================
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 2px solid $abba-blue-light;
+
+  .section-number {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba($abba-blue, 0.3);
+  }
+
+  .section-title {
+    color: $abba-blue-dark;
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+
+  .section-subtitle {
+    color: $abba-gray;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 2px;
+  }
+}
+
+.section-block {
+  margin-bottom: 2rem;
+
+  &:last-of-type {
+    margin-bottom: 0;
+  }
+}
+
+// =======================
+//  LABELS Y INPUTS
+// =======================
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: $abba-gray;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.4rem;
+
+  .required-mark {
+    color: $abba-blue;
+    font-weight: 700;
+    margin-left: 2px;
+  }
+}
+
+.form-control,
+.form-select {
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.94rem;
+  color: $abba-dark;
+  background-color: #f8fafc;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:focus {
+    border-color: $abba-blue;
+    background-color: #fff;
+    box-shadow: 0 0 0 4px rgba($abba-blue, 0.1);
+    outline: none;
+  }
+
+  &.is-invalid {
+    border-color: #dc2626;
+    background-color: #fef2f2;
+
+    &:focus {
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+    }
+  }
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+// =======================
+//  DROPZONE DE ARCHIVO
+// =======================
+.dropzone {
+  position: relative;
+  border: 2px dashed rgba($abba-blue, 0.35);
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  transition: all 0.25s ease;
+
+  &:hover {
+    border-color: $abba-blue;
+    background: $abba-blue-light;
+  }
+
+  &.has-file {
+    border-style: solid;
+    border-color: rgba($abba-blue, 0.4);
+    background: #fff;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .dropzone-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .dropzone-icon {
+    font-size: 2.5rem;
+    color: $abba-blue;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .dropzone-text {
+    color: $abba-dark;
+    font-size: 0.95rem;
+
+    span {
+      color: $abba-blue;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+  }
+
+  .dropzone-hint {
+    color: $abba-gray;
+    font-size: 0.8rem;
+  }
+}
+
+.file-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+
+  .file-icon {
+    font-size: 2rem;
+    color: #16a34a;
+  }
+
+  .file-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .file-name {
+      font-weight: 600;
+      color: $abba-dark;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-size {
+      color: $abba-gray;
+      font-size: 0.8rem;
+    }
+  }
+
+  .btn-remove {
+    margin-left: auto;
+    border: none;
+    background: #fef2f2;
+    color: #dc2626;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #dc2626;
+      color: #fff;
+    }
+  }
+}
+
+// =======================
+//  BOTÓN PRINCIPAL
+// =======================
+.btn-submit-planning {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  box-shadow: 0 8px 20px rgba($abba-blue, 0.25);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba($abba-blue, 0.35);
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+// =======================
+//  PANEL DE RESULTADO
+// =======================
+.result-panel {
+  border-radius: 14px;
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  padding: 1.25rem 1.5rem;
+  animation: slideDown 0.3s ease-out;
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #14532d;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+
+    i {
+      color: #16a34a;
+      font-size: 1.3rem;
+    }
+  }
+
+  .result-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .metric-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $abba-blue-dark;
+      line-height: 1.1;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: $abba-gray;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-top: 2px;
+    }
+  }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-15px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

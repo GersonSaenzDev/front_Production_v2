@@ -19,6 +19,11 @@ const routes: Routes = [
     loadComponent: () => import('./assembly/production-news/production-news').then((c) => c.ProductionNews)
   },
   {
+    // Path completo: /production/planningLoad (Cargue de Planeación)
+    path: 'planningLoad',
+    loadComponent: () => import('./planning/planning-load/planning-load').then((c) => c.PlanningLoad)
+  },
+  {
     // Path completo: /production/wineryNews
     path: 'wineryNews',
     loadComponent: () => import('./assembly/winery-news/winery-news').then((c) => c.WineryNews)

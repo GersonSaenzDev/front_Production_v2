@@ -75,12 +75,12 @@ export class DashboardServices {
         }
         const chartData: ChartData = response.msg.reduce(
           (acc: ChartData, product) => {
-            acc.categories.push(`${product.productName.trim()}`); 
+            acc.categories.push(`${product.productName.trim()}`);
             acc.produced.push(product.Producidos);
             acc.valid.push(product.Validos);
             return acc;
           },
-          { categories: [], produced: [], valid: [] } 
+          { categories: [], produced: [], valid: [] }
         );
         return {
           ok: true,

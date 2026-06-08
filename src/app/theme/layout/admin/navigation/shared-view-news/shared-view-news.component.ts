@@ -1,11 +1,18 @@
 // src/app/theme/layout/admin/navigation/shared-view-news/shared-view-news.component.ts
 import { CommonModule, registerLocaleData } from '@angular/common';
-import { Component, inject, Input, LOCALE_ID, OnInit } from '@angular/core';
+import { Component, inject, Input, LOCALE_ID, OnDestroy, OnInit } from '@angular/core';
 import localeEs from '@angular/common/locales/es';
 import { FormsModule } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
+import { Subscription } from 'rxjs';
 import { NewsReplyPayload, NewsUserRef, ProductionNews } from '../../../../../interfaces/assembly.interface';
 import { AuthService } from '../../../../../services/auth-services';
 import { DashboardServices } from '../../../../../services/dashboard-services';
+import {
+  ProductionNewsEvent,
+  ProductionNewsRedirectedEvent,
+  SocketService
+} from '../../../../../services/socket-service';
 import { displayArea } from '../area-display.util';
 
 registerLocaleData(localeEs, 'es');
@@ -24,12 +31,17 @@ export interface CategorySummary {
   styleUrls: ['./shared-view-news.component.scss'],
   providers: [{ provide: LOCALE_ID, useValue: 'es' }]
 })
-export class SharedViewNewsComponent implements OnInit {
+export class SharedViewNewsComponent implements OnInit, OnDestroy {
   @Input() title: string = '';
   @Input() defaultArea: string = '';
 
   private authService = inject(AuthService);
   private dashboardService = inject(DashboardServices);
+  private socketService = inject(SocketService);
+  private toastr = inject(ToastrService);
+
+  private socketSubscriptions: Subscription[] = [];
+  private subscribedArea: string = '';
 
   public selectedDate: string = this.formatDate(new Date());
   public searchTerm: string = '';
@@ -72,6 +84,112 @@ export class SharedViewNewsComponent implements OnInit {
 
   ngOnInit(): void {
     this.onDateChange();
+    this.initRealtime();
+  }
+
+  ngOnDestroy(): void {
+    this.socketSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.socketSubscriptions = [];
+    if (this.subscribedArea) {
+      this.socketService.unsubscribeFromArea(this.subscribedArea);
+      this.subscribedArea = '';
+    }
+  }
+
+  // ============================================================
+  //  TIEMPO REAL (Socket.IO)
+  // ============================================================
+
+  /**
+   * Se une a la room del área visualizada y escucha los eventos de novedades
+   * para reflejar en vivo las creaciones/respuestas/redirecciones/cierres
+   * sin que el usuario tenga que refrescar la página.
+   */
+  private initRealtime(): void {
+    const area = this.effectiveArea;
+    if (area) {
+      this.socketService.subscribeToArea(area);
+      this.subscribedArea = area;
+    }
+
+    this.socketSubscriptions.push(
+      this.socketService.productionNewsCreated$.subscribe((event) => this.handleNewsCreated(event)),
+      this.socketService.productionNewsResponded$.subscribe((event) => this.handleNewsUpserted(event)),
+      this.socketService.productionNewsClosed$.subscribe((event) => this.handleNewsUpserted(event)),
+      this.socketService.productionNewsRedirected$.subscribe((event) => this.handleNewsRedirected(event))
+    );
+  }
+
+  private handleNewsCreated(event: ProductionNewsEvent): void {
+    const news = event?.news as ProductionNews | undefined;
+    if (!news || !this.isRelevant(news)) return;
+
+    const existingIndex = this.allNews.findIndex((n) => n._id === news._id);
+    if (existingIndex >= 0) {
+      this.allNews[existingIndex] = news;
+    } else {
+      this.allNews = [news, ...this.allNews];
+      this.toastr.info('Se recibió una nueva novedad.', 'Novedad entrante');
+    }
+    this.refreshDerived();
+  }
+
+  /** Respuesta o cierre: si ya está en la vista, la actualiza; si entró en el área, la inserta. */
+  private handleNewsUpserted(event: ProductionNewsEvent): void {
+    const news = event?.news as ProductionNews | undefined;
+    if (!news) return;
+
+    const existingIndex = this.allNews.findIndex((n) => n._id === news._id);
+    if (existingIndex >= 0) {
+      this.allNews[existingIndex] = news;
+      this.refreshDerived();
+    } else if (this.isRelevant(news)) {
+      this.allNews = [news, ...this.allNews];
+      this.refreshDerived();
+    }
+  }
+
+  /** Redirección: entra al área destino, sale del área origen. */
+  private handleNewsRedirected(event: ProductionNewsRedirectedEvent): void {
+    const news = event?.news as ProductionNews | undefined;
+    if (!news) return;
+
+    const existingIndex = this.allNews.findIndex((n) => n._id === news._id);
+
+    if (this.isRelevant(news)) {
+      if (existingIndex >= 0) {
+        this.allNews[existingIndex] = news;
+      } else {
+        this.allNews = [news, ...this.allNews];
+        this.toastr.info('Una novedad fue redireccionada a esta área.', 'Novedad entrante');
+      }
+      this.refreshDerived();
+    } else if (existingIndex >= 0) {
+      // Dejó de pertenecer a esta área: la quitamos de la vista.
+      this.allNews = this.allNews.filter((n) => n._id !== news._id);
+      this.refreshDerived();
+    }
+  }
+
+  /**
+   * Una novedad es relevante para esta vista si quedó asignada al área
+   * visualizada y corresponde a la fecha seleccionada.
+   */
+  private isRelevant(news: ProductionNews): boolean {
+    const area = this.effectiveArea;
+    if (!area) return false;
+    if ((news.assignment?.currentArea || '') !== area) return false;
+
+    const viewDate = this.formatDateForBackend(this.selectedDate);
+    const newsDate = (news.newsDate || '').trim();
+    // Si el backend no envía newsDate en el evento, no descartamos por fecha.
+    return !newsDate || newsDate === viewDate;
+  }
+
+  /** Recalcula resúmenes y paginación conservando la página actual del usuario. */
+  private refreshDerived(): void {
+    this.calculateCategorySummaries();
+    this.applyFilter(false);
   }
 
   public onDateChange(): void {
@@ -148,7 +266,7 @@ export class SharedViewNewsComponent implements OnInit {
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   }
 
-  public applyFilter(): void {
+  public applyFilter(resetPage: boolean = true): void {
     const term = this.searchTerm.toLowerCase();
     this.filteredNews = this.allNews.filter((item) => {
       const haystack = [
@@ -168,12 +286,17 @@ export class SharedViewNewsComponent implements OnInit {
         .toLowerCase();
       return haystack.includes(term);
     });
-    this.currentPage = 1;
+    if (resetPage) {
+      this.currentPage = 1;
+    }
     this.updatePagination();
   }
 
   private updatePagination(): void {
     this.totalPages = Math.ceil(this.filteredNews.length / this.pageSize) || 1;
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = this.totalPages;
+    }
     const startIndex = (this.currentPage - 1) * this.pageSize;
     this.paginatedNews = this.filteredNews.slice(startIndex, startIndex + this.pageSize);
   }

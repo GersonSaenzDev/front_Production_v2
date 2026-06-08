@@ -52,7 +52,7 @@ export const NavigationItems: NavigationItem[] = [
             id: 'planeacion-produccion-item',
             title: 'Planeacion Producción',
             type: 'item',
-            url: 'production/productionNews',
+            url: 'production/planningLoad',
             breadcrumbs: true
           }
         ]

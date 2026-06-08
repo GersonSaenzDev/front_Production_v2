@@ -1,0 +1,239 @@
+<!-- app/production/planning/planning-load/planning-load.html -->
+<div class="container-fluid py-4 planning-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="planning-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-calendar-up"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Cargue de Planeación de Producción</h3>
+        <p class="header-subtitle mb-0">Carga el programa mensual y aplica los ajustes semanales desde Excel.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECTOR DE PESTAÑAS -->
+  <div class="planning-tabs mt-4">
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'monthly'" (click)="setTab('monthly')">
+      <i class="ti ti-calendar-month me-2"></i> Programa Mensual
+    </button>
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'weekly'" (click)="setTab('weekly')">
+      <i class="ti ti-calendar-week me-2"></i> Ajuste Semanal
+    </button>
+  </div>
+
+  <!-- TARJETA DEL FORMULARIO -->
+  <div class="card form-card border-0 mt-3">
+    <div class="card-body p-4 p-md-5">
+
+      <!-- ============================================= -->
+      <!-- PROGRAMA MENSUAL                              -->
+      <!-- ============================================= -->
+      <form *ngIf="activeTab === 'monthly'" [formGroup]="monthlyForm" (ngSubmit)="onSubmitMonthly()">
+
+        <!-- SECCIÓN 1: ARCHIVO -->
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">1</div>
+            <div>
+              <h6 class="section-title">Archivo del Programa</h6>
+              <small class="section-subtitle">Estructura de planeación mensual (.xlsx)</small>
+            </div>
+          </div>
+
+          <div class="dropzone" [class.has-file]="monthlyFile"
+               (drop)="onFileDropped($event, 'monthly')" (dragover)="onDragOver($event)">
+            <input type="file" id="monthlyFile" class="dropzone-input" [accept]="acceptedFiles"
+                   (change)="onFileSelected($event, 'monthly')">
+            <ng-container *ngIf="!monthlyFile">
+              <i class="ti ti-cloud-upload dropzone-icon"></i>
+              <p class="dropzone-text mb-1">Arrastra el archivo aquí o <span>haz clic para seleccionar</span></p>
+              <small class="dropzone-hint">Formatos permitidos: .xlsx, .xls</small>
+            </ng-container>
+            <div class="file-preview" *ngIf="monthlyFile">
+              <i class="ti ti-file-spreadsheet file-icon"></i>
+              <div class="file-info">
+                <span class="file-name">{{ monthlyFile.name }}</span>
+                <small class="file-size">{{ formatSize(monthlyFile.size) }}</small>
+              </div>
+              <button type="button" class="btn-remove" (click)="clearFile('monthly')" title="Quitar archivo">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: PARÁMETROS -->
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">2</div>
+            <div>
+              <h6 class="section-title">Parámetros del Periodo</h6>
+              <small class="section-subtitle">Mes, año y etiqueta de planeación</small>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-4">
+              <label for="mMonth" class="form-label">Mes <span class="required-mark">*</span></label>
+              <select id="mMonth" class="form-select" formControlName="planningMonth"
+                      [ngClass]="{'is-invalid': isInvalid(monthlyForm, 'planningMonth')}">
+                <option *ngFor="let m of months" [value]="m.value">{{ m.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="mYear" class="form-label">Año <span class="required-mark">*</span></label>
+              <input type="number" id="mYear" class="form-control" formControlName="planningYear"
+                     [ngClass]="{'is-invalid': isInvalid(monthlyForm, 'planningYear')}">
+            </div>
+            <div class="col-md-4">
+              <label for="mLabel" class="form-label">Etiqueta <span class="required-mark">*</span></label>
+              <input type="text" id="mLabel" class="form-control" formControlName="planningLabel"
+                     placeholder="Ej: JUNIO 2026" [ngClass]="{'is-invalid': isInvalid(monthlyForm, 'planningLabel')}">
+            </div>
+          </div>
+        </div>
+
+        <div class="text-end mt-4 pt-3 border-top">
+          <button type="submit" class="btn btn-submit-planning" [disabled]="isSubmittingMonthly">
+            <span *ngIf="!isSubmittingMonthly" class="d-inline-flex align-items-center">
+              <i class="ti ti-upload me-2"></i> Cargar Programa Mensual
+            </span>
+            <span *ngIf="isSubmittingMonthly" class="d-inline-flex align-items-center">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Cargando...
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <!-- ============================================= -->
+      <!-- AJUSTE SEMANAL                                -->
+      <!-- ============================================= -->
+      <form *ngIf="activeTab === 'weekly'" [formGroup]="weeklyForm" (ngSubmit)="onSubmitWeekly()">
+
+        <!-- SECCIÓN 1: ARCHIVO -->
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">1</div>
+            <div>
+              <h6 class="section-title">Archivo del Ajuste</h6>
+              <small class="section-subtitle">Estructura de planeación semanal (.xlsx)</small>
+            </div>
+          </div>
+
+          <div class="dropzone" [class.has-file]="weeklyFile"
+               (drop)="onFileDropped($event, 'weekly')" (dragover)="onDragOver($event)">
+            <input type="file" id="weeklyFile" class="dropzone-input" [accept]="acceptedFiles"
+                   (change)="onFileSelected($event, 'weekly')">
+            <ng-container *ngIf="!weeklyFile">
+              <i class="ti ti-cloud-upload dropzone-icon"></i>
+              <p class="dropzone-text mb-1">Arrastra el archivo aquí o <span>haz clic para seleccionar</span></p>
+              <small class="dropzone-hint">Formatos permitidos: .xlsx, .xls</small>
+            </ng-container>
+            <div class="file-preview" *ngIf="weeklyFile">
+              <i class="ti ti-file-spreadsheet file-icon"></i>
+              <div class="file-info">
+                <span class="file-name">{{ weeklyFile.name }}</span>
+                <small class="file-size">{{ formatSize(weeklyFile.size) }}</small>
+              </div>
+              <button type="button" class="btn-remove" (click)="clearFile('weekly')" title="Quitar archivo">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: PERIODO Y SEMANA -->
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">2</div>
+            <div>
+              <h6 class="section-title">Periodo y Semana</h6>
+              <small class="section-subtitle">Rango de fechas a ajustar</small>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-4">
+              <label for="wMonth" class="form-label">Mes <span class="required-mark">*</span></label>
+              <select id="wMonth" class="form-select" formControlName="planningMonth"
+                      [ngClass]="{'is-invalid': isInvalid(weeklyForm, 'planningMonth')}">
+                <option *ngFor="let m of months" [value]="m.value">{{ m.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="wYear" class="form-label">Año <span class="required-mark">*</span></label>
+              <input type="number" id="wYear" class="form-control" formControlName="planningYear"
+                     [ngClass]="{'is-invalid': isInvalid(weeklyForm, 'planningYear')}">
+            </div>
+            <div class="col-md-4">
+              <label for="wLabel" class="form-label">Etiqueta <span class="required-mark">*</span></label>
+              <input type="text" id="wLabel" class="form-control" formControlName="planningLabel"
+                     placeholder="Ej: JUNIO 2026" [ngClass]="{'is-invalid': isInvalid(weeklyForm, 'planningLabel')}">
+            </div>
+
+            <div class="col-md-6">
+              <label for="weekStart" class="form-label">Inicio de Semana <span class="required-mark">*</span></label>
+              <input type="date" id="weekStart" class="form-control" formControlName="weekStart"
+                     [ngClass]="{'is-invalid': isInvalid(weeklyForm, 'weekStart')}">
+            </div>
+            <div class="col-md-6">
+              <label for="weekEnd" class="form-label">Fin de Semana <span class="required-mark">*</span></label>
+              <input type="date" id="weekEnd" class="form-control" formControlName="weekEnd"
+                     [ngClass]="{'is-invalid': isInvalid(weeklyForm, 'weekEnd')}">
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: OBSERVACIÓN -->
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">3</div>
+            <div>
+              <h6 class="section-title">Observación del Ajuste</h6>
+              <small class="section-subtitle">Motivo o nota del cambio (queda en auditoría)</small>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12">
+              <label for="observation" class="form-label">Observación</label>
+              <textarea id="observation" class="form-control" rows="3" formControlName="observation"
+                        placeholder="Ej: Ajuste por demanda KAM"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-end mt-4 pt-3 border-top">
+          <button type="submit" class="btn btn-submit-planning" [disabled]="isSubmittingWeekly">
+            <span *ngIf="!isSubmittingWeekly" class="d-inline-flex align-items-center">
+              <i class="ti ti-upload me-2"></i> Aplicar Ajuste Semanal
+            </span>
+            <span *ngIf="isSubmittingWeekly" class="d-inline-flex align-items-center">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Aplicando...
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <!-- PANEL DE RESULTADO -->
+      <div class="result-panel mt-4" *ngIf="lastResult">
+        <div class="result-header">
+          <i class="ti ti-circle-check"></i>
+          <span>{{ lastResult.message }}</span>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip" *ngFor="let metric of lastResult.metrics">
+            <span class="metric-value">{{ metric.value }}</span>
+            <span class="metric-label">{{ metric.label }}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

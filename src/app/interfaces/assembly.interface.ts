@@ -32,6 +32,10 @@ export interface ChartData {
   categories: string[];
   produced: number[];
   valid: number[];
+  // Cantidad programada (planeación del día) alineada con `categories`.
+  planned?: number[];
+  // `true` cuando el producto no está en la planeación del día (se pinta en rojo).
+  plannedMissing?: boolean[];
 }
 
 // NUEVO: La estructura que el servicio le entregará al componente

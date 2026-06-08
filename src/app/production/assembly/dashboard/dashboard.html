@@ -228,6 +228,82 @@
     <div class="col-12 mt-4">
         <div class="card">
             <div class="card-header abba-header-gradient">
+                <h5 class="mb-0">Control de Producción por Línea</h5>
+                <p class="text-muted mb-0">
+                    Producción real cruzada con la planeación (línea tomada del programa) para
+                    {{ selectedDate | date:'fullDate':'':'es' }}
+                </p>
+            </div>
+            <div class="card-body p-0">
+                @if (lineControlGroups.length > 0) {
+                    <div class="table-responsive">
+                        <table class="abba-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Referencia</th>
+                                    <th class="text-end">Producido</th>
+                                    <th class="text-end">Planeado</th>
+                                    <th class="text-end">Diferencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (group of lineControlGroups; track group.line) {
+                                    <tr class="line-group-row">
+                                        <td colspan="2" class="fw-bold text-uppercase">
+                                            <i class="ti ti-stack-2 me-1"></i>{{ group.line }}
+                                        </td>
+                                        <td class="text-end fw-bold text-primary">{{ group.totalProduced | number }}</td>
+                                        <td class="text-end fw-bold">{{ group.totalPlanned | number }}</td>
+                                        <td class="text-end fw-bold"
+                                            [class.text-success]="group.totalProduced >= group.totalPlanned && group.totalPlanned > 0"
+                                            [class.text-danger]="group.totalProduced < group.totalPlanned">
+                                            {{ (group.totalPlanned - group.totalProduced) | number }}
+                                        </td>
+                                    </tr>
+
+                                    @for (row of group.rows; track row.reference) {
+                                        <tr [class.table-success]="row.met">
+                                            <td>{{ row.productCode || '—' }}</td>
+                                            <td>{{ row.reference | uppercase }}</td>
+                                            <td class="text-end text-primary f-w-600">{{ row.produced | number }}</td>
+                                            <td class="text-end">
+                                                @if (row.hasPlanning) {
+                                                    {{ row.planned | number }}
+                                                } @else {
+                                                    <span class="text-danger">Sin planeación</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (!row.hasPlanning) {
+                                                    <span class="text-muted">—</span>
+                                                } @else if (row.met) {
+                                                    <span class="text-success fw-bold">
+                                                        <i class="ti ti-circle-check me-1"></i>Cumplido
+                                                    </span>
+                                                } @else {
+                                                    <span class="text-danger fw-bold">Faltan {{ row.difference | number }}</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } @else {
+                    <div class="text-center p-5 text-muted">
+                        <i class="ti ti-database-off f-30 d-block mb-2"></i>
+                        No hay producción ni planeación para la fecha seleccionada.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 mt-4">
+        <div class="card">
+            <div class="card-header abba-header-gradient">
                 <div class="row align-items-center">
                     <div class="col">
                         <h5 class="mb-0">Producción del día Detallada</h5>
@@ -272,23 +348,46 @@
                             <th>Código Producto</th>
                             <th>Nombre Producto</th>
                             <th class="text-end">Producidos (Total)</th>
-                            <th class="text-end">Válidos</th>
+                            <th class="text-end">Planeado</th>
+                            <th class="text-end">Diferencia</th>
                             <th class="text-end">Errores</th>
                         </tr>
                     </thead>
                     <tbody>
                         @for (product of totalProducts; track product.productCode) {
-                            <tr>
+                            <tr [class.table-success]="isGoalMet(product)">
                                 <td>{{ product.productCode }}</td>
                                 <td>{{ product.productName | uppercase }}</td>
                                 <td class="text-end text-primary f-w-600">{{ product.Producidos | number }}</td>
-                                <td class="text-end text-success">{{ product.Validos | number }}</td>
+
+                                <td class="text-end fw-bold">
+                                    @if (hasPlanning(product)) {
+                                        {{ getPlanned(product) | number }}
+                                    } @else {
+                                        <span class="text-danger">Sin planeación</span>
+                                    }
+                                </td>
+
+                                <td class="text-end">
+                                    @if (!hasPlanning(product)) {
+                                        <span class="text-muted">—</span>
+                                    } @else if (isGoalMet(product)) {
+                                        <span class="text-success fw-bold">
+                                            <i class="ti ti-circle-check me-1"></i>Cumplido
+                                        </span>
+                                    } @else {
+                                        <span class="text-danger fw-bold">
+                                            Faltan {{ getDifference(product) | number }}
+                                        </span>
+                                    }
+                                </td>
+
                                 <td class="text-end text-danger">{{ (product.Producidos - product.Validos) | number }}</td>
                             </tr>
                         }
                         @empty {
                     <tr>
-                        <td colspan="5" class="text-center text-muted">No hay datos de producción disponibles para este rango y fecha.</td>
+                        <td colspan="6" class="text-center text-muted">No hay datos de producción disponibles para este rango y fecha.</td>
                          </tr>
                         }
                     </tbody>
