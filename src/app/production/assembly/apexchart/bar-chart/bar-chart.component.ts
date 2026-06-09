@@ -49,7 +49,7 @@ export class BarChartComponent implements OnChanges { // 👈 Implementar OnChan
       // Serie "Programados": cantidad planeada del día. Los productos que NO están en la
       // planeación se pintan en ROJO (#dc2626) con valor 0; el resto en morado (#673ab7).
       const plannedValues = data.planned ?? data.valid;
-      const PLANNED_COLOR = '#673ab7';
+      const PLANNED_COLOR = '#0d47a1';
       const MISSING_COLOR = '#dc2626';
       const plannedSeries = (plannedValues ?? []).map((value, i) => ({
           x: data.categories[i],
@@ -74,14 +74,16 @@ export class BarChartComponent implements OnChanges { // 👈 Implementar OnChan
           chart: {
               type: 'bar',
               height: 480,
-              stacked: true,
+              // Barras agrupadas (lado a lado), no apiladas: permite comparar de un vistazo
+              // lo Producido vs lo Programado por producto.
+              stacked: false,
               toolbar: {
                   show: true
               },
               background: 'transparent'
           },
-          // Colores ajustados para 2 series (Producidos y Válidos)
-          colors: ['#2196f3', '#673ab7'], 
+          // Colores ajustados para 2 series (Producidos y Programados)
+          colors: ['#2196f3', '#0d47a1'],
           responsive: [
               {
                   breakpoint: 480,

@@ -85,7 +85,7 @@ export class MenuAccessService {
     'MECANICA': { navTitles: ['MECANIZADO'], modules: ['production', 'machining'] },
     'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
-    'LOGISTICA INTERNA': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
+    'LOGISTICA INTERNA': { navTitles: ['BODEGA', 'CASA CLIENTE', 'ALMACÉN'], modules: ['production', 'inventories', 'clientHome', 'logistics'] },
     'LABORATORIO DE ENSAYOS': { navTitles: ['LABORATORIO DE ENSAYOS'], modules: ['production'] },
     'TUB-COND-CUAL': { navTitles: ['TUBERÍA'], modules: ['production'] },
     'MADERAS': { navTitles: ['MADERAS'], modules: ['production'] },
@@ -199,6 +199,7 @@ export class MenuAccessService {
       if (dept === 'TROQUELADORAS' && title === 'CRUDO') return true;
       if ((dept === 'ARSOL' || dept === 'ACABADOS PINTURA' || dept === 'ACABADOS ESMALTE') && title === 'ACABADOS') return true;
       if (dept === 'PLANEACION' && title === 'ENSAMBLE') return true;
+      if (dept === 'PLANEACION' && (title === 'CARGUE' || title === 'DASHBOARD PLANEACIÓN')) return true;
       return title === dept;
     }
 
@@ -250,6 +251,7 @@ export class MenuAccessService {
     // Regla: Si el módulo coincide con el área (en minúscula o mapeado), permitimos acceso.
     // El módulo 'production' (Dashboard) ya se concedió arriba a todos, por eso no se repite aquí.
     if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
+    if (area === 'PRODUCCION' && dept === 'PLANEACION' && module === 'inventories') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
     if ((area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') && module === 'engineering') return true;
     if ((area === 'SST' || area === 'SEGURIDAD INDUSTRIAL') && module === 'health-safety') return true;
