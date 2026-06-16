@@ -116,3 +116,41 @@ export interface LineControlGroup {
   totalProduced: number;
   totalPlanned: number;
 }
+
+/**
+ * @description Payload para la consulta de la planeación por rango de fechas (POST /plannig/range).
+ */
+export interface PlanningRangePayload {
+  startDate: string;
+  endDate: string;
+}
+
+/**
+ * @description Respuesta del backend con la planeación de un rango de fechas.
+ */
+export interface PlanningRangeResponse {
+  ok: boolean;
+  startDate: string;
+  endDate: string;
+  total: number;
+  data: PlanningDayItem[];
+}
+
+/**
+ * @description Elemento devuelto por la consulta de producción total por rango.
+ */
+export interface TotalProductItem {
+  date: string;
+  productCode: string;
+  productName: string;
+  Producidos: number;
+  Validos: number;
+}
+
+/**
+ * @description Respuesta del backend con el consolidado de producción por rango (POST /assembly/rangeTotalProducts).
+ */
+export interface RangeTotalProductsResponse {
+  ok: boolean;
+  msg: TotalProductItem[];
+}

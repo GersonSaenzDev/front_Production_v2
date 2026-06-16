@@ -58,21 +58,13 @@ export const NavigationItems: NavigationItem[] = [
         ]
       },
       {
-        id: 'dashboard-planeacion-collapse',
+        id: 'dashboard-planeacion-item',
         title: 'Dashboard Planeación',
-        type: 'collapse',
-        icon: 'ti ti-presentation-analytics', // Icono de análisis
+        type: 'item',
+        icon: 'ti ti-presentation-analytics',
         classes: 'nav-item',
-        isMainParent: true,
-        children: [
-          {
-            id: 'alistamiento-pedidos-planeacion',
-            title: 'Alistamiento Pedidos',
-            type: 'item',
-            url: 'inventories/orderPreparation',
-            breadcrumbs: false
-          }
-        ]
+        url: 'production/planning/dashPlanning',
+        breadcrumbs: false
       }
     ]
   },

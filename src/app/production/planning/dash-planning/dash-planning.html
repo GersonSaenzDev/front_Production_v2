@@ -1,0 +1,250 @@
+<!-- src/app/production/planning/dash-planning/dash-planning.html -->
+<div class="dash-planning-container container-fluid py-4 px-3">
+  <!-- Header with Title and Date Filters -->
+  <div class="row align-items-end mb-4 pb-3 border-bottom">
+    <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
+      <h2 class="mb-1 fw-bold text-primary">
+        Dashboard de Planeación
+      </h2>
+      <p class="text-muted mb-0">Resumen y control de la planeación de producción</p>
+    </div>
+    
+    <div class="col-lg-6 col-md-12 text-lg-end">
+      <div class="d-flex flex-wrap justify-content-lg-end align-items-end gap-3">
+        <!-- Date Filter 1 -->
+        <div class="date-filter text-start">
+          <label for="fechaInicial" class="form-label mb-1 small fw-semibold text-muted">Fecha Inicial</label>
+          <input type="date" id="fechaInicial" [(ngModel)]="fechaInicial" class="form-control form-control-sm" />
+        </div>
+        <!-- Date Filter 2 -->
+        <div class="date-filter text-start">
+          <label for="fechaFinal" class="form-label mb-1 small fw-semibold text-muted">Fecha Final</label>
+          <input type="date" id="fechaFinal" [(ngModel)]="fechaFinal" class="form-control form-control-sm" />
+        </div>
+        <!-- Action Button -->
+        <div>
+          <button class="btn btn-primary btn-sm px-4 shadow-sm" (click)="consultarDatos()" [disabled]="isLoading">
+            <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Consultar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="alert alert-danger" role="alert">
+    {{ errorMessage }}
+  </div>
+
+  <!-- KPI Cards Area -->
+  <div class="row g-4 mb-4">
+    <!-- KPI 1 -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card bg-white shadow-sm border-0 h-100 rounded-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 bg-primary bg-opacity-10 text-primary rounded p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-box-seam" viewBox="0 0 16 16">
+                <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2zm3.564 1.426L5.596 5 8 5.961 14.154 3.5zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.84L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/>
+              </svg>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1 fs-sm">Total Planeadas</h6>
+              <h3 class="mb-0 fw-bold text-dark">
+                <span *ngIf="!isLoading">{{ totalPlaneadas }}</span>
+                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 2 -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card bg-white shadow-sm border-0 h-100 rounded-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 bg-success bg-opacity-10 text-success rounded p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-card-checklist" viewBox="0 0 16 16">
+                <path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-13z"/>
+                <path d="M7 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 1 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0zM7 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0z"/>
+              </svg>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1 fs-sm">Req. Total</h6>
+              <h3 class="mb-0 fw-bold text-dark">
+                <span *ngIf="!isLoading">{{ totalRequerimiento }}</span>
+                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 3 -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card bg-white shadow-sm border-0 h-100 rounded-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 bg-warning bg-opacity-10 text-warning rounded p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-tools" viewBox="0 0 16 16">
+                <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3c0-.269-.035-.53-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814L1 0Zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708ZM3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242-.529-.026-.287-.445-.445-.287-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026L3 11Z"/>
+              </svg>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1 fs-sm">Total Producidas</h6>
+              <h3 class="mb-0 fw-bold text-dark">
+                <span *ngIf="!isLoading">{{ totalProducidas }}</span>
+                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- KPI 4 -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card bg-white shadow-sm border-0 h-100 rounded-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 bg-info bg-opacity-10 text-info rounded p-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-check-all" viewBox="0 0 16 16">
+                <path d="M8.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L2.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093L8.95 4.992a.252.252 0 0 1 .02-.022zm-.92 5.14.92.92a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 1 0-1.091-1.028L9.477 9.417l-.485-.486-.943 1.179z"/>
+              </svg>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1 fs-sm">Total Válidas</h6>
+              <h3 class="mb-0 fw-bold text-dark">
+                <span *ngIf="!isLoading">{{ totalValidas }}</span>
+                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matrix Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-header bg-white border-bottom-0 pt-4 pb-3 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0 text-dark">Matriz de Planeación vs Ejecución</h5>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" (click)="prevDates()" [disabled]="!hasPrevDates">
+              &laquo; Anteriores
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" (click)="nextDates()" [disabled]="!hasNextDates">
+              Siguientes &raquo;
+            </button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle text-center mb-0" style="font-size: 0.85rem;">
+              <thead class="table-light">
+                <tr>
+                  <th rowspan="2" class="align-middle text-start ps-3" style="min-width: 250px;">Referencia</th>
+                  <th *ngFor="let date of displayedDates" colspan="2" class="align-middle border-bottom-0">{{ formatDateShort(date) }}</th>
+                  <th rowspan="2" colspan="2" class="align-middle bg-secondary bg-opacity-10 text-dark fw-bold">TOTAL RANGO</th>
+                </tr>
+                <tr>
+                  <!-- Date sub-columns -->
+                  <ng-container *ngFor="let date of displayedDates">
+                    <th class="text-muted fw-semibold" style="width: 60px;">Prog.</th>
+                    <th class="text-muted fw-semibold" style="width: 60px;">Prod.</th>
+                  </ng-container>
+                  <th class="text-muted fw-semibold bg-secondary bg-opacity-10" style="width: 60px;">Prog.</th>
+                  <th class="text-muted fw-semibold bg-secondary bg-opacity-10" style="width: 60px;">Prod.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngIf="isLoading">
+                  <td [colSpan]="displayedDates.length * 2 + 3" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Cargando datos...
+                  </td>
+                </tr>
+                <tr *ngIf="!isLoading && groupedData.length === 0">
+                  <td [colSpan]="displayedDates.length * 2 + 3" class="text-center py-4 text-muted">
+                    No hay datos disponibles para el rango seleccionado.
+                  </td>
+                </tr>
+
+                <ng-container *ngFor="let group of groupedData">
+                  <!-- Assembly Line Header -->
+                  <tr class="table-secondary">
+                    <td [colSpan]="displayedDates.length * 2 + 3" class="text-start ps-3 fw-bold text-dark">
+                      {{ group.assemblyLine }}
+                    </td>
+                  </tr>
+
+                  <!-- Rows -->
+                  <tr *ngFor="let row of group.rows">
+                    <td class="text-start ps-3">
+                      <div class="fw-bold text-dark">{{ row.referenceCode }}</div>
+                      <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;">{{ row.referenceName }}</small>
+                    </td>
+
+                    <!-- Daily Cells -->
+                    <ng-container *ngFor="let date of displayedDates">
+                      <td class="border-end-0">{{ row.daily[date].planned }}</td>
+                      <td class="fw-bold border-start-0" 
+                          [ngClass]="{
+                            'text-success': row.daily[date].status === 'green',
+                            'text-warning': row.daily[date].status === 'orange',
+                            'text-danger': row.daily[date].status === 'red',
+                            'text-bg-warning': row.daily[date].status === 'yellow',
+                            'text-muted': row.daily[date].status === 'none' && row.daily[date].produced === 0
+                          }">
+                        {{ row.daily[date].produced }}
+                      </td>
+                    </ng-container>
+
+                    <!-- Total Cells -->
+                    <td class="bg-secondary bg-opacity-10 border-end-0">{{ row.totalPlanned }}</td>
+                    <td class="fw-bold bg-secondary bg-opacity-10 border-start-0"
+                        [ngClass]="{
+                          'text-success': row.totalStatus === 'green',
+                          'text-warning': row.totalStatus === 'orange',
+                          'text-danger': row.totalStatus === 'red',
+                          'text-bg-warning': row.totalStatus === 'yellow',
+                          'text-muted': row.totalStatus === 'none' && row.totalProduced === 0
+                        }">
+                      {{ row.totalProduced }}
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Legend -->
+          <div class="card-footer bg-white pt-3 pb-3 border-top d-flex flex-wrap gap-4 align-items-center justify-content-center" style="font-size: 0.8rem;">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-success rounded-pill" style="width: 12px; height: 12px; padding: 0;">&nbsp;</span>
+              <span class="text-muted">Cumplido (≥100%)</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-warning rounded-pill" style="width: 12px; height: 12px; padding: 0;">&nbsp;</span>
+              <span class="text-muted">En riesgo (75% - 99%)</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-danger rounded-pill" style="width: 12px; height: 12px; padding: 0;">&nbsp;</span>
+              <span class="text-muted">Crítico (<75%)</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge text-bg-warning rounded-pill border" style="width: 12px; height: 12px; padding: 0;">&nbsp;</span>
+              <span class="text-muted">No Programado (Amarillo)</span>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

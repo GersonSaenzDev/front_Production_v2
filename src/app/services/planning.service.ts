@@ -10,7 +10,10 @@ import {
   MonthlyPlanningResponse,
   WeeklyPlanningPayload,
   WeeklyPlanningResponse,
-  PlanningDayResponse
+  PlanningDayResponse,
+  PlanningRangePayload,
+  PlanningRangeResponse,
+  RangeTotalProductsResponse
 } from '../interfaces/planning.interface';
 
 @Injectable({
@@ -23,6 +26,8 @@ export class PlanningService {
   private readonly MONTHLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/monthly`;
   private readonly WEEKLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/weekly`;
   private readonly DAY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/day`;
+  private readonly RANGE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/range`;
+  private readonly RANGE_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/rangeTotalProducts`;
 
   // El header `x-token` lo agrega automáticamente el authInterceptor para
   // cualquier petición al backend, por lo que no se setea manualmente aquí.
@@ -85,4 +90,27 @@ export class PlanningService {
       .post<PlanningDayResponse>(this.DAY_ENDPOINT, body)
       .pipe(catchError(this.handleError.bind(this)));
   }
+
+  /**
+   * @description Obtiene la planeación en un rango de fechas (POST /plannig/range).
+   * @param {PlanningRangePayload} payload - Fechas de inicio y fin en formato 'YYYY-MM-DD'.
+   * @returns {Observable<PlanningRangeResponse>}
+   */
+  getPlanningByRange(payload: PlanningRangePayload): Observable<PlanningRangeResponse> {
+    return this.http
+      .post<PlanningRangeResponse>(this.RANGE_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Obtiene el total de productos válidos y producidos por rango de fechas (POST /assembly/rangeTotalProducts).
+   * @param {PlanningRangePayload} payload - Fechas de inicio y fin en formato 'YYYY-MM-DD'.
+   * @returns {Observable<RangeTotalProductsResponse>}
+   */
+  getRangeTotalProducts(payload: PlanningRangePayload): Observable<RangeTotalProductsResponse> {
+    return this.http
+      .post<RangeTotalProductsResponse>(this.RANGE_PRODUCTION_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
 }

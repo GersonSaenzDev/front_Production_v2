@@ -24,6 +24,11 @@ const routes: Routes = [
     loadComponent: () => import('./planning/planning-load/planning-load').then((c) => c.PlanningLoad)
   },
   {
+    // Path completo: /production/planning/dashPlanning
+    path: 'planning/dashPlanning',
+    loadComponent: () => import('./planning/dash-planning/dash-planning').then((c) => c.DashPlanning)
+  },
+  {
     // Path completo: /production/wineryNews
     path: 'wineryNews',
     loadComponent: () => import('./assembly/winery-news/winery-news').then((c) => c.WineryNews)
