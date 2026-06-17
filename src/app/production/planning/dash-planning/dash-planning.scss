@@ -298,6 +298,90 @@ $extra-bg: #e8f0fe;
 }
 
 // -------------------------------------------------------
+//   Barra de filtros (chips por línea + buscador)
+// -------------------------------------------------------
+.filter-toolbar {
+  background: #f6f9fd;
+  border: 1px solid $border-soft;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.filter-chip {
+  border: 1px solid $border-soft;
+  background: #fff;
+  color: $abba-blue-dark;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: $abba-blue;
+    color: $abba-blue;
+    background: rgba($abba-blue, 0.06);
+  }
+
+  &.active {
+    background: $abba-blue;
+    border-color: $abba-blue;
+    color: #fff;
+    box-shadow: 0 3px 8px rgba($abba-blue, 0.3);
+  }
+
+  // Chip de "SIN PLANEACIÓN" diferenciado
+  &--unplanned {
+    color: $extra;
+    &:hover { border-color: $extra; color: $extra; background: rgba($extra, 0.07); }
+    &.active { background: $extra; border-color: $extra; color: #fff; box-shadow: 0 3px 8px rgba($extra, 0.3); }
+  }
+}
+
+.search-box {
+  min-width: 260px;
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.7rem;
+    transform: translateY(-50%);
+    color: $text-soft;
+    pointer-events: none;
+  }
+
+  .search-input {
+    padding-left: 2rem;
+    padding-right: 1.9rem;
+    border-radius: 0.6rem;
+    border-color: $border-soft;
+
+    &:focus {
+      border-color: $abba-blue;
+      box-shadow: 0 0 0 0.2rem rgba($abba-blue, 0.12);
+    }
+  }
+
+  .search-clear {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: $text-soft;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+
+    &:hover { color: $danger; }
+  }
+}
+
+// -------------------------------------------------------
 //   Tabla / Matriz
 // -------------------------------------------------------
 .table {

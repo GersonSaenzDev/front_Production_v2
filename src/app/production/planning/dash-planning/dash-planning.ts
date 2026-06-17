@@ -3,6 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PlanningService } from '../../../services/planning.service';
+import { PlanningDayItem, TotalProductItem } from '../../../interfaces/planning.interface';
 import { forkJoin } from 'rxjs';
 
 interface DailyData {
@@ -49,6 +50,17 @@ export class DashPlanning implements OnInit {
   totalProducidas: number = 0;
   totalValidas: number = 0;
   porcentajeCumplimiento: number = 0;
+
+  // Datos crudos del rango (para refiltrar sin volver a consultar)
+  private rawOrdenes: PlanningDayItem[] = [];
+  private rawProd: TotalProductItem[] = [];
+  private lineByRef = new Map<string, string>();
+  readonly SIN_PLANEACION = 'SIN PLANEACIÓN';
+
+  // Filtros
+  availableLines: string[] = [];
+  selectedLine: string | null = null; // null = Todas
+  searchText: string = '';
 
   // Matrix Data
   allDates: string[] = [];
@@ -98,11 +110,11 @@ export class DashPlanning implements OnInit {
     }).subscribe({
       next: ({ planning, production }) => {
         if (planning.ok && production.ok) {
-          const ordenesData = planning.data || [];
-          const prodData = production.msg || [];
+          this.rawOrdenes = planning.data || [];
+          this.rawProd = production.msg || [];
 
-          this.calculateKPIs(ordenesData, prodData);
-          this.buildMatrix(ordenesData, prodData);
+          this.prepareFilterData();
+          this.applyFilters();
         } else {
           this.errorMessage = 'Error al obtener los datos.';
         }
@@ -113,6 +125,93 @@ export class DashPlanning implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  // -------- Filtros (por línea + búsqueda de texto) --------
+
+  /**
+   * Prepara los datos auxiliares para los filtros: el mapa NOMBRE→línea (para saber a qué
+   * línea pertenece cada producto) y la lista de líneas disponibles para los botones.
+   */
+  private prepareFilterData(): void {
+    this.lineByRef.clear();
+    const lineSet = new Set<string>();
+
+    this.rawOrdenes.forEach(o => {
+      const key = this.normalizeName(o.reference);
+      const line = (o.assemblyLine || '').trim();
+      if (key && line) {
+        this.lineByRef.set(key, line);
+        lineSet.add(line);
+      }
+    });
+
+    // ¿Hay producción que no está en ninguna planeación? → existe "SIN PLANEACIÓN".
+    const hasSinPlaneacion = this.rawProd.some(
+      p => !this.lineByRef.has(this.normalizeName(p.productName))
+    );
+
+    const lines = Array.from(lineSet).sort((a, b) => a.localeCompare(b));
+    if (hasSinPlaneacion) lines.push(this.SIN_PLANEACION);
+    this.availableLines = lines;
+
+    // Si la línea seleccionada ya no existe en el nuevo rango, se vuelve a "Todas".
+    if (this.selectedLine && !this.availableLines.includes(this.selectedLine)) {
+      this.selectedLine = null;
+    }
+  }
+
+  /** Línea a la que pertenece un producto producido (según la planeación). */
+  private lineOfProduct(p: TotalProductItem): string {
+    return this.lineByRef.get(this.normalizeName(p.productName)) ?? this.SIN_PLANEACION;
+  }
+
+  /** Selecciona/alterna el filtro de línea y recalcula cards + matriz. */
+  selectLine(line: string | null): void {
+    this.selectedLine = line;
+    this.applyFilters();
+  }
+
+  /** Filtra la data cruda por línea + texto y recalcula KPIs y matriz con ese subconjunto. */
+  applyFilters(): void {
+    const search = this.searchText.trim().toLowerCase();
+    const line = this.selectedLine;
+
+    const matches = (...values: (string | number | null | undefined)[]): boolean =>
+      values.some(v => (v ?? '').toString().toLowerCase().includes(search));
+
+    // Al buscar, se reúnen los NOMBRES que coinciden en planeación O producción, para
+    // conservar juntos los pares (ej. buscar el código de planeación no debe ocultar su
+    // producción, que vive con otro código).
+    let matchedNames: Set<string> | null = null;
+    if (search) {
+      matchedNames = new Set<string>();
+      this.rawOrdenes.forEach(o => {
+        if (matches(o.referenceCode, o.reference, o.assemblyLine, o.planningLabel, o.plannedQuantity, o.totalRequirement)) {
+          matchedNames!.add(this.normalizeName(o.reference));
+        }
+      });
+      this.rawProd.forEach(p => {
+        if (matches(p.productCode, p.productName, p.Producidos, p.Validos)) {
+          matchedNames!.add(this.normalizeName(p.productName));
+        }
+      });
+    }
+
+    const passSearch = (name: string): boolean => !matchedNames || matchedNames.has(name);
+
+    const ordenes = this.rawOrdenes.filter(o =>
+      (!line || (o.assemblyLine || '').trim() === line) &&
+      passSearch(this.normalizeName(o.reference))
+    );
+
+    const prod = this.rawProd.filter(p =>
+      (!line || this.lineOfProduct(p) === line) &&
+      passSearch(this.normalizeName(p.productName))
+    );
+
+    this.calculateKPIs(ordenes, prod);
+    this.buildMatrix(ordenes, prod);
   }
 
   private calculateKPIs(ordenesData: any[], prodData: any[]): void {
