@@ -1,3 +1,4 @@
+// src/production/planning/dash-planning/dash-planning.ts
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -23,6 +24,9 @@ interface RowData {
 interface GroupedData {
   assemblyLine: string;
   rows: RowData[];
+  collapsed: boolean;
+  totalPlanned: number;
+  totalProduced: number;
 }
 
 @Component({
@@ -44,6 +48,7 @@ export class DashPlanning implements OnInit {
   totalPlaneadas: number = 0;
   totalProducidas: number = 0;
   totalValidas: number = 0;
+  porcentajeCumplimiento: number = 0;
 
   // Matrix Data
   allDates: string[] = [];
@@ -111,10 +116,32 @@ export class DashPlanning implements OnInit {
   }
 
   private calculateKPIs(ordenesData: any[], prodData: any[]): void {
-    this.totalRequerimiento = ordenesData.reduce((acc, curr) => acc + (curr.totalRequirement || 0), 0);
+    // totalRequirement es un valor por referencia (mensual) que se repite en cada registro
+    // diario. Por eso se suma UNA sola vez por referencia para no inflar el total.
+    const reqByRef = new Map<string, number>();
+    ordenesData.forEach(o => {
+      const key = this.normalizeName(o.reference) || o.referenceCode;
+      if (!key) return;
+      reqByRef.set(key, Math.max(reqByRef.get(key) ?? 0, o.totalRequirement || 0));
+    });
+    this.totalRequerimiento = Array.from(reqByRef.values()).reduce((acc, v) => acc + v, 0);
+
+    // plannedQuantity sí es por día → se suma todo el rango (programado del rango).
     this.totalPlaneadas = ordenesData.reduce((acc, curr) => acc + (curr.plannedQuantity || 0), 0);
     this.totalProducidas = prodData.reduce((acc, curr) => acc + (curr.Producidos || 0), 0);
     this.totalValidas = prodData.reduce((acc, curr) => acc + (curr.Validos || 0), 0);
+
+    // % Cumplimiento del rango = Realizado (válidas) / Programado (planeadas) × 100
+    this.porcentajeCumplimiento = this.totalPlaneadas > 0
+      ? Math.round((this.totalValidas / this.totalPlaneadas) * 100)
+      : 0;
+  }
+
+  // Semaforización del cumplimiento del rango
+  get cumplimientoStatus(): 'green' | 'orange' | 'red' {
+    if (this.porcentajeCumplimiento >= 100) return 'green';
+    if (this.porcentajeCumplimiento >= 75) return 'orange';
+    return 'red';
   }
 
   private buildMatrix(ordenesData: any[], prodData: any[]): void {
@@ -123,28 +150,33 @@ export class DashPlanning implements OnInit {
     this.currentDatePage = 0;
     this.updateDisplayedDates();
 
+    // El cruce producción ↔ planeación se hace por NOMBRE de referencia normalizado
+    // (productName ↔ reference), ya que los códigos viven en sistemas distintos
+    // (productCode 6 díg. vs referenceCode 5 díg.).
     const rowMap = new Map<string, RowData>();
 
-    // Process Planning Data
+    // Process Planning Data (clave = nombre normalizado)
     ordenesData.forEach(orden => {
-      const code = orden.referenceCode;
-      if (!rowMap.has(code)) {
-        rowMap.set(code, this.createEmptyRow(code, orden.reference, orden.assemblyLine));
+      const key = this.normalizeName(orden.reference);
+      if (!key) return;
+      if (!rowMap.has(key)) {
+        rowMap.set(key, this.createEmptyRow(orden.referenceCode, orden.reference, orden.assemblyLine));
       }
-      const row = rowMap.get(code)!;
+      const row = rowMap.get(key)!;
       if (row.daily[orden.date]) {
         row.daily[orden.date].planned += (orden.plannedQuantity || 0);
       }
     });
 
-    // Process Production Data
+    // Process Production Data (clave = nombre normalizado → cae en su línea si está planeada)
     prodData.forEach(prod => {
-      const code = prod.productCode;
-      if (!rowMap.has(code)) {
-        // If not planned but produced
-        rowMap.set(code, this.createEmptyRow(code, prod.productName, 'SIN LÍNEA'));
+      const key = this.normalizeName(prod.productName);
+      if (!key) return;
+      if (!rowMap.has(key)) {
+        // Producida pero sin planeación → "SIN PLANEACIÓN"
+        rowMap.set(key, this.createEmptyRow(prod.productCode, prod.productName, 'SIN PLANEACIÓN'));
       }
-      const row = rowMap.get(code)!;
+      const row = rowMap.get(key)!;
       if (row.daily[prod.date]) {
         row.daily[prod.date].produced += (prod.Validos || 0);
       }
@@ -178,9 +210,30 @@ export class DashPlanning implements OnInit {
     this.groupedData = Array.from(groupedMap.entries())
       .map(([assemblyLine, rows]) => ({
         assemblyLine,
-        rows: rows.sort((a, b) => a.referenceCode.localeCompare(b.referenceCode))
+        rows: rows.sort((a, b) => a.referenceCode.localeCompare(b.referenceCode)),
+        collapsed: this.allCollapsed,
+        totalPlanned: rows.reduce((acc, r) => acc + r.totalPlanned, 0),
+        totalProduced: rows.reduce((acc, r) => acc + r.totalProduced, 0)
       }))
       .sort((a, b) => a.assemblyLine.localeCompare(b.assemblyLine));
+  }
+
+  // -------- Colapso de grupos --------
+  allCollapsed = false;
+
+  toggleGroup(group: GroupedData): void {
+    group.collapsed = !group.collapsed;
+    this.allCollapsed = this.groupedData.every(g => g.collapsed);
+  }
+
+  toggleAll(): void {
+    this.allCollapsed = !this.allCollapsed;
+    this.groupedData.forEach(g => (g.collapsed = this.allCollapsed));
+  }
+
+  /** Normaliza un nombre de referencia para cruzar producción vs planeación. */
+  private normalizeName(value: string | null | undefined): string {
+    return (value || '').toUpperCase().replace(/\s+/g, ' ').trim();
   }
 
   private createEmptyRow(referenceCode: string, referenceName: string, assemblyLine: string): RowData {

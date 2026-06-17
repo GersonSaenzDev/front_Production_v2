@@ -1,0 +1,529 @@
+// src/app/production/planning/dash-planning/dash-planning.scss
+// =======================================================
+//   Dashboard de Planeación — estilos del componente
+//   Paleta de marca ABBA: #004a99 / #003366 / #575756
+// =======================================================
+
+// --- Tokens de marca ---
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-gray: #575756;
+$body-bg: #f8fafc;
+$border-soft: #e8edf3;
+$text-soft: #64748b;
+
+// Semáforo
+$ok: #16a34a;
+$ok-bg: #e7f6ec;
+$warn: #d97706;
+$warn-bg: #fdf3e3;
+$danger: #dc2626;
+$danger-bg: #fdeaea;
+$extra: #2563eb; // producido sin programación
+$extra-bg: #e8f0fe;
+
+:host {
+  display: block;
+}
+
+.dash-planning-container {
+  background: $body-bg;
+  min-height: 100%;
+}
+
+// -------------------------------------------------------
+//   Header azul (banner)
+// -------------------------------------------------------
+.dash-header {
+  background: linear-gradient(120deg, $abba-blue-dark 0%, $abba-blue 60%, lighten($abba-blue, 8%) 100%);
+  position: relative;
+  overflow: hidden;
+  // Extensión inferior azul para que las cards la solapen
+  padding-bottom: 3.75rem !important;
+  z-index: 1;
+
+  // Brillo decorativo sutil
+  &::after {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -5%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(#fff, 0.12) 0%, rgba(#fff, 0) 70%);
+    pointer-events: none;
+  }
+
+  h2 {
+    letter-spacing: -0.02em;
+    font-size: 1.6rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    background: rgba(#fff, 0.15);
+    color: #fff;
+    backdrop-filter: blur(2px);
+  }
+
+  // Etiqueta de los filtros de fecha
+  &__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(#fff, 0.85);
+
+    svg {
+      opacity: 0.75;
+    }
+  }
+
+  // Inputs de fecha sobre fondo azul
+  &__date {
+    min-width: 165px;
+    border: 1px solid rgba(#fff, 0.25);
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    font-weight: 600;
+    color: $abba-blue-dark;
+    background-color: rgba(#fff, 0.96);
+    box-shadow: 0 4px 10px rgba($abba-blue-dark, 0.18);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+
+    &:hover {
+      background-color: #fff;
+      transform: translateY(-1px);
+    }
+
+    &:focus {
+      background-color: #fff;
+      border-color: rgba(#fff, 0.9);
+      box-shadow: 0 0 0 0.2rem rgba(#fff, 0.45);
+    }
+
+    // Ícono nativo del calendario en azul de marca
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s ease;
+    }
+    &:hover::-webkit-calendar-picker-indicator {
+      opacity: 1;
+    }
+  }
+
+  &__btn {
+    color: $abba-blue;
+    border-radius: 0.5rem;
+
+    &:hover:not(:disabled) {
+      color: $abba-blue-dark;
+      background-color: #fff;
+    }
+  }
+}
+
+// -------------------------------------------------------
+//   Filtros de fecha
+// -------------------------------------------------------
+.date-filter {
+  .form-control {
+    border-radius: 0.5rem;
+    border-color: $border-soft;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus {
+      border-color: $abba-blue;
+      box-shadow: 0 0 0 0.2rem rgba($abba-blue, 0.12);
+    }
+  }
+}
+
+.btn-primary {
+  background-color: $abba-blue;
+  border-color: $abba-blue;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+
+  &:hover:not(:disabled) {
+    background-color: $abba-blue-dark;
+    border-color: $abba-blue-dark;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+// -------------------------------------------------------
+//   Tarjetas KPI
+// -------------------------------------------------------
+// La fila de KPIs sube y solapa la franja azul del header
+.kpi-row {
+  position: relative;
+  z-index: 2;
+  margin-top: -3rem;
+}
+
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.9rem !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  // Acento lateral de color
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 4px;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.75rem 1.5rem rgba($abba-blue-dark, 0.12) !important;
+  }
+
+  .card-body {
+    padding: 1.25rem 1.4rem;
+  }
+
+  h6.kpi-title {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: $abba-blue-dark;
+  }
+
+  h3 {
+    font-size: 1.85rem;
+    letter-spacing: -0.02em;
+  }
+
+  // Contenedor del ícono
+  .flex-shrink-0 {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem !important;
+  }
+
+  &--primary::before { background: $abba-blue; }
+  &--success::before { background: $ok; }
+  &--warning::before { background: $warn; }
+  &--info::before    { background: $extra; }
+}
+
+// Card de % Cumplimiento (color dinámico según semáforo)
+.kpi-card--compliance {
+  .compliance-value {
+    font-size: 1.85rem;
+    letter-spacing: -0.02em;
+  }
+
+  .progress {
+    height: 7px;
+    border-radius: 999px;
+    background: #eef2f8;
+  }
+  .progress-bar {
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+
+  small {
+    font-size: 0.72rem;
+  }
+
+  // Estados
+  &.is-green {
+    &::before { background: $ok; }
+    .compliance-icon { background: $ok; color: #fff; }
+    .compliance-value { color: $ok; }
+    .progress-bar { background: $ok; }
+  }
+  &.is-orange {
+    &::before { background: $warn; }
+    .compliance-icon { background: $warn; color: #fff; }
+    .compliance-value { color: $warn; }
+    .progress-bar { background: $warn; }
+  }
+  &.is-red {
+    &::before { background: $danger; }
+    .compliance-icon { background: $danger; color: #fff; }
+    .compliance-value { color: $danger; }
+    .progress-bar { background: $danger; }
+  }
+}
+
+// -------------------------------------------------------
+//   Tarjeta de la matriz
+// -------------------------------------------------------
+.matrix-card {
+  border-radius: 0.9rem !important;
+
+  .card-header h5 {
+    letter-spacing: -0.01em;
+  }
+
+  .btn-outline-secondary {
+    border-radius: 0.5rem;
+    border-color: $border-soft;
+    color: $abba-blue;
+    font-weight: 600;
+
+    &:hover:not(:disabled) {
+      background-color: $abba-blue;
+      border-color: $abba-blue;
+      color: #fff;
+    }
+  }
+}
+
+// -------------------------------------------------------
+//   Tabla / Matriz
+// -------------------------------------------------------
+.table {
+  --bs-table-bg: #fff;
+  border-color: $border-soft;
+  margin-bottom: 0;
+
+  thead {
+    th {
+      background: linear-gradient(180deg, #f4f7fb 0%, #eef2f8 100%);
+      color: $abba-blue-dark;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.03em;
+      border-color: $border-soft;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      white-space: nowrap;
+    }
+
+    // Sub-cabeceras Prog./Prod.
+    tr:last-child th {
+      top: 38px;
+      background: #f1f5fa;
+      font-size: 0.65rem;
+    }
+  }
+
+  tbody td {
+    border-color: $border-soft;
+    vertical-align: middle;
+    padding: 0.45rem 0.5rem;
+  }
+}
+
+// Sub-columnas del "TOTAL RANGO": mismo estilo que las fechas, solo fija ancho
+.table thead th.total-range-sub {
+  width: 60px;
+}
+
+// Cabecera de línea de ensamble (agrupador colapsable)
+.assembly-header {
+  cursor: pointer;
+  user-select: none;
+
+  td {
+    background: linear-gradient(90deg, rgba($abba-blue, 0.12) 0%, rgba($abba-blue, 0.04) 100%);
+    border-left: 3px solid $abba-blue;
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+    transition: background 0.15s ease;
+  }
+
+  &:hover td {
+    background: linear-gradient(90deg, rgba($abba-blue, 0.2) 0%, rgba($abba-blue, 0.06) 100%);
+  }
+
+  &__title {
+    color: $abba-blue-dark;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  // Flecha indicadora
+  .chevron {
+    color: $abba-blue;
+    transition: transform 0.2s ease;
+    transform: rotate(90deg); // expandido => apunta hacia abajo
+  }
+
+  &.is-collapsed .chevron {
+    transform: rotate(0deg); // colapsado => apunta a la derecha
+  }
+
+  // Píldora con el número de referencias
+  .ref-count {
+    background: rgba($abba-blue, 0.12);
+    color: $abba-blue;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  // Totales del grupo (visibles incluso colapsado)
+  &__totals {
+    color: $text-soft;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    padding-right: 0.5rem;
+
+    strong {
+      color: $abba-blue-dark;
+      font-size: 0.85rem;
+    }
+
+    .sep {
+      margin: 0 0.35rem;
+      color: rgba($abba-blue, 0.4);
+    }
+  }
+}
+
+// Filas de datos
+.data-row {
+  transition: background-color 0.12s ease;
+
+  &:hover td {
+    background-color: #f6f9fd;
+  }
+
+  td .fw-bold {
+    color: $abba-blue-dark;
+    font-size: 0.85rem;
+  }
+}
+
+// Columna "Referencia" fija
+.table th:first-child,
+.table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: #fff;
+}
+.assembly-header td:first-child { z-index: 2; }
+.data-row:hover td:first-child { background-color: #f6f9fd; }
+thead th:first-child { z-index: 4; }
+
+// -------------------------------------------------------
+//   Celdas: Programado vs Producido (semaforización)
+// -------------------------------------------------------
+.cell-plan {
+  color: $abba-blue-dark;
+  font-weight: 600;
+  background-color: #fbfcfe;
+}
+
+.cell-prod {
+  font-weight: 700;
+  font-size: 0.9rem;
+  position: relative;
+
+  &.status-green  { color: $ok;     background-color: $ok-bg; }
+  &.status-orange { color: $warn;   background-color: $warn-bg; }
+  &.status-red    { color: $danger; background-color: $danger-bg; }
+  &.status-yellow { color: $extra;  background-color: $extra-bg; }
+  &.status-none   { color: #cbd5e1; }
+}
+
+// Columnas de total del rango
+.cell-total {
+  background-color: #eef2f8 !important;
+  font-weight: 700;
+
+  &.cell-prod {
+    &.status-green  { background-color: darken($ok-bg, 4%) !important; }
+    &.status-orange { background-color: darken($warn-bg, 4%) !important; }
+    &.status-red    { background-color: darken($danger-bg, 4%) !important; }
+    &.status-yellow { background-color: darken($extra-bg, 4%) !important; }
+  }
+}
+
+// -------------------------------------------------------
+//   Leyenda superior (barra)
+// -------------------------------------------------------
+.legend-bar {
+  background: #f6f9fd;
+  border-top: 1px solid $border-soft;
+  border-bottom: 1px solid $border-soft;
+  font-size: 0.78rem;
+  color: $text-soft;
+
+  &__title {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: $abba-blue-dark;
+    font-size: 0.72rem;
+  }
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+
+  &--extra {
+    background-color: $extra;
+  }
+}
+
+// -------------------------------------------------------
+//   Leyenda inferior (footer)
+// -------------------------------------------------------
+.card-footer {
+  border-color: $border-soft !important;
+  border-bottom-left-radius: 0.9rem;
+  border-bottom-right-radius: 0.9rem;
+
+  .badge {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+  }
+}
+
+// Scroll suave en el contenedor responsivo
+.table-responsive {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2e0 transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #c7d2e0;
+    border-radius: 8px;
+  }
+}
