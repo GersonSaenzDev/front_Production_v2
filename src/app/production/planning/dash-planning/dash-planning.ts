@@ -138,7 +138,7 @@ export class DashPlanning implements OnInit {
     const lineSet = new Set<string>();
 
     this.rawOrdenes.forEach(o => {
-      const key = this.normalizeName(o.reference);
+      const key = this.normalizeCode(o.referenceCode);
       const line = (o.assemblyLine || '').trim();
       if (key && line) {
         this.lineByRef.set(key, line);
@@ -148,7 +148,7 @@ export class DashPlanning implements OnInit {
 
     // ¿Hay producción que no está en ninguna planeación? → existe "SIN PLANEACIÓN".
     const hasSinPlaneacion = this.rawProd.some(
-      p => !this.lineByRef.has(this.normalizeName(p.productName))
+      p => !this.lineByRef.has(this.normalizeCode(p.productCode))
     );
 
     const lines = Array.from(lineSet).sort((a, b) => a.localeCompare(b));
@@ -163,7 +163,7 @@ export class DashPlanning implements OnInit {
 
   /** Línea a la que pertenece un producto producido (según la planeación). */
   private lineOfProduct(p: TotalProductItem): string {
-    return this.lineByRef.get(this.normalizeName(p.productName)) ?? this.SIN_PLANEACION;
+    return this.lineByRef.get(this.normalizeCode(p.productCode)) ?? this.SIN_PLANEACION;
   }
 
   /** Selecciona/alterna el filtro de línea y recalcula cards + matriz. */
@@ -180,34 +180,34 @@ export class DashPlanning implements OnInit {
     const matches = (...values: (string | number | null | undefined)[]): boolean =>
       values.some(v => (v ?? '').toString().toLowerCase().includes(search));
 
-    // Al buscar, se reúnen los NOMBRES que coinciden en planeación O producción, para
-    // conservar juntos los pares (ej. buscar el código de planeación no debe ocultar su
-    // producción, que vive con otro código).
-    let matchedNames: Set<string> | null = null;
+    // Al buscar, se reúnen las CLAVES (código de 5 díg.) que coinciden en planeación O
+    // producción, para conservar juntos los pares (ej. buscar el código de planeación no
+    // debe ocultar su producción, que llega con el EAN de 6 díg.).
+    let matchedKeys: Set<string> | null = null;
     if (search) {
-      matchedNames = new Set<string>();
+      matchedKeys = new Set<string>();
       this.rawOrdenes.forEach(o => {
         if (matches(o.referenceCode, o.reference, o.assemblyLine, o.planningLabel, o.plannedQuantity, o.totalRequirement)) {
-          matchedNames!.add(this.normalizeName(o.reference));
+          matchedKeys!.add(this.normalizeCode(o.referenceCode));
         }
       });
       this.rawProd.forEach(p => {
         if (matches(p.productCode, p.productName, p.Producidos, p.Validos)) {
-          matchedNames!.add(this.normalizeName(p.productName));
+          matchedKeys!.add(this.normalizeCode(p.productCode));
         }
       });
     }
 
-    const passSearch = (name: string): boolean => !matchedNames || matchedNames.has(name);
+    const passSearch = (key: string): boolean => !matchedKeys || matchedKeys.has(key);
 
     const ordenes = this.rawOrdenes.filter(o =>
       (!line || (o.assemblyLine || '').trim() === line) &&
-      passSearch(this.normalizeName(o.reference))
+      passSearch(this.normalizeCode(o.referenceCode))
     );
 
     const prod = this.rawProd.filter(p =>
       (!line || this.lineOfProduct(p) === line) &&
-      passSearch(this.normalizeName(p.productName))
+      passSearch(this.normalizeCode(p.productCode))
     );
 
     this.calculateKPIs(ordenes, prod);
@@ -219,7 +219,7 @@ export class DashPlanning implements OnInit {
     // diario. Por eso se suma UNA sola vez por referencia para no inflar el total.
     const reqByRef = new Map<string, number>();
     ordenesData.forEach(o => {
-      const key = this.normalizeName(o.reference) || o.referenceCode;
+      const key = this.normalizeCode(o.referenceCode);
       if (!key) return;
       reqByRef.set(key, Math.max(reqByRef.get(key) ?? 0, o.totalRequirement || 0));
     });
@@ -249,14 +249,14 @@ export class DashPlanning implements OnInit {
     this.currentDatePage = 0;
     this.updateDisplayedDates();
 
-    // El cruce producción ↔ planeación se hace por NOMBRE de referencia normalizado
-    // (productName ↔ reference), ya que los códigos viven en sistemas distintos
-    // (productCode 6 díg. vs referenceCode 5 díg.).
+    // El cruce producción ↔ planeación se hace por CÓDIGO EAN vinculando los primeros 5
+    // dígitos: la planeación se carga con 5 díg. y la producción llega con el EAN de 6 díg.,
+    // por lo que la misma referencia siempre queda unida (sin depender del nombre).
     const rowMap = new Map<string, RowData>();
 
-    // Process Planning Data (clave = nombre normalizado)
+    // Process Planning Data (clave = código de 5 díg.)
     ordenesData.forEach(orden => {
-      const key = this.normalizeName(orden.reference);
+      const key = this.normalizeCode(orden.referenceCode);
       if (!key) return;
       if (!rowMap.has(key)) {
         rowMap.set(key, this.createEmptyRow(orden.referenceCode, orden.reference, orden.assemblyLine));
@@ -267,9 +267,9 @@ export class DashPlanning implements OnInit {
       }
     });
 
-    // Process Production Data (clave = nombre normalizado → cae en su línea si está planeada)
+    // Process Production Data (clave = código de 5 díg. → cae en su línea si está planeada)
     prodData.forEach(prod => {
-      const key = this.normalizeName(prod.productName);
+      const key = this.normalizeCode(prod.productCode);
       if (!key) return;
       if (!rowMap.has(key)) {
         // Producida pero sin planeación → "SIN PLANEACIÓN"
@@ -330,9 +330,15 @@ export class DashPlanning implements OnInit {
     this.groupedData.forEach(g => (g.collapsed = this.allCollapsed));
   }
 
-  /** Normaliza un nombre de referencia para cruzar producción vs planeación. */
-  private normalizeName(value: string | null | undefined): string {
-    return (value || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  /**
+   * Clave de vinculación de una referencia por su código EAN: los primeros 5 dígitos.
+   * El EAN real tiene 6 dígitos (producción) pero la planeación se carga con los 5 primeros,
+   * por lo que el cruce producción ↔ planeación se hace por esos 5 dígitos. Así la misma
+   * referencia queda unida aunque su nombre tenga variaciones de digitación.
+   */
+  private normalizeCode(code: string | null | undefined): string {
+    const value = (code ?? '').toString().trim();
+    return value.length > 5 ? value.slice(0, 5) : value;
   }
 
   private createEmptyRow(referenceCode: string, referenceName: string, assemblyLine: string): RowData {
