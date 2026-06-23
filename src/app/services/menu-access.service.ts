@@ -73,6 +73,9 @@ export class MenuAccessService {
   // - modules: módulos a los que puede rutear (el guard usa esto).
   // Todos incluyen 'production' para poder ver el Dashboard (ruta /production) como pantalla principal.
   private readonly DEPARTMENT_ACCESS: Record<string, { navTitles: string[]; modules: AppModule[] }> = {
+    // PLANEACION: solo el grupo Planeación (collapse "Cargue" + item "Dashboard Planeación")
+    // y el menú Estadístico (ver excepción en hasAccessToNavItem); el resto queda oculto.
+    'PLANEACION': { navTitles: ['CARGUE'], modules: ['production'] },
     'TROQUELADORAS': { navTitles: ['CRUDO'], modules: ['production'] },
     'PARRILLAS': { navTitles: ['CRUDO'], modules: ['production'] },
     'CORTE': { navTitles: ['CRUDO'], modules: ['production'] },
@@ -101,17 +104,17 @@ export class MenuAccessService {
 
     const isStadistics = this.isStadisticsNavItem(item);
 
-    // ANALISTA DE PRESUPUESTO: solo ve el Dashboard y el menú Estadístico
+    // ANALISTA DE PRESUPUESTO: ve el Dashboard, el menú Estadístico y el menú Planeación
     if (this.isBudgetAnalyst(area, dept)) {
-      return isStadistics || this.isDashboardNavItem(item);
+      return isStadistics || this.isDashboardNavItem(item) || this.isPlanningNavItem(item);
     }
 
     if (this.isManagerWithFullAccess(area, dept)) {
       return true;
     }
 
-    // PLANEACIÓN (Producción) ve el menú Estadístico además de su acceso normal
-    if (isStadistics && area === 'PRODUCCION' && dept === 'PLANEACION') {
+    // PLANEACIÓN ve el menú Estadístico además de su acceso normal (independiente del área)
+    if (isStadistics && dept === 'PLANEACION') {
       return true;
     }
 
@@ -167,6 +170,19 @@ export class MenuAccessService {
       return title === 'ESTADÍSTICO';
     }
     return item.url === '/stadistics';
+  }
+
+  // Identifica el grupo "Planeación" y sus items (collapse "Cargue", "Planeacion Producción"
+  // y "Dashboard Planeación").
+  private isPlanningNavItem(item: any): boolean {
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group') {
+      return title === 'PLANEACIÓN';
+    }
+    if (item.type === 'collapse') {
+      return title === 'CARGUE';
+    }
+    return item.url === 'production/planningLoad' || item.url === 'production/planning/dashPlanning';
   }
 
   // Identifica el grupo "Panel de Control" y su item "Dashboard" (/production).
