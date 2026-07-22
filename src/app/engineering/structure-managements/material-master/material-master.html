@@ -1,0 +1,261 @@
+<!-- app/engineering/structure-managements/material-master/material-master.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-stack"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Maestro de Materiales</h3>
+        <p class="header-subtitle mb-0">Selecciona una o varias referencias con su cantidad y ejecuta el análisis consolidado de materiales.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECCIÓN DE REFERENCIAS -->
+  <div class="card selection-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h6 class="section-title mb-0">Referencias a Analizar</h6>
+          <small class="section-subtitle">{{ selectedCount }} seleccionada(s) de {{ rows.length }}</small>
+        </div>
+        <div class="search-box">
+          <i class="ti ti-search"></i>
+          <input type="text" class="form-control" [(ngModel)]="searchTerm" name="searchTerm"
+                 placeholder="Buscar por código, referencia o producto...">
+        </div>
+      </div>
+
+      <div class="table-responsive selection-table-wrapper">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"></th>
+              <th>Código Interno</th>
+              <th>Referencia</th>
+              <th>Producto</th>
+              <th class="text-end">Líneas BOM</th>
+              <th style="width: 140px;">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingList">
+              <td colspan="6" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoadingList && filteredRows.length === 0">
+              <td colspan="6" class="text-center text-muted py-3">Sin referencias cargadas.</td>
+            </tr>
+            <tr *ngFor="let row of filteredRows" [class.row-selected]="row.selected">
+              <td>
+                <input type="checkbox" class="form-check-input" [checked]="row.selected"
+                       (change)="toggleRow(row)">
+              </td>
+              <td><strong>{{ row.structure.internalCode }}</strong></td>
+              <td>{{ row.structure.reference }}</td>
+              <td class="text-truncate" style="max-width: 320px;">{{ row.structure.productName }}</td>
+              <td class="text-end">{{ row.structure.bomLines }}</td>
+              <td>
+                <input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="row.quantity"
+                       [name]="'quantity-' + row.structure.internalCode" [disabled]="!row.selected">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-end mt-3">
+        <button type="button" class="btn btn-analyze" [disabled]="selectedCount === 0 || isAnalyzing" (click)="analyze()">
+          <span *ngIf="!isAnalyzing" class="d-inline-flex align-items-center">
+            <i class="ti ti-chart-bar me-2"></i> Analizar Materiales ({{ selectedCount }})
+          </span>
+          <span *ngIf="isAnalyzing" class="d-inline-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2"></span> Analizando...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <div class="alert alert-not-found mt-4" *ngIf="result.notFound.length > 0">
+      <i class="ti ti-alert-triangle me-2"></i>
+      No se encontraron las siguientes referencias: <strong>{{ result.notFound.join(', ') }}</strong>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="section-title mb-0">Resumen del Análisis</h6>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearResult()">
+            <i class="ti ti-x me-1"></i> Limpiar
+          </button>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.referencesAnalyzed }}</span>
+            <span class="metric-label">Referencias</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.totalMaterials }}</span>
+            <span class="metric-label">Materiales</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.totalCost | number:'1.0-0' }}</span>
+            <span class="metric-label">Costo Total</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.supplyOnlyMaterials }}</span>
+            <span class="metric-label">Solo Insumo</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.supplyOnlyCost | number:'1.0-0' }}</span>
+            <span class="metric-label">Costo Insumo</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.mixedOrLaborMaterials }}</span>
+            <span class="metric-label">Mixto/M.O.</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.warehouses }}</span>
+            <span class="metric-label">Bodegas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERENCIAS ANALIZADAS -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Referencias Analizadas</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="referencesResultSearchTerm" name="referencesResultSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código Interno</th>
+                <th>Cod. Referencia</th>
+                <th>Producto</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end"># Materiales</th>
+                <th class="text-end">Costo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.references | globalFilter:referencesResultSearchTerm as filteredReferences">
+                <tr *ngIf="filteredReferences.length === 0">
+                  <td colspan="6" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let ref of filteredReferences">
+                  <td><strong>{{ ref.internalCode }}</strong></td>
+                  <td>{{ ref.codRef }}</td>
+                  <td>{{ ref.productName }}</td>
+                  <td class="text-end">{{ ref.quantity }}</td>
+                  <td class="text-end">{{ ref.materialsCount }}</td>
+                  <td class="text-end">$ {{ ref.materialCost | number:'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIALES CONSOLIDADOS -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Materiales Consolidados</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="materialsSearchTerm" name="materialsSearchTerm"
+                   placeholder="Buscar por código, nombre, unidad, origen, bodega...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 30px;"></th>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Unidad</th>
+                <th class="text-end">Precio Unit.</th>
+                <th class="text-end">Cant. Total</th>
+                <th class="text-end">Costo Total</th>
+                <th>Origen</th>
+                <th>Bodegas</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.materials | globalFilter:materialsSearchTerm as filteredMaterials">
+                <tr *ngIf="filteredMaterials.length === 0">
+                  <td colspan="9" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <ng-container *ngFor="let material of filteredMaterials">
+                  <tr class="material-row" (click)="toggleMaterial(material.productCode)">
+                    <td>
+                      <i class="ti" [class.ti-chevron-right]="!isMaterialExpanded(material.productCode)"
+                         [class.ti-chevron-down]="isMaterialExpanded(material.productCode)"></i>
+                    </td>
+                    <td>{{ material.productCode }}</td>
+                    <td>{{ material.name }}</td>
+                    <td>{{ material.unit }}</td>
+                    <td class="text-end">$ {{ material.unitPrice | number:'1.0-2' }}</td>
+                    <td class="text-end">{{ material.totalQuantity | number:'1.0-4' }}</td>
+                    <td class="text-end">$ {{ material.totalCost | number:'1.0-2' }}</td>
+                    <td>
+                      <span class="badge" [class.bg-success]="material.supplyOnly" [class.bg-info]="!material.supplyOnly">
+                        {{ material.supplyOnly ? 'Insumo' : 'Mixto/M.O.' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge badge-neutral me-1" *ngFor="let w of material.consumedIn">{{ w }}</span>
+                    </td>
+                  </tr>
+                  <tr class="byreference-row" *ngIf="isMaterialExpanded(material.productCode)">
+                    <td [attr.colspan]="9">
+                      <div class="byreference-table">
+                        <table class="table table-sm mb-0">
+                          <thead>
+                            <tr>
+                              <th>Referencia</th>
+                              <th class="text-end">Cant. Referencia</th>
+                              <th class="text-end">Cantidad</th>
+                              <th class="text-end">Costo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let byRef of material.byReference">
+                              <td>{{ byRef.internalCode }}</td>
+                              <td class="text-end">{{ byRef.referenceQuantity }}</td>
+                              <td class="text-end">{{ byRef.quantity | number:'1.0-4' }}</td>
+                              <td class="text-end">$ {{ byRef.cost | number:'1.0-2' }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

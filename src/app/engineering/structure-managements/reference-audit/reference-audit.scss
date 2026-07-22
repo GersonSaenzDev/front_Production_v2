@@ -1,0 +1,327 @@
+// VARIABLES CORPORATIVAS ABBA
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-dark: #1e1e1e;
+
+.structure-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER PRINCIPAL
+// =======================
+.structure-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .header-icon {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+    color: #fff;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.45rem;
+    letter-spacing: 0.3px;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+  }
+}
+
+// =======================
+//  TARJETAS
+// =======================
+.search-card,
+.summary-card,
+.results-card {
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+.section-title {
+  color: $abba-blue-dark;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.2px;
+}
+
+// =======================
+//  BUSCADOR PREDICTIVO
+// =======================
+.form-control {
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.94rem;
+  color: $abba-dark;
+  background-color: #f8fafc;
+
+  &:focus {
+    border-color: $abba-blue;
+    background-color: #fff;
+    box-shadow: 0 0 0 4px rgba($abba-blue, 0.1);
+    outline: none;
+  }
+}
+
+.loading-indicator {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: $abba-blue;
+}
+
+.autocomplete-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e2e8f0;
+
+  .autocomplete-item {
+    padding: 0.65rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.9rem;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: $abba-blue-light;
+    }
+  }
+}
+
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: $abba-blue-light;
+  color: $abba-blue-dark;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+
+  .btn-clear {
+    border: none;
+    background: transparent;
+    color: $abba-blue-dark;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: #dc2626;
+    }
+  }
+}
+
+// =======================
+//  BUSCADOR DE TABLA
+// =======================
+.search-box {
+  position: relative;
+  min-width: 260px;
+
+  i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $abba-gray;
+  }
+
+  .form-control {
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    padding-left: 2.25rem;
+    font-size: 0.9rem;
+    background-color: #fff;
+  }
+}
+
+// =======================
+//  BOTÓN AUDITAR
+// =======================
+.btn-analyze {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 20px rgba($abba-blue, 0.25);
+  transition: all 0.3s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba($abba-blue, 0.35);
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+// =======================
+//  ESTADOS VACÍOS
+// =======================
+.empty-state {
+  text-align: center;
+  color: $abba-gray;
+  padding: 3rem 1rem;
+
+  i {
+    font-size: 2.5rem;
+    color: rgba($abba-blue, 0.4);
+    margin-bottom: 0.75rem;
+    display: inline-block;
+  }
+}
+
+// =======================
+//  FICHA DE REFERENCIA
+// =======================
+.summary-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $abba-gray;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.summary-value {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: $abba-dark;
+}
+
+.cost-method-note {
+  font-size: 0.78rem;
+  color: $abba-gray;
+  font-style: italic;
+}
+
+// =======================
+//  RESUMEN / MÉTRICAS
+// =======================
+.result-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.badge-neutral {
+  display: inline-flex;
+  align-items: center;
+  background: #eef2f6 !important;
+  color: #334155 !important;
+  font-weight: 600;
+}
+
+.metric-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 110px;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  .metric-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: $abba-blue-dark;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .metric-label {
+    font-size: 0.72rem;
+    color: $abba-gray;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+    text-align: center;
+  }
+}
+
+// =======================
+//  MATERIALES POR UNIDAD (FILAS EXPANDIBLES ANIDADAS)
+// =======================
+.unit-row,
+.material-row {
+  cursor: pointer;
+
+  &:hover {
+    background: $abba-blue-light;
+  }
+}
+
+.byreference-row td,
+.lines-row td {
+  padding: 0;
+  border-top: none;
+}
+
+.byreference-table {
+  background: #f8fafc;
+  padding: 0.5rem 1.5rem;
+
+  table {
+    font-size: 0.85rem;
+  }
+}
+
+.lines-table {
+  background: #eef2f6;
+  padding: 0.5rem 1.5rem 0.5rem 2.5rem;
+
+  table {
+    font-size: 0.8rem;
+  }
+}

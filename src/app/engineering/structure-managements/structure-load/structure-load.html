@@ -1,0 +1,140 @@
+<!-- app/engineering/structure-managements/structure-load/structure-load.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-tree"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Cargue de Estructuras de Producto</h3>
+        <p class="header-subtitle mb-0">Carga la estructura (BOM) de una referencia desde Excel y visualiza lo ya cargado.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETA DEL FORMULARIO -->
+  <div class="card form-card border-0 mt-4">
+    <div class="card-body p-4 p-md-5">
+      <form (ngSubmit)="onSubmit()">
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">1</div>
+            <div>
+              <h6 class="section-title">Archivo de la Estructura</h6>
+              <small class="section-subtitle">Lista de materiales (BOM) en formato Excel (.xlsx)</small>
+            </div>
+          </div>
+
+          <div class="dropzone" [class.has-file]="structureFile"
+               (drop)="onFileDropped($event)" (dragover)="onDragOver($event)">
+            <input type="file" id="structureFile" class="dropzone-input" [accept]="acceptedFiles"
+                   (change)="onFileSelected($event)">
+            <ng-container *ngIf="!structureFile">
+              <i class="ti ti-cloud-upload dropzone-icon"></i>
+              <p class="dropzone-text mb-1">Arrastra el archivo aquí o <span>haz clic para seleccionar</span></p>
+              <small class="dropzone-hint">Formatos permitidos: .xlsx, .xls</small>
+            </ng-container>
+            <div class="file-preview" *ngIf="structureFile">
+              <i class="ti ti-file-spreadsheet file-icon"></i>
+              <div class="file-info">
+                <span class="file-name">{{ structureFile.name }}</span>
+                <small class="file-size">{{ formatSize(structureFile.size) }}</small>
+              </div>
+              <button type="button" class="btn-remove" (click)="clearFile()" title="Quitar archivo">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-end mt-4 pt-3 border-top">
+          <button type="submit" class="btn btn-submit-structure" [disabled]="isSubmitting">
+            <span *ngIf="!isSubmitting" class="d-inline-flex align-items-center">
+              <i class="ti ti-upload me-2"></i> Cargar Estructura
+            </span>
+            <span *ngIf="isSubmitting" class="d-inline-flex align-items-center">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Cargando...
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <!-- PANEL DE RESULTADO -->
+      <div class="result-panel mt-4" *ngIf="lastResult">
+        <div class="result-header">
+          <i class="ti ti-circle-check"></i>
+          <span>{{ lastResult.message }}</span>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip" *ngFor="let metric of lastResult.metrics">
+            <span class="metric-value">{{ metric.value }}</span>
+            <span class="metric-label">{{ metric.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETA DEL LISTADO -->
+  <div class="card list-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h6 class="section-title mb-0">Estructuras Cargadas</h6>
+          <small class="section-subtitle">{{ filteredStructures.length }} de {{ structures.length }} referencias</small>
+        </div>
+        <div class="search-box">
+          <i class="ti ti-search"></i>
+          <input type="text" class="form-control" [(ngModel)]="searchTerm" name="searchTerm"
+                 placeholder="Buscar por código, referencia o producto...">
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Código Interno</th>
+              <th>Cod. Referencia</th>
+              <th>EAN</th>
+              <th>Producto</th>
+              <th class="text-end">Cant. Base</th>
+              <th class="text-end">Líneas BOM</th>
+              <th>Estado</th>
+              <th>Fecha Cargue</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="8" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoading && filteredStructures.length === 0">
+              <td colspan="8" class="text-center text-muted py-3">Sin estructuras cargadas.</td>
+            </tr>
+            <tr *ngFor="let s of filteredStructures">
+              <td><strong>{{ s.internalCode }}</strong></td>
+              <td>{{ s.codRef }}</td>
+              <td>{{ s.ean }}</td>
+              <td>
+                <div>{{ s.reference }}</div>
+                <small class="text-muted">{{ s.productName }}</small>
+              </td>
+              <td class="text-end">{{ s.baseQuantity }}</td>
+              <td class="text-end">{{ s.bomLines }}</td>
+              <td>
+                <span class="badge" [class.bg-success]="s.status === 'active'"
+                      [class.bg-secondary]="s.status !== 'active'">{{ s.status }}</span>
+              </td>
+              <td>{{ s.dateCreate }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

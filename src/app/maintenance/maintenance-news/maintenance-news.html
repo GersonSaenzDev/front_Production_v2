@@ -1,1 +1,154 @@
-<app-shared-news [defaultOriginArea]="'Mantenimiento'"></app-shared-news>
+<div class="container-fluid py-3">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">Solicitud de Mantenimiento</h5>
+      <small>Registre una nueva orden de mantenimiento (preventivo, correctivo o predictivo).</small>
+    </div>
+
+    <div class="card-body">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="row g-3">
+          <!-- Área de la máquina (servicio agrupado) -->
+          <div class="col-md-4">
+            <label class="form-label">Área de la máquina <span class="text-danger">*</span></label>
+            <select class="form-select" formControlName="machineArea"
+              [class.is-invalid]="isFieldInvalid('machineArea')">
+              <option value="">Seleccione el área…</option>
+              <option *ngFor="let g of groupedAreas" [value]="g.area">{{ g.area }}</option>
+            </select>
+            <div class="invalid-feedback">Seleccione el área donde está la máquina.</div>
+          </div>
+
+          <!-- Departamento (subárea del área seleccionada) -->
+          <div class="col-md-4">
+            <label class="form-label">Departamento</label>
+            <select class="form-select" formControlName="machineDepartment"
+              [attr.disabled]="availableDepartments.length === 0 ? '' : null">
+              <option value="">{{ availableDepartments.length ? 'Seleccione…' : 'Elija un área primero' }}</option>
+              <option *ngFor="let d of availableDepartments" [value]="d.subArea">{{ d.subArea }}</option>
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Sección consecutivo</label>
+            <input type="text" class="form-control" formControlName="consecutiveSection"
+              placeholder="07-2024" />
+          </div>
+
+          <!-- Máquina (buscador predictivo) -->
+          <div class="col-md-6 position-relative">
+            <label class="form-label">Código de máquina <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" formControlName="machineCode"
+              [class.is-invalid]="isFieldInvalid('machineCode')" autocomplete="off"
+              placeholder="Escriba parte del código de la máquina"
+              (focus)="onMachineFocus()" (blur)="onMachineBlur()" />
+            <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
+              <div class="autocomplete-item" *ngFor="let m of predictiveMachineList"
+                (mousedown)="selectMachine(m)">
+                <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
+              </div>
+            </div>
+            <div class="invalid-feedback">El código de máquina es obligatorio.</div>
+          </div>
+
+          <!-- Nombre / costos -->
+          <div class="col-md-4">
+            <label class="form-label">Nombre de máquina</label>
+            <input type="text" class="form-control" formControlName="machineName"
+              placeholder="Se completa al seleccionar el código" readonly />
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Centro de costo</label>
+            <input type="text" class="form-control" formControlName="costCenter" placeholder="CC-1020" />
+          </div>
+
+          <!-- Tipos -->
+          <div class="col-md-2">
+            <label class="form-label">Tipo <span class="text-danger">*</span></label>
+            <select class="form-select" formControlName="maintenanceType"
+              [class.is-invalid]="isFieldInvalid('maintenanceType')">
+              <option value="">Seleccione…</option>
+              <option *ngFor="let t of maintenanceTypes" [value]="t">{{ t }}</option>
+            </select>
+            <div class="invalid-feedback">Seleccione el tipo de mantenimiento.</div>
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Servicio</label>
+            <select class="form-select" formControlName="serviceType">
+              <option *ngFor="let s of serviceTypes" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Prioridad</label>
+            <select class="form-select" formControlName="priority">
+              <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+            </select>
+          </div>
+
+          <!-- Descripciones -->
+          <div class="col-12">
+            <label class="form-label">Descripción del trabajo <span class="text-danger">*</span></label>
+            <textarea class="form-control" rows="2" formControlName="description"
+              [class.is-invalid]="isFieldInvalid('description')"
+              placeholder="Cambio de rodamiento y ajuste de motor principal"></textarea>
+            <div class="invalid-feedback">Describa el trabajo (mínimo 10 caracteres).</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Descripción de la falla</label>
+            <textarea class="form-control" rows="2" formControlName="failureDescription"
+              placeholder="Ruido anormal y vibración en el eje principal"></textarea>
+          </div>
+
+          <!-- Personas / fechas -->
+          <div class="col-md-4">
+            <label class="form-label">Solicitado por</label>
+            <input type="text" class="form-control" formControlName="requestedBy" />
+          </div>
+
+          <div class="col-md-4 position-relative">
+            <label class="form-label">Asignar a (nombre o documento)</label>
+            <input type="text" class="form-control" formControlName="assignedTo" autocomplete="off"
+              placeholder="Escriba nombre o número de documento"
+              (focus)="onTechnicianFocus()" (blur)="onTechnicianBlur()" />
+            <div class="autocomplete-results"
+              *ngIf="predictiveTechnicianList.length > 0 && showTechnicianDropdown">
+              <div class="autocomplete-item" *ngFor="let tech of predictiveTechnicianList"
+                (mousedown)="selectTechnician(tech)">
+                <strong>{{ tech.fullName }}</strong> — {{ tech.specialty }}
+                <small class="text-muted d-block">Doc: {{ tech.document }}</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Fecha programada</label>
+            <input type="date" class="form-control" formControlName="scheduledDate" />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Reportado en</label>
+            <input type="datetime-local" class="form-control" formControlName="reportedAt" />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Recibido en</label>
+            <input type="datetime-local" class="form-control" formControlName="receivedAt" />
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="resetForm()"
+            [disabled]="isSubmitting">Limpiar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-1"></span>
+            {{ isSubmitting ? 'Guardando…' : 'Crear solicitud' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

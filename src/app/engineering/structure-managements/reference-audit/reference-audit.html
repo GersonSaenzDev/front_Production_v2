@@ -1,0 +1,277 @@
+<!-- app/engineering/structure-managements/reference-audit/reference-audit.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-file-search"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Auditoría por Referencia</h3>
+        <p class="header-subtitle mb-0">Trazabilidad directa al Excel master: materiales consolidados por unidad de medida y prueba del costo oficial línea por línea de nivel 1.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCADOR Y PARÁMETROS -->
+  <div class="card search-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Referencia</label>
+          <div class="position-relative">
+            <input type="text" class="form-control" autocomplete="off"
+                   placeholder="Busca por código interno, referencia o producto..."
+                   [(ngModel)]="searchTerm" name="searchTerm"
+                   (ngModelChange)="onSearchChange($event)"
+                   (focus)="onFocus()" (blur)="onBlur()">
+            <span class="loading-indicator" *ngIf="isLoadingList">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+
+            <div class="autocomplete-results" *ngIf="predictiveResults.length > 0 && showDropdown">
+              <div class="autocomplete-item" *ngFor="let s of predictiveResults" (mousedown)="selectStructure(s)">
+                <strong>{{ s.internalCode }}</strong> — {{ s.productName }}
+                <small class="text-muted d-block">Cod. Ref: {{ s.codRef }} · {{ s.bomLines }} líneas BOM</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Cantidad Planeada</label>
+          <input type="number" min="1" class="form-control" [(ngModel)]="plannedQuantity" name="plannedQuantity">
+        </div>
+      </div>
+
+      <div class="selected-chip mt-3" *ngIf="selectedStructure">
+        <i class="ti ti-box-seam"></i>
+        <span>{{ selectedStructure.internalCode }} — {{ selectedStructure.productName }}</span>
+        <button type="button" class="btn-clear" (click)="clearSelection()" title="Limpiar selección">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+
+      <div class="text-end mt-3" *ngIf="selectedStructure">
+        <button type="button" class="btn btn-analyze" [disabled]="isAuditing" (click)="audit()">
+          <span *ngIf="!isAuditing" class="d-inline-flex align-items-center">
+            <i class="ti ti-file-search me-2"></i> Auditar Referencia
+          </span>
+          <span *ngIf="isAuditing" class="d-inline-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2"></span> Auditando...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO: SIN SELECCIÓN -->
+  <div class="empty-state mt-4" *ngIf="!selectedStructure">
+    <i class="ti ti-file-search"></i>
+    <p>Selecciona una referencia para auditarla.</p>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <!-- FICHA DE LA REFERENCIA -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <span class="summary-label">Producto</span>
+            <span class="summary-value">{{ result.reference.productName }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Código Interno</span>
+            <span class="summary-value">{{ result.reference.internalCode }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Cod. Referencia</span>
+            <span class="summary-value">{{ result.reference.codRef }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Cantidad Planeada</span>
+            <span class="summary-value">{{ result.plannedQuantity }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Costo Oficial / Plan</span>
+            <span class="summary-value">$ {{ result.level1CostProof.totalCostForPlan | number:'1.0-2' }}</span>
+          </div>
+        </div>
+        <p class="cost-method-note mt-3 mb-0">{{ result.howToRead.excelSource }}</p>
+      </div>
+    </div>
+
+    <!-- MATERIALES POR UNIDAD DE MEDIDA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <h6 class="section-title mb-3">Materiales por Unidad de Medida</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 30px;"></th>
+                <th>Unidad</th>
+                <th class="text-end"># Materiales</th>
+                <th class="text-end"># Líneas</th>
+                <th class="text-end">Cant./Producto</th>
+                <th class="text-end">Cant. Plan</th>
+                <th class="text-end">Costo/Producto</th>
+                <th class="text-end">Costo Plan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="result.byUnit.length === 0">
+                <td colspan="8" class="text-center text-muted py-3">Sin materiales.</td>
+              </tr>
+              <ng-container *ngFor="let u of result.byUnit">
+                <tr class="unit-row" (click)="toggleUnit(u.unit)">
+                  <td>
+                    <i class="ti" [class.ti-chevron-right]="!isUnitExpanded(u.unit)"
+                       [class.ti-chevron-down]="isUnitExpanded(u.unit)"></i>
+                  </td>
+                  <td><strong>{{ u.unit }}</strong></td>
+                  <td class="text-end">{{ u.materialsCount }}</td>
+                  <td class="text-end">{{ u.linesCount }}</td>
+                  <td class="text-end">{{ u.quantityPerProduct | number:'1.0-4' }}</td>
+                  <td class="text-end">{{ u.quantityForPlan | number:'1.0-4' }}</td>
+                  <td class="text-end">$ {{ u.costPerProduct | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ u.costForPlan | number:'1.0-2' }}</td>
+                </tr>
+                <tr class="byreference-row" *ngIf="isUnitExpanded(u.unit)">
+                  <td [attr.colspan]="8">
+                    <div class="byreference-table">
+                      <table class="table table-sm mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width: 30px;"></th>
+                            <th>Material</th>
+                            <th>Bodegas</th>
+                            <th>Precio</th>
+                            <th class="text-end">Cant./Producto</th>
+                            <th class="text-end">Cant. Plan</th>
+                            <th class="text-end">Costo/Producto</th>
+                            <th class="text-end">Costo Plan</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <ng-container *ngFor="let m of u.materials">
+                            <tr class="material-row" (click)="toggleMaterial(u.unit, m.materialCode)">
+                              <td>
+                                <i class="ti" [class.ti-chevron-right]="!isMaterialExpanded(u.unit, m.materialCode)"
+                                   [class.ti-chevron-down]="isMaterialExpanded(u.unit, m.materialCode)"></i>
+                              </td>
+                              <td>
+                                <div>{{ m.name }}</div>
+                                <small class="text-muted">{{ m.materialCode }}</small>
+                              </td>
+                              <td>
+                                <span class="badge badge-neutral me-1" *ngFor="let w of m.warehouses">{{ w }}</span>
+                              </td>
+                              <td>
+                                $ {{ m.unitPrices[0] | number:'1.0-4' }}
+                                <span class="badge bg-warning text-dark ms-1" *ngIf="m.priceVariation">Varía</span>
+                              </td>
+                              <td class="text-end">{{ m.quantityPerProduct | number:'1.0-4' }}</td>
+                              <td class="text-end">{{ m.quantityForPlan | number:'1.0-4' }}</td>
+                              <td class="text-end">$ {{ m.costPerProduct | number:'1.0-2' }}</td>
+                              <td class="text-end">$ {{ m.costForPlan | number:'1.0-2' }}</td>
+                            </tr>
+                            <tr class="lines-row" *ngIf="isMaterialExpanded(u.unit, m.materialCode)">
+                              <td [attr.colspan]="8">
+                                <div class="lines-table">
+                                  <table class="table table-sm mb-0">
+                                    <thead>
+                                      <tr>
+                                        <th>Posición Excel</th>
+                                        <th class="text-end">Nivel</th>
+                                        <th>Bodega</th>
+                                        <th class="text-end">Cant. Base</th>
+                                        <th class="text-end">Cant. Requerida</th>
+                                        <th>Cálculo</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      <tr *ngFor="let line of m.lines">
+                                        <td>{{ line.position }}</td>
+                                        <td class="text-end">{{ line.level }}</td>
+                                        <td>{{ line.warehouseName }}</td>
+                                        <td class="text-end">{{ line.baseQuantity }}</td>
+                                        <td class="text-end">{{ line.requiredQuantity }}</td>
+                                        <td>{{ line.calculation }}</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          </ng-container>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRUEBA DEL COSTO OFICIAL (NIVEL 1) -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Prueba del Costo Oficial — Líneas de Nivel 1</h6>
+          <div class="result-metrics">
+            <div class="metric-chip">
+              <span class="metric-value">{{ result.level1CostProof.includedLines }}/{{ result.level1CostProof.level1Lines }}</span>
+              <span class="metric-label">Líneas Incluidas</span>
+            </div>
+            <div class="metric-chip">
+              <span class="metric-value">$ {{ result.level1CostProof.totalCostPerProduct | number:'1.0-2' }}</span>
+              <span class="metric-label">Costo Oficial/Producto</span>
+            </div>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="level1SearchTerm" name="level1SearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Bodega</th>
+                <th class="text-end">Cant. Requerida</th>
+                <th class="text-end">Precio Propio</th>
+                <th class="text-end">Costo Real</th>
+                <th class="text-end">Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.level1CostProof.lines | globalFilter:level1SearchTerm as filteredLevel1">
+                <tr *ngIf="filteredLevel1.length === 0">
+                  <td colspan="7" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let line of filteredLevel1" [class.table-warning]="line.gap !== 0">
+                  <td>{{ line.productCode }}</td>
+                  <td>{{ line.name }}</td>
+                  <td>{{ line.warehouseCode }}</td>
+                  <td class="text-end">{{ line.requiredQuantity }}</td>
+                  <td class="text-end">$ {{ line.lineCost | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ line.rolledCost | number:'1.0-2' }}</td>
+                  <td class="text-end" [class.text-danger]="line.gap > 0" [class.text-success]="line.gap < 0">{{ line.gap | number:'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

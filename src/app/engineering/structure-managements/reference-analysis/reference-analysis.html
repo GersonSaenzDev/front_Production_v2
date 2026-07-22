@@ -1,0 +1,400 @@
+<!-- app/engineering/structure-managements/reference-analysis/reference-analysis.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-report-analytics"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Análisis de Referencia</h3>
+        <p class="header-subtitle mb-0">Selecciona una referencia y su cantidad planeada para ver el costo industrial y el flujo por bodega.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCADOR Y PARÁMETROS -->
+  <div class="card search-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Referencia</label>
+          <div class="position-relative">
+            <input type="text" class="form-control" autocomplete="off"
+                   placeholder="Busca por código interno, referencia o producto..."
+                   [(ngModel)]="searchTerm" name="searchTerm"
+                   (ngModelChange)="onSearchChange($event)"
+                   (focus)="onFocus()" (blur)="onBlur()">
+            <span class="loading-indicator" *ngIf="isLoadingList">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+
+            <div class="autocomplete-results" *ngIf="predictiveResults.length > 0 && showDropdown">
+              <div class="autocomplete-item" *ngFor="let s of predictiveResults" (mousedown)="selectStructure(s)">
+                <strong>{{ s.internalCode }}</strong> — {{ s.productName }}
+                <small class="text-muted d-block">Cod. Ref: {{ s.codRef }} · {{ s.bomLines }} líneas BOM</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Cantidad Planeada</label>
+          <input type="number" min="1" class="form-control" [(ngModel)]="plannedQuantity" name="plannedQuantity">
+        </div>
+      </div>
+
+      <div class="selected-chip mt-3" *ngIf="selectedStructure">
+        <i class="ti ti-box-seam"></i>
+        <span>{{ selectedStructure.internalCode }} — {{ selectedStructure.productName }}</span>
+        <button type="button" class="btn-clear" (click)="clearSelection()" title="Limpiar selección">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+
+      <!-- FILTRO OPCIONAL DE MATERIALES -->
+      <div class="materials-filter mt-3" *ngIf="selectedStructure">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label mb-0">Filtrar materiales (opcional)</label>
+          <button type="button" class="btn btn-sm btn-link p-0" *ngIf="selectedMaterials.size > 0"
+                  (click)="clearMaterialFilter()">
+            Limpiar selección ({{ selectedMaterials.size }})
+          </button>
+        </div>
+        <div class="materials-list" *ngIf="!isLoadingMaterials; else loadingMaterials">
+          <div class="form-check" *ngFor="let m of materialOptions">
+            <input type="checkbox" class="form-check-input" [id]="'material-' + m.productCode"
+                   [checked]="isMaterialSelected(m.productCode)" (change)="toggleMaterial(m.productCode)">
+            <label class="form-check-label" [for]="'material-' + m.productCode">
+              <strong>{{ m.productCode }}</strong> — {{ m.name }}
+            </label>
+          </div>
+        </div>
+        <ng-template #loadingMaterials>
+          <span class="spinner-border spinner-border-sm me-2"></span> Cargando materiales del BOM…
+        </ng-template>
+      </div>
+
+      <div class="text-end mt-3" *ngIf="selectedStructure">
+        <button type="button" class="btn btn-analyze" [disabled]="isAnalyzing" (click)="analyze()">
+          <span *ngIf="!isAnalyzing" class="d-inline-flex align-items-center">
+            <i class="ti ti-report-analytics me-2"></i> Analizar Referencia
+          </span>
+          <span *ngIf="isAnalyzing" class="d-inline-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2"></span> Analizando...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO: SIN SELECCIÓN -->
+  <div class="empty-state mt-4" *ngIf="!selectedStructure">
+    <i class="ti ti-report-analytics"></i>
+    <p>Selecciona una referencia para analizarla.</p>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <!-- FICHA DE LA REFERENCIA -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <span class="summary-label">Producto</span>
+            <span class="summary-value">{{ result.reference.productName }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Código Interno</span>
+            <span class="summary-value">{{ result.reference.internalCode }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Cod. Referencia</span>
+            <span class="summary-value">{{ result.reference.codRef }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">EAN</span>
+            <span class="summary-value">{{ result.reference.ean }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Cantidad Planeada</span>
+            <span class="summary-value">{{ result.plannedQuantity }}</span>
+          </div>
+        </div>
+
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.warehouses }}</span>
+            <span class="metric-label">Bodegas</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.bomLines }}</span>
+            <span class="metric-label">Líneas BOM</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.timeForPlan | number:'1.0-2' }}</span>
+            <span class="metric-label">Tiempo Plan (h)</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.materialCostForPlan | number:'1.0-0' }}</span>
+            <span class="metric-label">Costo Industrial</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.explodedMaterialCostForPlan | number:'1.0-0' }}</span>
+            <span class="metric-label">Costo Explosionado</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.piecesForPlan | number:'1.0-0' }}</span>
+            <span class="metric-label">Piezas Plan</span>
+          </div>
+        </div>
+        <p class="cost-method-note mt-3 mb-0">{{ result.summary.costMethod }}</p>
+      </div>
+    </div>
+
+    <!-- CONCILIACIÓN DE COSTOS -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Conciliación de Costos</h6>
+          <span class="badge" [class.bg-success]="result.costReconciliation.matches" [class.bg-danger]="!result.costReconciliation.matches">
+            {{ result.costReconciliation.matches ? 'Cuadra exacto' : 'No cuadra' }}
+          </span>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.costReconciliation.materialCostPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Costo Oficial (rollup)</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.costReconciliation.explodedMaterialCostPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Explosión Completa</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.costReconciliation.fullMaterialTotalPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Total Reconstruido</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.costReconciliation.difference | number:'1.0-2' }}</span>
+            <span class="metric-label">Diferencia</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.costReconciliation.priceStaleness.totalGap | number:'1.0-2' }}</span>
+            <span class="metric-label">Gap Desactualización</span>
+          </div>
+        </div>
+        <p class="cost-method-note mt-3 mb-3">{{ result.costReconciliation.formula }}</p>
+
+        <div class="row g-3">
+          <div class="col-md-3 col-6">
+            <span class="summary-label">Materia Prima Oculta</span>
+            <span class="summary-value">$ {{ result.costReconciliation.explainedBy.hiddenRawMaterialContent | number:'1.0-2' }}</span>
+          </div>
+          <div class="col-md-3 col-6">
+            <span class="summary-label">Piezas Sin Explosión</span>
+            <span class="summary-value">$ {{ result.costReconciliation.explainedBy.nonDecomposedProductContent | number:'1.0-2' }}</span>
+          </div>
+          <div class="col-md-3 col-6">
+            <span class="summary-label">Líneas Excluidas</span>
+            <span class="summary-value">$ {{ result.costReconciliation.explainedBy.excludedLinesContent | number:'1.0-2' }}</span>
+          </div>
+          <div class="col-md-3 col-6">
+            <span class="summary-label">Material Huérfano</span>
+            <span class="summary-value">$ {{ result.costReconciliation.explainedBy.orphanMaterialContent | number:'1.0-2' }}</span>
+          </div>
+        </div>
+
+        <h6 class="section-title mt-4 mb-3">Principales Contribuyentes a la Desactualización</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Bodega</th>
+                <th class="text-end">Precio Propio</th>
+                <th class="text-end">Costo Real</th>
+                <th class="text-end">Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="result.costReconciliation.priceStaleness.topContributors.length === 0">
+                <td colspan="6" class="text-center text-muted py-3">Sin desactualizaciones relevantes.</td>
+              </tr>
+              <tr *ngFor="let c of result.costReconciliation.priceStaleness.topContributors">
+                <td>{{ c.productCode }}</td>
+                <td>{{ c.name }}</td>
+                <td>{{ c.warehouseName }}</td>
+                <td class="text-end">$ {{ c.lineCost | number:'1.0-2' }}</td>
+                <td class="text-end">$ {{ c.rolledCost | number:'1.0-2' }}</td>
+                <td class="text-end" [class.text-danger]="c.gap > 0" [class.text-success]="c.gap < 0">{{ c.gap | number:'1.0-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRECIOS DESACTUALIZADOS A CUALQUIER PROFUNDIDAD (DEEP GAPS) -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h6 class="section-title mb-0">Precios Desactualizados (cualquier profundidad)</h6>
+            <small class="section-subtitle">{{ result.deepGaps.length }} nodo(s) detectado(s)</small>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="deepGapsSearchTerm" name="deepGapsSearchTerm"
+                   placeholder="Buscar por producto o ruta...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Ruta</th>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th class="text-end">Nivel</th>
+                <th>Bodega</th>
+                <th class="text-end">Precio Propio</th>
+                <th class="text-end">Costo Real</th>
+                <th class="text-end">Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.deepGaps | globalFilter:deepGapsSearchTerm as filteredDeepGaps">
+                <tr *ngIf="filteredDeepGaps.length === 0">
+                  <td colspan="8" class="text-center text-muted py-3">
+                    {{ result.deepGaps.length === 0 ? 'Sin nodos con precio desactualizado.' : 'Sin resultados para tu búsqueda.' }}
+                  </td>
+                </tr>
+                <tr *ngFor="let g of filteredDeepGaps">
+                  <td class="text-muted deep-gap-path">{{ g.path }}</td>
+                  <td>{{ g.productCode }}</td>
+                  <td>{{ g.name }}</td>
+                  <td class="text-end">{{ g.level }}</td>
+                  <td>{{ g.warehouseName }}</td>
+                  <td class="text-end">$ {{ g.lastPurchasePrice | number:'1.0-2' }} / $ {{ g.ownLineCost | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ g.rolledCost | number:'1.0-2' }}</td>
+                  <td class="text-end" [class.text-danger]="g.gap > 0" [class.text-success]="g.gap < 0">{{ g.gap | number:'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COSTO INDUSTRIAL -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Costo Industrial — Líneas Excluidas (Subensambles)</h6>
+          <div class="result-metrics">
+            <div class="metric-chip">
+              <span class="metric-value">{{ result.industrialCost.level1Lines }}</span>
+              <span class="metric-label">Líneas Nivel 1</span>
+            </div>
+            <div class="metric-chip">
+              <span class="metric-value">$ {{ result.industrialCost.excludedCostForPlan | number:'1.0-0' }}</span>
+              <span class="metric-label">Costo Excluido Plan</span>
+            </div>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="excludedLinesSearchTerm" name="excludedLinesSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Bodega</th>
+                <th class="text-end">Cant. / Unidad</th>
+                <th class="text-end">Precio Unit.</th>
+                <th class="text-end">Costo / Unidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.industrialCost.excludedLines | globalFilter:excludedLinesSearchTerm as filteredExcludedLines">
+                <tr *ngIf="filteredExcludedLines.length === 0">
+                  <td colspan="6" class="text-center text-muted py-3">
+                    {{ result.industrialCost.excludedLines.length === 0 ? 'Sin líneas excluidas.' : 'Sin resultados para tu búsqueda.' }}
+                  </td>
+                </tr>
+                <tr *ngFor="let line of filteredExcludedLines">
+                  <td>{{ line.productCode }}</td>
+                  <td>{{ line.name }}</td>
+                  <td>{{ line.warehouseName }}</td>
+                  <td class="text-end">{{ line.quantityPerUnit }}</td>
+                  <td class="text-end">$ {{ line.unitPrice | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ line.costPerUnit | number:'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLUJO POR BODEGA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Flujo por Bodega</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="warehousesSearchTerm" name="warehousesSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Bodega</th>
+                <th class="text-end">Líneas BOM</th>
+                <th class="text-end">Tiempo Plan (h)</th>
+                <th class="text-end">Costo Material Plan</th>
+                <th class="text-end">Piezas Plan</th>
+                <th>Recibe De</th>
+                <th>Entrega A</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.byWarehouse | globalFilter:warehousesSearchTerm as filteredWarehouses">
+                <tr *ngIf="filteredWarehouses.length === 0">
+                  <td colspan="7" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let wh of filteredWarehouses">
+                  <td>
+                    <div>{{ wh.warehouseName }}</div>
+                    <small class="text-muted">{{ wh.warehouseCode }}</small>
+                  </td>
+                  <td class="text-end">{{ wh.bomLines }}</td>
+                  <td class="text-end">{{ wh.timeForPlan | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ wh.materialCostForPlan | number:'1.0-2' }}</td>
+                  <td class="text-end">{{ wh.piecesForPlan | number:'1.0-2' }}</td>
+                  <td>
+                    <span class="badge badge-neutral me-1" *ngFor="let w of wh.receivesFrom">{{ w }}</span>
+                    <span class="text-muted" *ngIf="wh.receivesFrom.length === 0">—</span>
+                  </td>
+                  <td>
+                    <span class="badge badge-neutral me-1" *ngFor="let w of wh.deliversTo">{{ w }}</span>
+                    <span class="text-muted" *ngIf="wh.deliversTo.length === 0">—</span>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

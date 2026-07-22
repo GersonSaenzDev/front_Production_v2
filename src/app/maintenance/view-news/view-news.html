@@ -1,1 +1,311 @@
-<app-shared-view-news [defaultArea]="'Mantenimiento'"></app-shared-view-news>
+<div class="container-fluid py-3">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Solicitudes de Mantenimiento</h5>
+      <small>Visualice, edite y asigne responsables a las órdenes de mantenimiento.</small>
+    </div>
+
+    <div class="card-body">
+      <!-- Filtros -->
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-md-2">
+          <label class="form-label mb-1">Estado</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filters.status">
+            <option value="">Todos</option>
+            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label mb-1">Tipo</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filters.maintenanceType">
+            <option value="">Todos</option>
+            <option *ngFor="let t of maintenanceTypes" [value]="t">{{ t }}</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Código máquina</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="filters.machineCode"
+            placeholder="M-0312" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Área</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="filters.area"
+            placeholder="PRODUCCIÓN / ENSAMBLE" />
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <button class="btn btn-sm btn-primary w-100" (click)="search()" [disabled]="isLoading">
+            Buscar
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()" [disabled]="isLoading">
+            Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>MTTO</th>
+              <th>Máquina</th>
+              <th>Tipo</th>
+              <th>Prioridad</th>
+              <th>Estado</th>
+              <th>Asignado a</th>
+              <th>Programada</th>
+              <th>Vo.Bo</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="9" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoading && orders.length === 0">
+              <td colspan="9" class="text-center text-muted py-3">Sin solicitudes.</td>
+            </tr>
+            <tr *ngFor="let o of orders">
+              <td><strong>#{{ o.consecutiveMtto }}</strong></td>
+              <td>
+                <div>{{ o.machineCode }}</div>
+                <small class="text-muted">{{ o.machineName }}</small>
+              </td>
+              <td>{{ o.maintenanceType }}</td>
+              <td><span [class]="priorityClass(o.priority)">{{ o.priority }}</span></td>
+              <td><span [class]="statusClass(o.status)">{{ o.status }}</span></td>
+              <td>{{ o.assignedTo || '—' }}</td>
+              <td>{{ o.scheduledDate || '—' }}</td>
+              <td>
+                <span class="badge" [class.bg-success]="o.supervisorApproval"
+                  [class.bg-light]="!o.supervisorApproval" [class.text-dark]="!o.supervisorApproval"
+                  title="Supervisor">S</span>
+                <span class="badge ms-1" [class.bg-success]="o.requesterApproval"
+                  [class.bg-light]="!o.requesterApproval" [class.text-dark]="!o.requesterApproval"
+                  title="Solicitante">R</span>
+              </td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-outline-info me-1" (click)="openDetail(o)" title="Ver">
+                  Ver
+                </button>
+                <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(o)" title="Editar / Asignar">
+                  Editar
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="remove(o)" title="Eliminar">
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL DETALLE ================= -->
+<div class="modal-backdrop-custom" *ngIf="showDetailModal && detailOrder" (click)="closeDetail()">
+  <div class="modal-dialog-custom" (click)="$event.stopPropagation()">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">MTTO #{{ detailOrder.consecutiveMtto }} — {{ detailOrder.machineCode }}</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeDetail()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-6"><strong>Máquina:</strong> {{ detailOrder.machineName || '—' }}</div>
+          <div class="col-md-6"><strong>Área:</strong> {{ detailOrder.area || '—' }}</div>
+          <div class="col-md-4"><strong>Tipo:</strong> {{ detailOrder.maintenanceType }}</div>
+          <div class="col-md-4"><strong>Servicio:</strong> {{ detailOrder.serviceType || '—' }}</div>
+          <div class="col-md-4"><strong>Prioridad:</strong>
+            <span [class]="priorityClass(detailOrder.priority)">{{ detailOrder.priority }}</span>
+          </div>
+          <div class="col-md-4"><strong>Estado:</strong>
+            <span [class]="statusClass(detailOrder.status)">{{ detailOrder.status }}</span>
+          </div>
+          <div class="col-md-4"><strong>Asignado a:</strong> {{ detailOrder.assignedTo || '—' }}</div>
+          <div class="col-md-4"><strong>Solicitado por:</strong> {{ detailOrder.requestedBy || '—' }}</div>
+          <div class="col-12"><strong>Descripción:</strong> {{ detailOrder.description }}</div>
+          <div class="col-12"><strong>Falla:</strong> {{ detailOrder.failureDescription || '—' }}</div>
+        </div>
+
+        <hr />
+        <h6>Acciones de contención</h6>
+        <ul class="list-group mb-3" *ngIf="detailOrder.interventions?.length; else noInterventions">
+          <li class="list-group-item" *ngFor="let it of detailOrder.interventions">
+            <div><strong>{{ it.workDone }}</strong></div>
+            <small class="text-muted">
+              Técnicos: {{ it.technicianCodes?.join(', ') || '—' }} |
+              {{ it.startAt || '—' }} → {{ it.endAt || '—' }}
+            </small>
+          </li>
+        </ul>
+        <ng-template #noInterventions>
+          <p class="text-muted">Sin acciones de contención registradas.</p>
+        </ng-template>
+
+        <!-- Agregar intervención -->
+        <div class="card bg-light">
+          <div class="card-body">
+            <h6 class="card-title">Agregar acción de contención</h6>
+            <div class="row g-2">
+              <div class="col-md-12">
+                <input type="text" class="form-control form-control-sm"
+                  [(ngModel)]="newIntervention.workDone" placeholder="Trabajo realizado" />
+              </div>
+              <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm"
+                  [(ngModel)]="newIntervention.technicianCodes" placeholder="Códigos técnicos (T-07, T-12)" />
+              </div>
+              <div class="col-md-4">
+                <input type="datetime-local" class="form-control form-control-sm"
+                  [(ngModel)]="newIntervention.startAt" />
+              </div>
+              <div class="col-md-4">
+                <input type="datetime-local" class="form-control form-control-sm"
+                  [(ngModel)]="newIntervention.endAt" />
+              </div>
+            </div>
+            <div class="text-end mt-2">
+              <button class="btn btn-sm btn-success" (click)="addIntervention()"
+                [disabled]="isAddingIntervention">
+                <span *ngIf="isAddingIntervention" class="spinner-border spinner-border-sm me-1"></span>
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <hr />
+        <h6>Vo.Bo</h6>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm" [class.btn-success]="detailOrder.supervisorApproval"
+            [class.btn-outline-success]="!detailOrder.supervisorApproval"
+            (click)="approve(detailOrder, 'SUPERVISOR')">
+            Supervisor {{ detailOrder.supervisorApproval ? '✓' : '' }}
+          </button>
+          <button class="btn btn-sm" [class.btn-success]="detailOrder.requesterApproval"
+            [class.btn-outline-success]="!detailOrder.requesterApproval"
+            (click)="approve(detailOrder, 'SOLICITANTE')">
+            Solicitante {{ detailOrder.requesterApproval ? '✓' : '' }}
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDetail()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL EDICIÓN / ASIGNACIÓN ================= -->
+<div class="modal-backdrop-custom" *ngIf="showEditModal && editOrder" (click)="closeEdit()">
+  <div class="modal-dialog-custom" (click)="$event.stopPropagation()">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Editar MTTO #{{ editOrder.consecutiveMtto }}</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeEdit()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Estado</label>
+            <select class="form-select" [(ngModel)]="editForm.status">
+              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Prioridad</label>
+            <select class="form-select" [(ngModel)]="editForm.priority">
+              <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" [(ngModel)]="editForm.maintenanceType">
+              <option *ngFor="let t of maintenanceTypes" [value]="t">{{ t }}</option>
+            </select>
+          </div>
+          <div class="col-md-6 position-relative">
+            <label class="form-label">Asignar a (nombre o documento)</label>
+            <input type="text" class="form-control" [(ngModel)]="editForm.assignedTo" autocomplete="off"
+              placeholder="Escriba nombre o número de documento"
+              (ngModelChange)="onEditAssignedChange($event)"
+              (focus)="onTechnicianFocus()" (blur)="onTechnicianBlur()" />
+            <div class="autocomplete-results"
+              *ngIf="predictiveTechnicianList.length > 0 && showTechnicianDropdown">
+              <div class="autocomplete-item" *ngFor="let tech of predictiveTechnicianList"
+                (mousedown)="selectEditTechnician(tech)">
+                <strong>{{ tech.fullName }}</strong> — {{ tech.specialty }}
+                <small class="text-muted d-block">Doc: {{ tech.document }}</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Área de la máquina (servicio agrupado) -->
+          <div class="col-md-6">
+            <label class="form-label">Área de la máquina</label>
+            <select class="form-select" [(ngModel)]="editForm.machineArea"
+              (ngModelChange)="onEditAreaChange($event)">
+              <option value="">Seleccione el área…</option>
+              <option *ngFor="let g of groupedAreas" [value]="g.area">{{ g.area }}</option>
+            </select>
+          </div>
+
+          <!-- Departamento (subárea) -->
+          <div class="col-md-6">
+            <label class="form-label">Departamento</label>
+            <select class="form-select" [(ngModel)]="editForm.machineDepartment"
+              [attr.disabled]="availableDepartments.length === 0 ? '' : null">
+              <option value="">{{ availableDepartments.length ? 'Seleccione…' : 'Elija un área primero' }}</option>
+              <option *ngFor="let d of availableDepartments" [value]="d.subArea">{{ d.subArea }}</option>
+            </select>
+          </div>
+
+          <!-- Máquina (buscador predictivo) -->
+          <div class="col-md-6 position-relative">
+            <label class="form-label">Código de máquina</label>
+            <input type="text" class="form-control" [(ngModel)]="editForm.machineCode" autocomplete="off"
+              placeholder="Escriba parte del código de la máquina"
+              (ngModelChange)="onEditMachineCodeChange($event)"
+              (focus)="onMachineFocus()" (blur)="onMachineBlur()" />
+            <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
+              <div class="autocomplete-item" *ngFor="let m of predictiveMachineList"
+                (mousedown)="selectEditMachine(m)">
+                <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Nombre de máquina</label>
+            <input type="text" class="form-control" [(ngModel)]="editForm.machineName"
+              placeholder="Se completa al seleccionar el código" readonly />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Fecha programada</label>
+            <input type="text" class="form-control" [(ngModel)]="editForm.scheduledDate"
+              placeholder="dd/MM/yyyy" />
+          </div>
+          <div class="col-12">
+            <label class="form-label">Observación <span class="text-danger">*</span></label>
+            <textarea class="form-control" rows="2" [(ngModel)]="editForm.observation"
+              placeholder="Razón del cambio (queda en el historial de auditoría)"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeEdit()" [disabled]="isSaving">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" (click)="saveEdit()" [disabled]="isSaving">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

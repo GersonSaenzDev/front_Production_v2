@@ -1,0 +1,276 @@
+<!-- app/engineering/structure-managements/reference-audit-detail/reference-audit-detail.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-microscope"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Detalle de Reconciliación</h3>
+        <p class="header-subtitle mb-0">Reconciliación matemática exacta del costo oficial, diagnóstico línea por línea de nivel 1 y precios desactualizados a cualquier profundidad.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCADOR Y PARÁMETROS -->
+  <div class="card search-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Referencia</label>
+          <div class="position-relative">
+            <input type="text" class="form-control" autocomplete="off"
+                   placeholder="Busca por código interno, referencia o producto..."
+                   [(ngModel)]="searchTerm" name="searchTerm"
+                   (ngModelChange)="onSearchChange($event)"
+                   (focus)="onFocus()" (blur)="onBlur()">
+            <span class="loading-indicator" *ngIf="isLoadingList">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+
+            <div class="autocomplete-results" *ngIf="predictiveResults.length > 0 && showDropdown">
+              <div class="autocomplete-item" *ngFor="let s of predictiveResults" (mousedown)="selectStructure(s)">
+                <strong>{{ s.internalCode }}</strong> — {{ s.productName }}
+                <small class="text-muted d-block">Cod. Ref: {{ s.codRef }} · {{ s.bomLines }} líneas BOM</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Cantidad Planeada</label>
+          <input type="number" min="1" class="form-control" [(ngModel)]="plannedQuantity" name="plannedQuantity">
+        </div>
+      </div>
+
+      <div class="selected-chip mt-3" *ngIf="selectedStructure">
+        <i class="ti ti-box-seam"></i>
+        <span>{{ selectedStructure.internalCode }} — {{ selectedStructure.productName }}</span>
+        <button type="button" class="btn-clear" (click)="clearSelection()" title="Limpiar selección">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+
+      <div class="text-end mt-3" *ngIf="selectedStructure">
+        <button type="button" class="btn btn-analyze" [disabled]="isAuditing" (click)="audit()">
+          <span *ngIf="!isAuditing" class="d-inline-flex align-items-center">
+            <i class="ti ti-microscope me-2"></i> Ejecutar Reconciliación
+          </span>
+          <span *ngIf="isAuditing" class="d-inline-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2"></span> Auditando...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO: SIN SELECCIÓN -->
+  <div class="empty-state mt-4" *ngIf="!selectedStructure">
+    <i class="ti ti-microscope"></i>
+    <p>Selecciona una referencia para reconciliar su costo.</p>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <!-- FICHA + TOTALES POR MÉTODO -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <span class="summary-label">Producto</span>
+            <span class="summary-value">{{ result.reference.productName }}</span>
+          </div>
+          <div class="col-md-3">
+            <span class="summary-label">Código Interno</span>
+            <span class="summary-value">{{ result.reference.internalCode }}</span>
+          </div>
+          <div class="col-md-3">
+            <span class="summary-label">Cantidad Planeada</span>
+            <span class="summary-value">{{ result.plannedQuantity }}</span>
+          </div>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.methodTotals.industrialLevel1PerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Costo Oficial (Nivel 1)</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.methodTotals.explodedRawMaterialPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Explosión Materia Prima</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.methodTotals.nonDecomposedProductCostPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Piezas Sin Explosión</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.methodTotals.totalLaborHoursPerUnit | number:'1.0-4' }}</span>
+            <span class="metric-label">Horas M.O. / Unidad</span>
+          </div>
+        </div>
+        <p class="cost-method-note mt-3 mb-0">{{ result.theoryUnderTest }}</p>
+      </div>
+    </div>
+
+    <!-- RECONCILIACIÓN EXACTA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Reconciliación Exacta</h6>
+          <span class="badge" [class.bg-success]="result.reconciliation.difference === 0" [class.bg-danger]="result.reconciliation.difference !== 0">
+            {{ result.reconciliation.difference === 0 ? 'Cuadra exacto' : 'Diferencia: $' + (result.reconciliation.difference | number:'1.0-2') }}
+          </span>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.reconciliation.explodedRawMaterialPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Explosión Materia Prima</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.reconciliation.hiddenRawMaterialContentPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Materia Prima Oculta</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.reconciliation.fullMaterialTotalPerUnit | number:'1.0-2' }}</span>
+            <span class="metric-label">Total Reconstruido</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.reconciliation.priceStalenessGap | number:'1.0-2' }}</span>
+            <span class="metric-label">Gap Desactualización</span>
+          </div>
+        </div>
+        <p class="cost-method-note mt-3 mb-3">{{ result.reconciliation.formula }}</p>
+
+        <div class="row g-3">
+          <div class="col-md-4 col-6">
+            <span class="summary-label">Líneas Excluidas</span>
+            <span class="summary-value">$ {{ result.reconciliation.explainedBy.excludedLinesContent | number:'1.0-2' }}</span>
+          </div>
+          <div class="col-md-4 col-6">
+            <span class="summary-label">Material Huérfano</span>
+            <span class="summary-value">$ {{ result.reconciliation.explainedBy.orphanMaterialContent | number:'1.0-2' }}</span>
+          </div>
+          <div class="col-md-4 col-6">
+            <span class="summary-label">Verificación Cruzada</span>
+            <span class="summary-value">
+              <span class="badge" [class.bg-success]="result.reconciliation.partitionCrossCheck.match" [class.bg-danger]="!result.reconciliation.partitionCrossCheck.match">
+                {{ result.reconciliation.partitionCrossCheck.match ? 'Coincide' : 'No coincide' }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALLAZGOS -->
+    <div class="card results-card border-0 mt-4" *ngIf="result.findings.length > 0">
+      <div class="card-body p-4">
+        <h6 class="section-title mb-3">Hallazgos</h6>
+        <ul class="findings-list mb-0">
+          <li *ngFor="let finding of result.findings">{{ finding }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- DETALLE DE NIVEL 1 -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h6 class="section-title mb-0">Detalle de Nivel 1</h6>
+            <small class="section-subtitle">{{ result.summary.includedLines }} incluida(s) / {{ result.summary.excludedLines }} excluida(s) de {{ result.summary.level1Lines }}</small>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="level1SearchTerm" name="level1SearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Bodega</th>
+                <th class="text-end">Precio Propio</th>
+                <th class="text-end">Costo Subárbol</th>
+                <th class="text-end">Diferencia</th>
+                <th>Diagnóstico</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.level1Detail | globalFilter:level1SearchTerm as filteredLevel1">
+                <tr *ngIf="filteredLevel1.length === 0">
+                  <td colspan="7" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let line of filteredLevel1" [class.table-warning]="line.priceMinusContent !== 0">
+                  <td>{{ line.productCode }}</td>
+                  <td>{{ line.name }}</td>
+                  <td>{{ line.warehouseName }}</td>
+                  <td class="text-end">$ {{ line.lineCost | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ line.subtreeMaterialContent | number:'1.0-2' }}</td>
+                  <td class="text-end" [class.text-danger]="line.priceMinusContent > 0" [class.text-success]="line.priceMinusContent < 0">{{ line.priceMinusContent | number:'1.0-2' }}</td>
+                  <td class="diagnosis-cell">{{ line.diagnosis }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEEP GAPS -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h6 class="section-title mb-0">Precios Desactualizados (cualquier profundidad)</h6>
+            <small class="section-subtitle">{{ result.deepGaps.length }} nodo(s) detectado(s)</small>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="deepGapsSearchTerm" name="deepGapsSearchTerm"
+                   placeholder="Buscar por producto o ruta...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Ruta</th>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th class="text-end">Nivel</th>
+                <th>Bodega</th>
+                <th class="text-end">Precio Propio</th>
+                <th class="text-end">Costo Real</th>
+                <th class="text-end">Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.deepGaps | globalFilter:deepGapsSearchTerm as filteredDeepGaps">
+                <tr *ngIf="filteredDeepGaps.length === 0">
+                  <td colspan="8" class="text-center text-muted py-3">
+                    {{ result.deepGaps.length === 0 ? 'Sin nodos con precio desactualizado.' : 'Sin resultados para tu búsqueda.' }}
+                  </td>
+                </tr>
+                <tr *ngFor="let g of filteredDeepGaps">
+                  <td class="text-muted deep-gap-path">{{ g.path }}</td>
+                  <td>{{ g.productCode }}</td>
+                  <td>{{ g.name }}</td>
+                  <td class="text-end">{{ g.level }}</td>
+                  <td>{{ g.warehouseName }}</td>
+                  <td class="text-end">$ {{ g.lastPurchasePrice | number:'1.0-2' }} / $ {{ g.ownLineCost | number:'1.0-2' }}</td>
+                  <td class="text-end">$ {{ g.rolledCost | number:'1.0-2' }}</td>
+                  <td class="text-end" [class.text-danger]="g.gap > 0" [class.text-success]="g.gap < 0">{{ g.gap | number:'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

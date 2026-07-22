@@ -49,6 +49,7 @@ export class MenuAccessService {
     'MANTENIMIENTO': ['MANTENIMIENTO'],
     'MECANIZADO': ['MECANIZADO', 'MECANICA'],
     'INGENIERÍA': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
+    'GESTIÓN DE ESTRUCTURAS': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'RECURSOS HUMANOS': ['TH', 'RECURSOS HUMANOS'],
     'CALIDAD': ['CALIDAD'],
     'SST': ['SST', 'SEGURIDAD INDUSTRIAL'],
@@ -75,7 +76,7 @@ export class MenuAccessService {
   private readonly DEPARTMENT_ACCESS: Record<string, { navTitles: string[]; modules: AppModule[] }> = {
     // PLANEACION: solo el grupo Planeación (collapse "Cargue" + item "Dashboard Planeación")
     // y el menú Estadístico (ver excepción en hasAccessToNavItem); el resto queda oculto.
-    'PLANEACION': { navTitles: ['CARGUE'], modules: ['production'] },
+    'PLANEACION': { navTitles: ['CARGUE', 'GESTIÓN DE ESTRUCTURAS', 'PLANIFICACIÓN Y CAPACIDAD', 'AUDITORÍA DE COSTOS'], modules: ['production', 'engineering'] },
     'TROQUELADORAS': { navTitles: ['CRUDO'], modules: ['production'] },
     'PARRILLAS': { navTitles: ['CRUDO'], modules: ['production'] },
     'CORTE': { navTitles: ['CRUDO'], modules: ['production'] },
@@ -104,9 +105,11 @@ export class MenuAccessService {
 
     const isStadistics = this.isStadisticsNavItem(item);
 
-    // ANALISTA DE PRESUPUESTO: ve el Dashboard, el menú Estadístico y el menú Planeación
+    // ANALISTA DE PRESUPUESTO: ve el Dashboard, el menú Estadístico, el menú Planeación
+    // y el menú Gestión de Estructuras
     if (this.isBudgetAnalyst(area, dept)) {
-      return isStadistics || this.isDashboardNavItem(item) || this.isPlanningNavItem(item);
+      return isStadistics || this.isDashboardNavItem(item) || this.isPlanningNavItem(item) ||
+        this.isStructureManagementNavItem(item);
     }
 
     if (this.isManagerWithFullAccess(area, dept)) {
@@ -185,6 +188,16 @@ export class MenuAccessService {
     return item.url === 'production/planningLoad' || item.url === 'production/planning/dashPlanning';
   }
 
+  // Identifica el grupo "Gestión de Estructuras" y sus 3 collapses (Gestión de Estructuras,
+  // Planificación y Capacidad, Auditoría de Costos) con todos sus items.
+  private isStructureManagementNavItem(item: any): boolean {
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group' || item.type === 'collapse') {
+      return title === 'GESTIÓN DE ESTRUCTURAS' || title === 'PLANIFICACIÓN Y CAPACIDAD' || title === 'AUDITORÍA DE COSTOS';
+    }
+    return (item.url || '').startsWith('engineering/structureManagements');
+  }
+
   // Identifica el grupo "Panel de Control" y su item "Dashboard" (/production).
   private isDashboardNavItem(item: any): boolean {
     const title = item.title?.toUpperCase().trim() || '';
@@ -226,9 +239,10 @@ export class MenuAccessService {
     }
 
     // INGENIERIA INDUSTRIAL ve sus dos collapses de Ingeniería + el collapse "Ensamble"
-    // de Producción (para "Visualizar Ensamble"); el resto de Producción queda oculto.
+    // de Producción (para "Visualizar Ensamble") + "Gestión de Estructuras"; el resto de
+    // Producción queda oculto.
     if (area === 'INGENIERIA INDUSTRIAL') {
-      return ['INGENIERÍA DE PRODUCTO', 'INGENIERÍA INDUSTRIAL', 'ENSAMBLE'].includes(title);
+      return ['INGENIERÍA DE PRODUCTO', 'INGENIERÍA INDUSTRIAL', 'ENSAMBLE', 'GESTIÓN DE ESTRUCTURAS', 'PLANIFICACIÓN Y CAPACIDAD', 'AUDITORÍA DE COSTOS'].includes(title);
     }
 
     return true;
@@ -242,9 +256,10 @@ export class MenuAccessService {
       return true;
     }
 
-    // ANALISTA DE PRESUPUESTO: solo el Dashboard (production); el Estadístico (/stadistics) va fuera de validModules
+    // ANALISTA DE PRESUPUESTO: Dashboard (production) y Gestión de Estructuras (engineering);
+    // el Estadístico (/stadistics) va fuera de validModules
     if (this.isBudgetAnalyst(area, dept)) {
-      return module === 'production';
+      return module === 'production' || module === 'engineering';
     }
 
     if (module === 'all') {

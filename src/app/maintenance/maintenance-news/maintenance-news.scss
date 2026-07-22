@@ -1,0 +1,32 @@
+// Resultados del buscador predictivo de máquinas
+.autocomplete-results {
+  position: absolute;
+  z-index: 1000;
+  width: calc(100% - 1.5rem);
+  max-height: 250px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.autocomplete-item {
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #1f2d3d;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: #e7f1ff;
+    color: #084298;
+    font-weight: 500;
+  }
+}

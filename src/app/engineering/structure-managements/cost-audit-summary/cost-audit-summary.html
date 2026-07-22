@@ -1,0 +1,178 @@
+<!-- app/engineering/structure-managements/cost-audit-summary/cost-audit-summary.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-shield-check"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Auditoría de Costos</h3>
+        <p class="header-subtitle mb-0">Compara el costo oficial (rollup recursivo) contra la explosión completa en todas las referencias cargadas y prioriza por desactualización de precios.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="card selection-card border-0 mt-4">
+    <div class="card-body p-4">
+      <h6 class="section-title mb-3">Filtros de la Auditoría</h6>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label">Prefijos a Excluir (separados por coma)</label>
+          <input type="text" class="form-control" [(ngModel)]="excludePrefixesInput" name="excludePrefixesInput"
+                 placeholder="Ej: 0000, 9999">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Diferencia Mínima ($)</label>
+          <input type="number" min="0" class="form-control" [(ngModel)]="minDifference" name="minDifference">
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="onlyMismatches" [(ngModel)]="onlyMismatches" name="onlyMismatches">
+            <label class="form-check-label" for="onlyMismatches">Solo desajustes</label>
+          </div>
+        </div>
+        <div class="col-md-2 text-end">
+          <button type="button" class="btn btn-analyze w-100" [disabled]="isAuditing" (click)="audit()">
+            <span *ngIf="!isAuditing" class="d-inline-flex align-items-center">
+              <i class="ti ti-shield-check me-2"></i> Auditar
+            </span>
+            <span *ngIf="isAuditing" class="d-inline-flex align-items-center">
+              <span class="spinner-border spinner-border-sm me-2"></span> Auditando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <!-- RESUMEN -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="section-title mb-0">Resumen de la Auditoría</h6>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearResult()">
+            <i class="ti ti-x me-1"></i> Limpiar
+          </button>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.referencesAudited }}</span>
+            <span class="metric-label">Referencias Auditadas</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.referencesWithStalePrices }}</span>
+            <span class="metric-label">Con Precios Desactualizados</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.referencesReturned }}</span>
+            <span class="metric-label">Retornadas</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.totalMaterialCost | number:'1.0-0' }}</span>
+            <span class="metric-label">Costo Material Total</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.totalExplodedMaterialCost | number:'1.0-0' }}</span>
+            <span class="metric-label">Costo Explosionado Total</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">$ {{ result.summary.totalPriceStalenessGap | number:'1.0-2' }}</span>
+            <span class="metric-label">Gap Total Desactualización</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERENCIAS -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Referencias (priorizadas por gap de desactualización)</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="referencesSearchTerm" name="referencesSearchTerm"
+                   placeholder="Buscar por código, referencia o producto...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 30px;"></th>
+                <th>Código Interno</th>
+                <th>Producto</th>
+                <th class="text-end">Líneas BOM</th>
+                <th class="text-end">Costo Material</th>
+                <th class="text-end">Costo Explosionado</th>
+                <th class="text-end">Diferencia Estructural</th>
+                <th class="text-end">Gap Desactualización</th>
+                <th class="text-end">% Desactualización</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.references | globalFilter:referencesSearchTerm as filteredReferences">
+                <tr *ngIf="filteredReferences.length === 0">
+                  <td colspan="9" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <ng-container *ngFor="let ref of filteredReferences">
+                  <tr class="material-row" (click)="toggleReference(ref.internalCode)">
+                    <td>
+                      <i class="ti" [class.ti-chevron-right]="!isReferenceExpanded(ref.internalCode)"
+                         [class.ti-chevron-down]="isReferenceExpanded(ref.internalCode)"></i>
+                    </td>
+                    <td><strong>{{ ref.internalCode }}</strong></td>
+                    <td class="text-truncate" style="max-width: 280px;">{{ ref.productName }}</td>
+                    <td class="text-end">{{ ref.bomLines }}</td>
+                    <td class="text-end">$ {{ ref.materialCostPerUnit | number:'1.0-2' }}</td>
+                    <td class="text-end">$ {{ ref.explodedMaterialCostPerUnit | number:'1.0-2' }}</td>
+                    <td class="text-end">
+                      <span class="badge" [class.bg-success]="ref.matches" [class.bg-danger]="!ref.matches">
+                        $ {{ ref.structuralDifference | number:'1.0-2' }}
+                      </span>
+                    </td>
+                    <td class="text-end">$ {{ ref.priceStalenessGap | number:'1.0-2' }}</td>
+                    <td class="text-end">{{ ref.percentStaleness }}%</td>
+                  </tr>
+                  <tr class="byreference-row" *ngIf="isReferenceExpanded(ref.internalCode)">
+                    <td [attr.colspan]="9">
+                      <div class="byreference-table">
+                        <table class="table table-sm mb-0">
+                          <thead>
+                            <tr>
+                              <th>Código</th>
+                              <th>Nombre</th>
+                              <th>Bodega</th>
+                              <th class="text-end">Precio Propio</th>
+                              <th class="text-end">Costo Real</th>
+                              <th class="text-end">Gap</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let c of ref.topContributors">
+                              <td>{{ c.productCode }}</td>
+                              <td>{{ c.name }}</td>
+                              <td>{{ c.warehouseName }}</td>
+                              <td class="text-end">$ {{ c.lineCost | number:'1.0-2' }}</td>
+                              <td class="text-end">$ {{ c.rolledCost | number:'1.0-2' }}</td>
+                              <td class="text-end" [class.text-danger]="c.gap > 0" [class.text-success]="c.gap < 0">{{ c.gap | number:'1.0-2' }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

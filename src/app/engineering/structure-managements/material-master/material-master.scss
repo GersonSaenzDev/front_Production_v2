@@ -1,0 +1,222 @@
+// VARIABLES CORPORATIVAS ABBA
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-dark: #1e1e1e;
+
+.structure-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER PRINCIPAL
+// =======================
+.structure-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .header-icon {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+    color: #fff;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.45rem;
+    letter-spacing: 0.3px;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+  }
+}
+
+// =======================
+//  TARJETAS
+// =======================
+.selection-card,
+.summary-card,
+.results-card {
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+.section-title {
+  color: $abba-blue-dark;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.2px;
+}
+
+.section-subtitle {
+  color: $abba-gray;
+  font-size: 0.8rem;
+}
+
+// =======================
+//  BUSCADOR
+// =======================
+.search-box {
+  position: relative;
+  min-width: 280px;
+
+  i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $abba-gray;
+  }
+
+  .form-control {
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    padding-left: 2.25rem;
+    font-size: 0.9rem;
+  }
+}
+
+// =======================
+//  TABLA DE SELECCIÓN
+// =======================
+.selection-table-wrapper {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.row-selected {
+  background: $abba-blue-light;
+}
+
+// =======================
+//  BOTÓN ANALIZAR
+// =======================
+.btn-analyze {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 20px rgba($abba-blue, 0.25);
+  transition: all 0.3s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba($abba-blue, 0.35);
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+// =======================
+//  ALERTA NO ENCONTRADOS
+// =======================
+.alert-not-found {
+  border-radius: 12px;
+  background: #fff7ed;
+  border-left: 4px solid #f59e0b;
+  color: #92400e;
+  padding: 0.9rem 1.25rem;
+}
+
+// =======================
+//  RESUMEN
+// =======================
+.result-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.metric-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 110px;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  .metric-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: $abba-blue-dark;
+    line-height: 1.1;
+  }
+
+  .metric-label {
+    font-size: 0.72rem;
+    color: $abba-gray;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+    text-align: center;
+  }
+}
+
+// =======================
+//  BADGES
+// =======================
+.badge-neutral {
+  display: inline-flex;
+  align-items: center;
+  background: #eef2f6 !important;
+  color: #334155 !important;
+  font-weight: 600;
+}
+
+// =======================
+//  MATERIALES CONSOLIDADOS
+// =======================
+.material-row {
+  cursor: pointer;
+
+  &:hover {
+    background: $abba-blue-light;
+  }
+}
+
+.byreference-row td {
+  padding: 0;
+  border-top: none;
+}
+
+.byreference-table {
+  background: #f8fafc;
+  padding: 0.5rem 1.5rem;
+
+  table {
+    font-size: 0.85rem;
+  }
+}

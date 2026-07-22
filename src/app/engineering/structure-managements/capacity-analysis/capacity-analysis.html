@@ -1,0 +1,274 @@
+<!-- app/engineering/structure-managements/capacity-analysis/capacity-analysis.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-users-group"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Análisis de Capacidad de Planta</h3>
+        <p class="header-subtitle mb-0">Compara las horas-hombre requeridas contra el personal disponible por bodega.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECCIÓN DE REFERENCIAS -->
+  <div class="card selection-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h6 class="section-title mb-0">Referencias a Analizar</h6>
+          <small class="section-subtitle">{{ selectedCount }} seleccionada(s) de {{ rows.length }}</small>
+        </div>
+        <div class="search-box">
+          <i class="ti ti-search"></i>
+          <input type="text" class="form-control" [(ngModel)]="searchTerm" name="searchTerm"
+                 placeholder="Buscar por código, referencia o producto...">
+        </div>
+      </div>
+
+      <div class="table-responsive selection-table-wrapper">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"></th>
+              <th>Código Interno</th>
+              <th>Referencia</th>
+              <th>Producto</th>
+              <th class="text-end">Líneas BOM</th>
+              <th style="width: 140px;">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingList">
+              <td colspan="6" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoadingList && filteredRows.length === 0">
+              <td colspan="6" class="text-center text-muted py-3">Sin referencias cargadas.</td>
+            </tr>
+            <tr *ngFor="let row of filteredRows" [class.row-selected]="row.selected">
+              <td>
+                <input type="checkbox" class="form-check-input" [checked]="row.selected"
+                       (change)="toggleRow(row)">
+              </td>
+              <td><strong>{{ row.structure.internalCode }}</strong></td>
+              <td>{{ row.structure.reference }}</td>
+              <td class="text-truncate" style="max-width: 320px;">{{ row.structure.productName }}</td>
+              <td class="text-end">{{ row.structure.bomLines }}</td>
+              <td>
+                <input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="row.quantity"
+                       [name]="'quantity-' + row.structure.internalCode" [disabled]="!row.selected">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIGURACIÓN DE JORNADAS Y PERSONAL -->
+  <div class="card config-card border-0 mt-4">
+    <div class="card-body p-4">
+      <app-work-config-editor #configEditor></app-work-config-editor>
+
+      <div class="text-end mt-3 pt-3 border-top">
+        <button type="button" class="btn btn-analyze" [disabled]="selectedCount === 0 || isAnalyzing" (click)="analyze()">
+          <span *ngIf="!isAnalyzing" class="d-inline-flex align-items-center">
+            <i class="ti ti-users-group me-2"></i> Analizar Capacidad ({{ selectedCount }})
+          </span>
+          <span *ngIf="isAnalyzing" class="d-inline-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2"></span> Analizando...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <!-- RESUMEN -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="section-title mb-0">Resumen de Capacidad</h6>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearResult()">
+            <i class="ti ti-x me-1"></i> Limpiar
+          </button>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.referencesAnalyzed }}</span>
+            <span class="metric-label">Referencias</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.totalManHours | number:'1.0-2' }}</span>
+            <span class="metric-label">Horas-Hombre</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.estimatedProductionDays }}</span>
+            <span class="metric-label">Días Estimados</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.estimatedProductionWeeks }}</span>
+            <span class="metric-label">Semanas Estimadas</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.warehousesComputed }}</span>
+            <span class="metric-label">Bodegas Calculadas</span>
+          </div>
+          <div class="metric-chip" *ngIf="result.summary.warehousesNotComputed > 0">
+            <span class="metric-value">{{ result.summary.warehousesNotComputed }}</span>
+            <span class="metric-label">Sin Personal</span>
+          </div>
+        </div>
+
+        <div class="critical-warehouse mt-3">
+          <i class="ti ti-alert-octagon me-2"></i>
+          Bodega crítica: <strong>{{ result.summary.criticalWarehouse.warehouseName }}</strong>
+          ({{ result.summary.criticalWarehouse.departament }})
+        </div>
+        <p class="note-text mt-2 mb-0">{{ result.summary.note }}</p>
+      </div>
+    </div>
+
+    <!-- REFERENCIAS -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Referencias</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="referencesResultSearchTerm" name="referencesResultSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código Interno</th>
+                <th>Producto</th>
+                <th class="text-end">Cantidad</th>
+                <th>Tiempo Total</th>
+                <th class="text-end">Piezas</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.references | globalFilter:referencesResultSearchTerm as filteredReferences">
+                <tr *ngIf="filteredReferences.length === 0">
+                  <td colspan="5" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let ref of filteredReferences">
+                  <td><strong>{{ ref.internalCode }}</strong></td>
+                  <td>{{ ref.productName }}</td>
+                  <td class="text-end">{{ ref.quantity }}</td>
+                  <td>{{ ref.totalTimeFormatted.readable }}</td>
+                  <td class="text-end">{{ ref.totalPieces | number:'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUELLOS DE BOTELLA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Cuellos de Botella</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="bottlenecksSearchTerm" name="bottlenecksSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Bodega</th>
+                <th>Departamento</th>
+                <th class="text-end">Personal Disp.</th>
+                <th class="text-end">Cap. Diaria (h)</th>
+                <th class="text-end">Horas-Hombre</th>
+                <th class="text-end">Días Req.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.bottlenecks | globalFilter:bottlenecksSearchTerm as filteredBottlenecks">
+                <tr *ngIf="filteredBottlenecks.length === 0">
+                  <td colspan="7" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let b of filteredBottlenecks">
+                  <td><span class="rank-chip">{{ b.rank }}</span></td>
+                  <td>
+                    <div>{{ b.warehouseName }}</div>
+                    <small class="text-muted">{{ b.warehouseCode }}</small>
+                  </td>
+                  <td>{{ b.departament }}</td>
+                  <td class="text-end">{{ b.availablePeople }}</td>
+                  <td class="text-end">{{ b.dailyCapacityHours }}</td>
+                  <td class="text-end">{{ b.totalManHours | number:'1.0-2' }}</td>
+                  <td class="text-end">{{ b.daysRequired }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARGA Y PERSONAL POR BODEGA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Carga y Personal por Bodega</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="warehousesSearchTerm" name="warehousesSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Bodega</th>
+                <th class="text-end">Horas-Hombre</th>
+                <th class="text-end">Personal Disp.</th>
+                <th>Origen</th>
+                <th class="text-end">Cap. Diaria (h)</th>
+                <th class="text-end">Días Req.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.byWarehouse | globalFilter:warehousesSearchTerm as filteredWarehouses">
+                <tr *ngIf="filteredWarehouses.length === 0">
+                  <td colspan="6" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let wh of filteredWarehouses" [class.table-danger]="wh.isBottleneck">
+                  <td>
+                    <div>{{ wh.warehouseName }}</div>
+                    <small class="text-muted">{{ wh.warehouseCode }} · {{ wh.staff.departament }}</small>
+                  </td>
+                  <td class="text-end">{{ wh.totalManHours | number:'1.0-2' }}</td>
+                  <td class="text-end">{{ wh.staff.availablePeople }} / {{ wh.staff.totalPeople }}</td>
+                  <td><span class="badge badge-neutral">{{ wh.staff.matchedBy }}</span></td>
+                  <td class="text-end">{{ wh.dailyCapacityHours }}</td>
+                  <td class="text-end">{{ wh.daysRequired }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

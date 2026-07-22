@@ -35,6 +35,114 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    id: 'gestion-estructuras-group',
+    title: 'Gestión de Estructuras',
+    type: 'group',
+    icon: 'ti ti-tree',
+    children: [
+      {
+        id: 'gestion-estructuras-collapse',
+        title: 'Gestión de Estructuras',
+        type: 'collapse',
+        icon: 'ti ti-tree',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'gestion-estructuras-cargue',
+            title: 'Cargue de Estructuras',
+            type: 'item',
+            url: 'engineering/structureManagements/load',
+            breadcrumbs: true
+          },
+          {
+            id: 'gestion-estructuras-ver-referencia',
+            title: 'Ver por Referencia',
+            type: 'item',
+            url: 'engineering/structureManagements/viewByReference',
+            breadcrumbs: true
+          },
+          {
+            id: 'gestion-estructuras-maestro-materiales',
+            title: 'Maestro de Materiales',
+            type: 'item',
+            url: 'engineering/structureManagements/materialMaster',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'planificacion-capacidad-collapse',
+        title: 'Planificación y Capacidad',
+        type: 'collapse',
+        icon: 'ti ti-chart-arrows',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'planificacion-capacidad-requerimientos',
+            title: 'Cálculo de Requerimientos',
+            type: 'item',
+            url: 'engineering/structureManagements/requirementsCalculation',
+            breadcrumbs: true
+          },
+          {
+            id: 'planificacion-capacidad-analisis-referencia',
+            title: 'Análisis de Referencia',
+            type: 'item',
+            url: 'engineering/structureManagements/referenceAnalysis',
+            breadcrumbs: true
+          },
+          {
+            id: 'planificacion-capacidad-capacidad-planta',
+            title: 'Análisis de Capacidad de Planta',
+            type: 'item',
+            url: 'engineering/structureManagements/capacityAnalysis',
+            breadcrumbs: true
+          },
+          {
+            id: 'planificacion-capacidad-optimizacion',
+            title: 'Optimización de Producción',
+            type: 'item',
+            url: 'engineering/structureManagements/productionOptimization',
+            breadcrumbs: true
+          }
+        ]
+      },
+      {
+        id: 'auditoria-costos-collapse',
+        title: 'Auditoría de Costos',
+        type: 'collapse',
+        icon: 'ti ti-shield-check',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'auditoria-costos-resumen',
+            title: 'Resumen de Auditoría',
+            type: 'item',
+            url: 'engineering/structureManagements/costAuditSummary',
+            breadcrumbs: true
+          },
+          {
+            id: 'auditoria-costos-por-referencia',
+            title: 'Auditoría por Referencia',
+            type: 'item',
+            url: 'engineering/structureManagements/referenceAudit',
+            breadcrumbs: true
+          },
+          {
+            id: 'auditoria-costos-detalle',
+            title: 'Detalle de Reconciliación',
+            type: 'item',
+            url: 'engineering/structureManagements/referenceAuditDetail',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'planeacion-group', // Cambiado para ser único
     title: 'Planeación',
     type: 'group',

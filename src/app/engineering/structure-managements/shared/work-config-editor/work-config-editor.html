@@ -1,0 +1,121 @@
+<!-- app/engineering/structure-managements/shared/work-config-editor/work-config-editor.html -->
+<div class="work-config-editor">
+
+  <!-- JORNADAS DE TRABAJO -->
+  <div class="config-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="section-title mb-0">Jornadas de Trabajo</h6>
+      <button type="button" class="btn btn-sm btn-outline-primary" (click)="addSchedule()">
+        <i class="ti ti-plus me-1"></i> Agregar Jornada
+      </button>
+    </div>
+
+    <div class="schedule-card" *ngFor="let schedule of schedules; let i = index">
+      <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+        <div class="flex-grow-1 row g-2">
+          <div class="col-md-5">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="schedule.name"
+                   [name]="'scheduleName-' + i" placeholder="Ej: Ensamble">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Días / Semana</label>
+            <input type="number" min="1" max="7" class="form-control form-control-sm"
+                   [(ngModel)]="schedule.daysPerWeek" [name]="'daysPerWeek-' + i">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Descanso (min)</label>
+            <input type="number" min="0" class="form-control form-control-sm"
+                   [(ngModel)]="schedule.breakMinutes" [name]="'breakMinutes-' + i" placeholder="Opcional">
+          </div>
+        </div>
+        <button type="button" class="btn-remove-schedule" (click)="removeSchedule(i)" title="Eliminar jornada">
+          <i class="ti ti-trash"></i>
+        </button>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-md-12">
+          <div class="form-check form-check-inline">
+            <input type="checkbox" class="form-check-input" [id]="'isDefault-' + i"
+                   [(ngModel)]="schedule.isDefaultSchedule" [name]="'isDefault-' + i">
+            <label class="form-check-label" [for]="'isDefault-' + i">Aplica por defecto (resto de bodegas)</label>
+          </div>
+        </div>
+        <div class="col-md-12" *ngIf="!schedule.isDefaultSchedule">
+          <label class="form-label">Bodegas (códigos separados por coma)</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="schedule.warehousesText"
+                 [name]="'warehouses-' + i" placeholder="Ej: ED, EA, SE">
+        </div>
+      </div>
+
+      <div class="shifts-block">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <small class="text-muted fw-semibold">Turnos</small>
+          <button type="button" class="btn btn-sm btn-link p-0" (click)="addShift(schedule)">
+            <i class="ti ti-plus me-1"></i> Agregar turno
+          </button>
+        </div>
+        <div class="row g-2 align-items-end mb-1" *ngFor="let shift of schedule.shifts; let j = index">
+          <div class="col-md-4">
+            <input type="time" class="form-control form-control-sm" [(ngModel)]="shift.start"
+                   [name]="'shiftStart-' + i + '-' + j">
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control form-control-sm" [(ngModel)]="shift.end"
+                   [name]="'shiftEnd-' + i + '-' + j">
+          </div>
+          <div class="col-md-4">
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeShift(schedule, j)">
+              <i class="ti ti-x"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÁREA DE PERSONAL -->
+  <div class="config-section">
+    <h6 class="section-title mb-2">Área de Personal</h6>
+    <input type="text" class="form-control form-control-sm w-auto" [(ngModel)]="staffArea" name="staffArea">
+  </div>
+
+  <!-- MAPEO BODEGA → DEPARTAMENTO -->
+  <div class="config-section">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="section-title mb-0">Mapeo Bodega → Departamento</h6>
+      <button type="button" class="btn btn-sm btn-outline-primary" (click)="addStaffRow()">
+        <i class="ti ti-plus me-1"></i> Agregar Fila
+      </button>
+    </div>
+    <div class="table-responsive staff-map-table-wrapper">
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 140px;">Código Bodega</th>
+            <th>Departamento(s)</th>
+            <th style="width: 50px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of staffRows; let i = index">
+            <td>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="row.warehouseCode"
+                     [name]="'staffCode-' + i">
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="row.departments"
+                     [name]="'staffDept-' + i" placeholder="Separar varios con coma">
+            </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeStaffRow(i)">
+                <i class="ti ti-x"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,340 @@
+<!-- app/engineering/structure-managements/production-optimization/production-optimization.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-chart-arrows"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Optimización de Producción</h3>
+        <p class="header-subtitle mb-0">Evalúa si el plan solicitado es viable y calcula la mezcla de producción que maximiza las unidades según la capacidad de planta.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECCIÓN DE REFERENCIAS -->
+  <div class="card selection-card border-0 mt-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+          <h6 class="section-title mb-0">Referencias del Plan</h6>
+          <small class="section-subtitle">{{ selectedCount }} seleccionada(s) de {{ rows.length }}</small>
+        </div>
+        <div class="search-box">
+          <i class="ti ti-search"></i>
+          <input type="text" class="form-control" [(ngModel)]="searchTerm" name="searchTerm"
+                 placeholder="Buscar por código, referencia o producto...">
+        </div>
+      </div>
+
+      <div class="table-responsive selection-table-wrapper">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"></th>
+              <th>Código Interno</th>
+              <th>Referencia</th>
+              <th>Producto</th>
+              <th class="text-end">Líneas BOM</th>
+              <th style="width: 140px;">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingList">
+              <td colspan="6" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoadingList && filteredRows.length === 0">
+              <td colspan="6" class="text-center text-muted py-3">Sin referencias cargadas.</td>
+            </tr>
+            <tr *ngFor="let row of filteredRows" [class.row-selected]="row.selected">
+              <td>
+                <input type="checkbox" class="form-check-input" [checked]="row.selected"
+                       (change)="toggleRow(row)">
+              </td>
+              <td><strong>{{ row.structure.internalCode }}</strong></td>
+              <td>{{ row.structure.reference }}</td>
+              <td class="text-truncate" style="max-width: 320px;">{{ row.structure.productName }}</td>
+              <td class="text-end">{{ row.structure.bomLines }}</td>
+              <td>
+                <input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="row.quantity"
+                       [name]="'quantity-' + row.structure.internalCode" [disabled]="!row.selected">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIGURACIÓN DE JORNADAS Y PERSONAL -->
+  <div class="card config-card border-0 mt-4">
+    <div class="card-body p-4">
+      <app-work-config-editor #configEditor></app-work-config-editor>
+
+      <div class="text-end mt-3 pt-3 border-top">
+        <button type="button" class="btn btn-analyze" [disabled]="selectedCount === 0 || isOptimizing" (click)="optimize()">
+          <span *ngIf="!isOptimizing" class="d-inline-flex align-items-center">
+            <i class="ti ti-chart-arrows me-2"></i> Optimizar Producción ({{ selectedCount }})
+          </span>
+          <span *ngIf="isOptimizing" class="d-inline-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2"></span> Calculando...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <ng-container *ngIf="result">
+
+    <!-- RESUMEN -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="section-title mb-0">Resumen</h6>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearResult()">
+            <i class="ti ti-x me-1"></i> Limpiar
+          </button>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.referencesAnalyzed }}</span>
+            <span class="metric-label">Referencias</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.horizonDays }}</span>
+            <span class="metric-label">Horizonte (días)</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.constrainedSections }}</span>
+            <span class="metric-label">Secciones Limitadas</span>
+          </div>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.summary.excludedSections }}</span>
+            <span class="metric-label">Secciones Excluidas</span>
+          </div>
+          <div class="metric-chip">
+            <span class="badge" [class.bg-success]="result.summary.requestedPlanFeasible"
+                  [class.bg-danger]="!result.summary.requestedPlanFeasible">
+              {{ result.summary.requestedPlanFeasible ? 'Plan Viable' : 'Plan No Viable' }}
+            </span>
+          </div>
+        </div>
+        <p class="note-text mt-3 mb-0">{{ result.summary.note }}</p>
+      </div>
+    </div>
+
+    <!-- PLAN SOLICITADO -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Plan Solicitado — Utilización por Sección</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="bySectionSearchTerm" name="bySectionSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Bodega</th>
+                <th class="text-end">Carga (h)</th>
+                <th class="text-end">Capacidad (h)</th>
+                <th class="text-end">% Utilización</th>
+                <th>Riesgo de Cola</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.requestedPlan.bySection | globalFilter:bySectionSearchTerm as filteredBySection">
+                <tr *ngIf="filteredBySection.length === 0">
+                  <td colspan="5" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let s of filteredBySection">
+                  <td>
+                    <div>{{ s.warehouseName }}</div>
+                    <small class="text-muted">{{ s.warehouseCode }}</small>
+                  </td>
+                  <td class="text-end">{{ s.loadHours | number:'1.0-2' }}</td>
+                  <td class="text-end">{{ s.capacityHours | number:'1.0-2' }}</td>
+                  <td class="text-end">{{ s.utilizationPercent }}%</td>
+                  <td><span [class]="queueRiskClass(s.queueRisk)">{{ s.queueRisk }}</span></td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MÁXIMO POR REFERENCIA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Máximo Producible por Referencia (si se fabricara sola)</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="maxByReferenceSearchTerm" name="maxByReferenceSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código Interno</th>
+                <th>Producto</th>
+                <th class="text-end">Máx. Unidades</th>
+                <th>Sección Limitante</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.maxByReference | globalFilter:maxByReferenceSearchTerm as filteredMaxByReference">
+                <tr *ngIf="filteredMaxByReference.length === 0">
+                  <td colspan="4" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let m of filteredMaxByReference">
+                  <td><strong>{{ m.internalCode }}</strong></td>
+                  <td>{{ m.productName }}</td>
+                  <td class="text-end">{{ m.maxUnitsInteger }}</td>
+                  <td>{{ m.limitingSection.warehouseName }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEZCLA PROPORCIONAL -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Mezcla Proporcional (escala el plan solicitado)</h6>
+          <div class="result-metrics">
+            <div class="metric-chip">
+              <span class="metric-value">{{ result.proportionalMix.scaleFactor }}</span>
+              <span class="metric-label">Factor de Escala</span>
+            </div>
+            <div class="metric-chip">
+              <span class="metric-value">{{ result.proportionalMix.totalUnits | number:'1.0-2' }}</span>
+              <span class="metric-label">Unidades Totales</span>
+            </div>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="proportionalMixSearchTerm" name="proportionalMixSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <p class="note-text mb-2">Sección limitante: {{ result.proportionalMix.limitingSection.warehouseName }}</p>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código Interno</th>
+                <th class="text-end">Cantidad Solicitada</th>
+                <th class="text-end">Máx. Producible</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.proportionalMix.production | globalFilter:proportionalMixSearchTerm as filteredProportionalMix">
+                <tr *ngIf="filteredProportionalMix.length === 0">
+                  <td colspan="3" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let p of filteredProportionalMix">
+                  <td><strong>{{ p.internalCode }}</strong></td>
+                  <td class="text-end">{{ p.requestedQuantity }}</td>
+                  <td class="text-end">{{ p.maxUnitsInteger }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEZCLA ÓPTIMA -->
+    <div class="card results-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Mezcla Óptima (programación lineal)</h6>
+          <div class="metric-chip">
+            <span class="metric-value">{{ result.optimalMix.totalZ | number:'1.0-2' }}</span>
+            <span class="metric-label">Z (Unidades Totales)</span>
+          </div>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="optimalMixSearchTerm" name="optimalMixSearchTerm"
+                   placeholder="Buscar producción...">
+          </div>
+        </div>
+        <p class="note-text mb-2">{{ result.optimalMix.objective }}</p>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Código Interno</th>
+                <th>Producto</th>
+                <th class="text-end">Unidades</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.optimalMix.production | globalFilter:optimalMixSearchTerm as filteredOptimalMix">
+                <tr *ngIf="filteredOptimalMix.length === 0">
+                  <td colspan="3" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let p of filteredOptimalMix">
+                  <td><strong>{{ p.internalCode }}</strong></td>
+                  <td>{{ p.productName }}</td>
+                  <td class="text-end">{{ p.unitsInteger }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+          <h6 class="section-title mb-0">Secciones Restrictivas (precio sombra)</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="bindingSectionsSearchTerm" name="bindingSectionsSearchTerm"
+                   placeholder="Buscar secciones...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Bodega</th>
+                <th>Departamento</th>
+                <th class="text-end">Capacidad (h)</th>
+                <th class="text-end">Precio Sombra / h</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="result.optimalMix.bindingSections | globalFilter:bindingSectionsSearchTerm as filteredBindingSections">
+                <tr *ngIf="filteredBindingSections.length === 0">
+                  <td colspan="4" class="text-center text-muted py-3">
+                    {{ result.optimalMix.bindingSections.length === 0 ? 'Sin secciones restrictivas.' : 'Sin resultados para tu búsqueda.' }}
+                  </td>
+                </tr>
+                <tr *ngFor="let b of filteredBindingSections">
+                  <td>{{ b.warehouseName }}</td>
+                  <td>{{ b.departament }}</td>
+                  <td class="text-end">{{ b.capacityHours | number:'1.0-2' }}</td>
+                  <td class="text-end">{{ b.shadowPricePerHour }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

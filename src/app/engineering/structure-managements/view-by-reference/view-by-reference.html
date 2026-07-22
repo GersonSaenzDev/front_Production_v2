@@ -1,0 +1,151 @@
+<!-- app/engineering/structure-managements/view-by-reference/view-by-reference.html -->
+<div class="container-fluid py-4 structure-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="structure-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-list-search"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Ver Estructura por Referencia</h3>
+        <p class="header-subtitle mb-0">Selecciona una referencia cargada y consulta el detalle de su estructura (BOM).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSCADOR -->
+  <div class="card search-card border-0 mt-4">
+    <div class="card-body p-4">
+      <label class="form-label">Referencia</label>
+      <div class="position-relative">
+        <input type="text" class="form-control" autocomplete="off"
+               placeholder="Busca por código interno, referencia o producto..."
+               [(ngModel)]="searchTerm" name="searchTerm"
+               (ngModelChange)="onSearchChange($event)"
+               (focus)="onFocus()" (blur)="onBlur()">
+        <span class="loading-indicator" *ngIf="isLoadingList">
+          <span class="spinner-border spinner-border-sm"></span>
+        </span>
+
+        <div class="autocomplete-results" *ngIf="predictiveResults.length > 0 && showDropdown">
+          <div class="autocomplete-item" *ngFor="let s of predictiveResults" (mousedown)="selectStructure(s)">
+            <strong>{{ s.internalCode }}</strong> — {{ s.productName }}
+            <small class="text-muted d-block">Cod. Ref: {{ s.codRef }} · {{ s.bomLines }} líneas BOM</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="selected-chip mt-3" *ngIf="selectedStructure">
+        <i class="ti ti-box-seam"></i>
+        <span>{{ selectedStructure.internalCode }} — {{ selectedStructure.productName }}</span>
+        <button type="button" class="btn-clear" (click)="clearSelection()" title="Limpiar selección">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO: SIN SELECCIÓN -->
+  <div class="empty-state mt-4" *ngIf="!selectedStructure">
+    <i class="ti ti-tree"></i>
+    <p>Selecciona una referencia para visualizar su estructura.</p>
+  </div>
+
+  <!-- CARGANDO DETALLE -->
+  <div class="empty-state mt-4" *ngIf="selectedStructure && isLoadingDetail">
+    <span class="spinner-border"></span>
+    <p>Cargando estructura…</p>
+  </div>
+
+  <!-- DETALLE -->
+  <ng-container *ngIf="selectedStructure && !isLoadingDetail && detail">
+
+    <!-- FICHA DE LA REFERENCIA -->
+    <div class="card summary-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <span class="summary-label">Producto</span>
+            <span class="summary-value">{{ detail.productName }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Código Interno</span>
+            <span class="summary-value">{{ detail.internalCode }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Cod. Referencia</span>
+            <span class="summary-value">{{ detail.codRef }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">EAN</span>
+            <span class="summary-value">{{ detail.ean }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Cant. Base</span>
+            <span class="summary-value">{{ detail.baseQuantity }}</span>
+          </div>
+          <div class="col-md-2">
+            <span class="summary-label">Líneas BOM</span>
+            <span class="summary-value">{{ detail.bom.length }}</span>
+          </div>
+          <div class="col-md-3">
+            <span class="summary-label">Costo Total BOM</span>
+            <span class="summary-value">$ {{ totalBomCost | number:'1.0-2' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA BOM -->
+    <div class="card bom-card border-0 mt-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Lista de Materiales (BOM)</h6>
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="bomSearchTerm" name="bomSearchTerm"
+                   placeholder="Buscar en la tabla...">
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle bom-table">
+            <thead class="table-light">
+              <tr>
+                <th>Nivel</th>
+                <th>Componente</th>
+                <th>Código</th>
+                <th>Tipo</th>
+                <th>Bodega</th>
+                <th class="text-end">Cant. Requerida</th>
+                <th>Unidad</th>
+                <th class="text-end">T. Estándar</th>
+                <th class="text-end">Último Precio</th>
+                <th class="text-end">Costo Línea</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngIf="detail.bom | globalFilter:bomSearchTerm as filteredBom">
+                <tr *ngIf="filteredBom.length === 0">
+                  <td colspan="10" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
+                </tr>
+                <tr *ngFor="let line of filteredBom">
+                  <td><span class="level-chip">{{ line.level }}</span></td>
+                  <td [style.paddingLeft.px]="indentPx(line)">{{ line.name }}</td>
+                  <td>{{ line.productCode }}</td>
+                  <td><span [class]="itemTypeBadgeClass(line.itemType)">{{ itemTypeLabel(line.itemType) }}</span></td>
+                  <td>{{ line.warehouseName }}</td>
+                  <td class="text-end">{{ line.requiredQuantity }}</td>
+                  <td>{{ line.unit }}</td>
+                  <td class="text-end">{{ line.standardTime }}</td>
+                  <td class="text-end">{{ line.lastPurchasePrice | currency:'COP':'symbol-narrow':'1.0-2' }}</td>
+                  <td class="text-end">{{ lineCost(line) | currency:'COP':'symbol-narrow':'1.0-2' }}</td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

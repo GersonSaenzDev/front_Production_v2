@@ -1,0 +1,72 @@
+// VARIABLES CORPORATIVAS ABBA
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-dark: #1e1e1e;
+
+.work-config-editor {
+  .config-section {
+    margin-bottom: 1.75rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .section-title {
+    color: $abba-blue-dark;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.2px;
+  }
+
+  .form-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: $abba-gray;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 0.25rem;
+  }
+
+  .schedule-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.85rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .btn-remove-schedule {
+    border: none;
+    background: #fef2f2;
+    color: #dc2626;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: #dc2626;
+      color: #fff;
+    }
+  }
+
+  .shifts-block {
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 0.6rem;
+  }
+
+  .staff-map-table-wrapper {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+}
