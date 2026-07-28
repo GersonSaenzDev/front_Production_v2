@@ -1,0 +1,387 @@
+<!-- src/app/client-home/freight-management/freight-management.html -->
+<div class="container-fluid py-4 freight-view-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="freight-view-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-truck-delivery"></i>
+      </div>
+      <div class="header-text">
+        <h3 class="header-title mb-1">Gestión de Fletes</h3>
+        <p class="header-subtitle mb-0">Casa Cliente INDUSEL — Registro y prorrateo de despachos multicliente</p>
+      </div>
+
+      <div class="header-actions">
+        <div class="filter-group">
+          <label for="freightDateIni" class="filter-label">Desde</label>
+          <input
+            type="date"
+            id="freightDateIni"
+            class="form-control filter-input"
+            [(ngModel)]="dateIni"
+            (ngModelChange)="onDateRangeChange()">
+        </div>
+
+        <div class="filter-group">
+          <label for="freightDateEnd" class="filter-label">Hasta</label>
+          <input
+            type="date"
+            id="freightDateEnd"
+            class="form-control filter-input"
+            [(ngModel)]="dateEnd"
+            (ngModelChange)="onDateRangeChange()">
+        </div>
+
+        <button type="button" class="btn-new-dispatch" (click)="openFormModal()">
+          <i class="ti ti-plus"></i>
+          <span>Nuevo Despacho</span>
+        </button>
+
+        <button
+          type="button"
+          class="btn-export"
+          (click)="exportToExcel()"
+          [disabled]="isLoading || totalDispatches === 0"
+          title="Descargar los despachos del rango seleccionado en Excel">
+          <i class="ti ti-file-spreadsheet"></i>
+          <span>Descargar Excel ({{ totalDispatches }})</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="summary-counters">
+    <div class="summary-card row-default">
+      <span class="summary-time">{{ totalDispatches | number }}</span>
+      <span class="summary-category">Despachos</span>
+      <span class="summary-count">En el rango seleccionado</span>
+    </div>
+    <div class="summary-card row-material">
+      <span class="summary-time">{{ totalFreightCostSum | currency:'COP':'symbol':'1.0-0' }}</span>
+      <span class="summary-category">Costo Total de Fletes</span>
+      <span class="summary-count">Suma de todos los despachos</span>
+    </div>
+    <div class="summary-card row-mantenimiento">
+      <span class="summary-time">{{ totalVolumeSum | number }}</span>
+      <span class="summary-category">Volumen Total</span>
+      <span class="summary-count">Unidades de volumen acumuladas</span>
+    </div>
+  </div>
+
+  <!-- TARJETA DE CONTENIDO -->
+  <div class="card view-card border-0 mt-4">
+    <div class="card-body p-4 p-md-5">
+
+      <!-- TOOLBAR -->
+      <div class="view-toolbar">
+        <div class="toolbar-title">
+          <h6 class="section-title mb-0">Despachos de Flete</h6>
+          <small class="section-subtitle">Prorrateo automático del costo de flete por línea y por volumen</small>
+        </div>
+
+        <div class="search-wrapper">
+          <i class="ti ti-search search-icon"></i>
+          <input
+            type="text"
+            class="form-control search-input"
+            placeholder="Buscar por despacho, transportador, cliente, ciudad o producto..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilter()">
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-wrapper mt-3">
+        <table class="freight-table">
+          <thead>
+            <tr>
+              <th scope="col">Despacho</th>
+              <th scope="col">Transportador</th>
+              <th scope="col">Costo Flete / Volumen</th>
+              <th scope="col">Líneas</th>
+              <th scope="col">Estado</th>
+              <th scope="col" class="action-col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="6" class="empty-cell">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Cargando despachos...
+              </td>
+            </tr>
+
+            <tr *ngIf="!isLoading && paginatedDispatches.length === 0">
+              <td colspan="6" class="empty-cell">
+                <i class="ti ti-database-off me-2"></i>
+                No se encontraron despachos de flete para el rango seleccionado.
+              </td>
+            </tr>
+
+            <tr *ngFor="let dispatch of paginatedDispatches">
+              <td class="cell-stacked">
+                <span class="cell-main-text">{{ dispatch.dispatchNumber }}</span>
+                <small class="cell-sub">
+                  <i class="ti ti-calendar-event"></i>
+                  {{ dispatch.dispatchDate }}
+                </small>
+              </td>
+
+              <td class="cell-stacked">
+                <span class="cell-main-text">{{ dispatch.carrier }}</span>
+                <small class="cell-sub">
+                  <i class="ti ti-user"></i>
+                  {{ dispatch.userCreate }}
+                </small>
+              </td>
+
+              <td class="cell-stacked cell-schedule">
+                <strong class="time-value">{{ dispatch.totalFreightCost | currency:'COP':'symbol':'1.0-0' }}</strong>
+                <small class="cell-sub">
+                  <i class="ti ti-box-multiple"></i>
+                  Vol. {{ dispatch.totalVolume | number }}
+                </small>
+              </td>
+
+              <td>
+                <span class="cat-pill row-material">{{ dispatch.items.length }} línea{{ dispatch.items.length !== 1 ? 's' : '' }}</span>
+              </td>
+
+              <td>
+                <span class="status-pill" [ngClass]="dispatch.status ? 'status-closed' : 'status-pending'">
+                  {{ dispatch.status ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+
+              <td class="action-col">
+                <button
+                  type="button"
+                  class="btn-detail"
+                  (click)="openDetail(dispatch)"
+                  title="Ver detalle completo del despacho">
+                  <i class="ti ti-eye"></i>
+                  <span class="btn-label">Detalle</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION -->
+      <div class="pagination-controls">
+        <button type="button" class="btn-pagination" (click)="prevPage()" [disabled]="currentPage === 1">
+          <i class="ti ti-chevron-left"></i> Anterior
+        </button>
+
+        <span class="page-indicator">
+          Página <strong>{{ currentPage }}</strong> de <strong>{{ totalPages }}</strong>
+        </span>
+
+        <button type="button" class="btn-pagination" (click)="nextPage()" [disabled]="currentPage === totalPages">
+          Siguiente <i class="ti ti-chevron-right"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL: REGISTRAR DESPACHO                                   -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showFormModal" (click)="closeFormModal()">
+  <div class="response-modal form-modal" (click)="$event.stopPropagation()">
+
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title">Registrar Despacho de Flete</h5>
+        <small class="modal-subtitle">El prorrateo por línea lo calcula el backend según el volumen</small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeFormModal()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body">
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label">N° Despacho</label>
+          <input type="text" class="form-control" [(ngModel)]="form.dispatchNumber" placeholder="Ej. Cargue de 30 Cocinas Éxito">
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Fecha de despacho</label>
+          <input type="date" class="form-control" [(ngModel)]="form.dispatchDate">
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Transportador</label>
+          <input type="text" class="form-control" [(ngModel)]="form.carrier" placeholder="Ej. Placa KWP292">
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Costo total del flete</label>
+          <input type="number" min="0" class="form-control" [(ngModel)]="form.totalFreightCost" placeholder="0">
+        </div>
+      </div>
+
+      <div class="items-section">
+        <div class="items-header">
+          <h6 class="mb-0">Líneas del despacho</h6>
+          <button type="button" class="btn-add-item" (click)="addItemRow()">
+            <i class="ti ti-plus"></i> Agregar línea
+          </button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="freight-table items-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Ciudad Destino</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Valor Unitario</th>
+                <th>Volumen Unitario</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of form.items; let i = index">
+                <td><input type="text" class="form-control" [(ngModel)]="item.client" placeholder="Cliente"></td>
+                <td><input type="text" class="form-control" [(ngModel)]="item.destinationCity" placeholder="Ciudad"></td>
+                <td><input type="text" class="form-control" [(ngModel)]="item.product" placeholder="Producto"></td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.quantity" placeholder="0"></td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitValue" placeholder="0"></td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitVolume" placeholder="0"></td>
+                <td class="action-col">
+                  <button
+                    type="button"
+                    class="btn-remove-item"
+                    (click)="removeItemRow(i)"
+                    [disabled]="form.items.length === 1"
+                    title="Quitar línea">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="response-actions">
+        <button type="button" class="btn-cancel" (click)="closeFormModal()" [disabled]="isSaving">
+          Cancelar
+        </button>
+        <button type="button" class="btn-confirm" (click)="submitDispatch()" [disabled]="!isFormValid || isSaving">
+          <span *ngIf="!isSaving"><i class="ti ti-device-floppy"></i> Registrar Despacho</span>
+          <span *ngIf="isSaving">Guardando...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL: DETALLE DE DESPACHO                                  -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showDetailModal" (click)="closeDetail()">
+  <div class="response-modal detail-modal" (click)="$event.stopPropagation()">
+
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title">Detalle del despacho</h5>
+        <small class="modal-subtitle" *ngIf="detailDispatch">
+          {{ detailDispatch.dispatchNumber }} · {{ detailDispatch.dispatchDate }}
+        </small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeDetail()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body" *ngIf="detailDispatch">
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-truck"></i> Transportador</span>
+          <span class="detail-value">{{ detailDispatch.carrier }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-circle-check"></i> Estado</span>
+          <span class="detail-value">
+            <span class="status-pill" [ngClass]="detailDispatch.status ? 'status-closed' : 'status-pending'">
+              {{ detailDispatch.status ? 'Activo' : 'Inactivo' }}
+            </span>
+          </span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-currency-dollar"></i> Costo Total Flete</span>
+          <span class="detail-value">{{ detailDispatch.totalFreightCost | currency:'COP':'symbol':'1.0-0' }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-box-multiple"></i> Volumen Total</span>
+          <span class="detail-value">{{ detailDispatch.totalVolume | number }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-user"></i> Registrado por</span>
+          <span class="detail-value">{{ detailDispatch.userCreate }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-calendar"></i> Fecha de registro</span>
+          <span class="detail-value">{{ detailDispatch.dateCreate }}</span>
+        </div>
+      </div>
+
+      <div class="table-wrapper mt-3" *ngIf="isLoadingDetail">
+        <div class="empty-cell">
+          <span class="spinner-border spinner-border-sm me-2"></span>
+          Actualizando detalle...
+        </div>
+      </div>
+
+      <div class="table-wrapper mt-3">
+        <table class="freight-table items-table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Ciudad</th>
+              <th>Producto</th>
+              <th>Cant.</th>
+              <th>Vlr. Unit.</th>
+              <th>% Volumen</th>
+              <th>Flete Asignado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of detailDispatch.items">
+              <td>{{ item.client }}</td>
+              <td>{{ item.destinationCity }}</td>
+              <td>{{ item.product }}</td>
+              <td>{{ item.quantity | number }}</td>
+              <td>{{ item.unitValue | currency:'COP':'symbol':'1.0-0' }}</td>
+              <td>{{ item.volumePercentage | percent:'1.0-2' }}</td>
+              <td>{{ item.allocatedFreightCost | currency:'COP':'symbol':'1.0-0' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="response-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetail()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

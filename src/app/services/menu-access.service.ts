@@ -4,7 +4,19 @@ import { Injectable, inject } from '@angular/core';
 import { UserDataMenu } from '../interfaces/auth.interface';
 import { AuthService } from './auth-services';
 
-export type AppModule = 'production' | 'inventories' | 'printing' | 'clientHome' | 'quality' | 'engineering' | 'health-safety' | 'human-resources' | 'maintenance' | 'machining' | 'logistics' | 'all';
+export type AppModule =
+  | 'production'
+  | 'inventories'
+  | 'printing'
+  | 'clientHome'
+  | 'quality'
+  | 'engineering'
+  | 'health-safety'
+  | 'human-resources'
+  | 'maintenance'
+  | 'machining'
+  | 'logistics'
+  | 'all';
 
 @Injectable({
   providedIn: 'root'
@@ -16,7 +28,7 @@ export class MenuAccessService {
 
   hasAccessTo(module: AppModule): boolean {
     const userData = this.authService.userData();
-    
+
     if (!userData) {
       return false;
     }
@@ -26,47 +38,59 @@ export class MenuAccessService {
 
   getAllowedRoutes(): string[] {
     const allowed: string[] = [];
-    const modules: AppModule[] = ['production', 'inventories', 'printing', 'clientHome', 'quality', 'engineering', 'health-safety', 'human-resources', 'maintenance', 'machining', 'logistics'];
-    
-    modules.forEach(m => {
+    const modules: AppModule[] = [
+      'production',
+      'inventories',
+      'printing',
+      'clientHome',
+      'quality',
+      'engineering',
+      'health-safety',
+      'human-resources',
+      'maintenance',
+      'machining',
+      'logistics'
+    ];
+
+    modules.forEach((m) => {
       if (this.hasAccessTo(m)) {
         allowed.push(`/${m}`);
       }
     });
-    
+
     return allowed;
   }
 
   // Mapeo: grupo top-level → áreas autorizadas (en MAYÚSCULAS)
   // Los grupos no listados aquí son visibles para todos (ej. "Panel de Control")
   private readonly GROUP_AREA_MAP: Record<string, string[]> = {
-    'PLANEACIÓN': ['PRODUCCION'],
+    PLANEACIÓN: ['PRODUCCION'],
     // INGENIERIA INDUSTRIAL entra al grupo Producción para ver "Visualizar Ensamble";
     // el collapse Ensamble es el único que sobrevive (ver canAccessCollapse).
-    'PRODUCCIÓN': ['PRODUCCION', 'INGENIERIA INDUSTRIAL'],
-    'LOGÍSTICA': ['LOGISTICA'],
-    'ALMACÉN': ['ALMACEN', 'LOGISTICA'],
-    'MANTENIMIENTO': ['MANTENIMIENTO'],
-    'MECANIZADO': ['MECANIZADO', 'MECANICA'],
-    'INGENIERÍA': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
+    PRODUCCIÓN: ['PRODUCCION', 'INGENIERIA INDUSTRIAL'],
+    LOGÍSTICA: ['LOGISTICA'],
+    ALMACÉN: ['ALMACEN', 'LOGISTICA'],
+    MANTENIMIENTO: ['MANTENIMIENTO'],
+    MECANIZADO: ['MECANIZADO', 'MECANICA'],
+    INGENIERÍA: ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'GESTIÓN DE ESTRUCTURAS': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'RECURSOS HUMANOS': ['TH', 'RECURSOS HUMANOS'],
-    'CALIDAD': ['CALIDAD'],
-    'SST': ['SST', 'SEGURIDAD INDUSTRIAL'],
+    CALIDAD: ['CALIDAD'],
+    SST: ['SST', 'SEGURIDAD INDUSTRIAL'],
     // Grupos exclusivos por departamento (ver DEPARTMENT_ACCESS): ningún área los habilita
-    'OXYPLAST': [],
-    'COMPRAS': [],
+    OXYPLAST: [],
+    COMPRAS: [],
     'GESTIÓN AMBIENTAL': [],
     'LABORATORIO DE ENSAYOS': [],
-    'TUBERÍA': [],
-    'MADERAS': [],
-    'RIELES': []
+    TUBERÍA: [],
+    MADERAS: [],
+    RIELES: []
   };
 
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
   // Útil cuando un usuario está en area=PRODUCCION pero su dept pertenece a otro grupo
   private readonly GROUP_DEPT_MAP: Record<string, string[]> = {
-    'MECANIZADO': ['MECANICA']
+    MECANIZADO: ['MECANICA']
   };
 
   // Acceso por DEPARTAMENTO (en MAYÚSCULAS). Tiene prioridad sobre la lógica por área.
@@ -76,24 +100,30 @@ export class MenuAccessService {
   private readonly DEPARTMENT_ACCESS: Record<string, { navTitles: string[]; modules: AppModule[] }> = {
     // PLANEACION: solo el grupo Planeación (collapse "Cargue" + item "Dashboard Planeación")
     // y el menú Estadístico (ver excepción en hasAccessToNavItem); el resto queda oculto.
-    'PLANEACION': { navTitles: ['CARGUE', 'GESTIÓN DE ESTRUCTURAS', 'PLANIFICACIÓN Y CAPACIDAD', 'AUDITORÍA DE COSTOS'], modules: ['production', 'engineering'] },
-    'TROQUELADORAS': { navTitles: ['CRUDO'], modules: ['production'] },
-    'PARRILLAS': { navTitles: ['CRUDO'], modules: ['production'] },
-    'CORTE': { navTitles: ['CRUDO'], modules: ['production'] },
+    PLANEACION: {
+      navTitles: ['CARGUE', 'GESTIÓN DE ESTRUCTURAS', 'PLANIFICACIÓN Y CAPACIDAD', 'AUDITORÍA DE COSTOS'],
+      modules: ['production', 'engineering']
+    },
+    TROQUELADORAS: { navTitles: ['CRUDO'], modules: ['production'] },
+    PARRILLAS: { navTitles: ['CRUDO'], modules: ['production'] },
+    CORTE: { navTitles: ['CRUDO'], modules: ['production'] },
     'MECANIZADO VARIOS': { navTitles: ['SATÉLITES'], modules: ['production'] },
-    'FUNDICION': { navTitles: ['SATÉLITES'], modules: ['production'] },
-    'OXYPLAST': { navTitles: ['OXYPLAST'], modules: ['production'] },
-    'COSTOS': { navTitles: ['GENERAR ETIQUETAS'], modules: ['production', 'printing'] },
-    'COMPRAS': { navTitles: ['COMPRAS'], modules: ['production'] },
+    FUNDICION: { navTitles: ['SATÉLITES'], modules: ['production'] },
+    OXYPLAST: { navTitles: ['OXYPLAST'], modules: ['production'] },
+    COSTOS: { navTitles: ['GENERAR ETIQUETAS'], modules: ['production', 'printing'] },
+    COMPRAS: { navTitles: ['COMPRAS'], modules: ['production'] },
     'GESTION AMBIENTAL': { navTitles: ['GESTIÓN AMBIENTAL'], modules: ['production'] },
-    'MECANICA': { navTitles: ['MECANIZADO'], modules: ['production', 'machining'] },
+    MECANICA: { navTitles: ['MECANIZADO'], modules: ['production', 'machining'] },
     'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
-    'LOGISTICA INTERNA': { navTitles: ['BODEGA', 'CASA CLIENTE', 'ALMACÉN'], modules: ['production', 'inventories', 'clientHome', 'logistics'] },
+    'LOGISTICA INTERNA': {
+      navTitles: ['BODEGA', 'CASA CLIENTE', 'ALMACÉN'],
+      modules: ['production', 'inventories', 'clientHome', 'logistics']
+    },
     'LABORATORIO DE ENSAYOS': { navTitles: ['LABORATORIO DE ENSAYOS'], modules: ['production'] },
     'TUB-COND-CUAL': { navTitles: ['TUBERÍA'], modules: ['production'] },
-    'MADERAS': { navTitles: ['MADERAS'], modules: ['production'] },
-    'RIELES': { navTitles: ['RIELES'], modules: ['production'] }
+    MADERAS: { navTitles: ['MADERAS'], modules: ['production'] },
+    RIELES: { navTitles: ['RIELES'], modules: ['production'] }
   };
 
   hasAccessToNavItem(item: any): boolean {
@@ -105,11 +135,16 @@ export class MenuAccessService {
 
     const isStadistics = this.isStadisticsNavItem(item);
 
-    // ANALISTA DE PRESUPUESTO: ve el Dashboard, el menú Estadístico, el menú Planeación
-    // y el menú Gestión de Estructuras
+    // ANALISTA DE PRESUPUESTO: ve el Dashboard, el menú Estadístico, el menú Planeación,
+    // el menú Gestión de Estructuras y el menú Logística (Bodega, Casa Cliente, Almacén)
     if (this.isBudgetAnalyst(area, dept)) {
-      return isStadistics || this.isDashboardNavItem(item) || this.isPlanningNavItem(item) ||
-        this.isStructureManagementNavItem(item);
+      return (
+        isStadistics ||
+        this.isDashboardNavItem(item) ||
+        this.isPlanningNavItem(item) ||
+        this.isStructureManagementNavItem(item) ||
+        this.isLogisticsNavItem(item)
+      );
     }
 
     if (this.isManagerWithFullAccess(area, dept)) {
@@ -156,8 +191,7 @@ export class MenuAccessService {
   }
 
   private isManagerWithFullAccess(area: string, dept: string): boolean {
-    return area === 'GERENCIA' &&
-      (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS');
+    return area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS');
   }
 
   // ANALISTA DE PRESUPUESTO solo puede ver/entrar al menú Estadístico.
@@ -196,6 +230,22 @@ export class MenuAccessService {
       return title === 'GESTIÓN DE ESTRUCTURAS' || title === 'PLANIFICACIÓN Y CAPACIDAD' || title === 'AUDITORÍA DE COSTOS';
     }
     return (item.url || '').startsWith('engineering/structureManagements');
+  }
+
+  // Identifica el grupo "Logística" y sus 3 collapses (Bodega, Casa Cliente, Almacén)
+  // con todos sus items.
+  private isLogisticsNavItem(item: any): boolean {
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group') {
+      return title === 'LOGÍSTICA';
+    }
+    if (item.type === 'collapse') {
+      return title === 'BODEGA' || title === 'CASA CLIENTE' || title === 'ALMACÉN';
+    }
+    const url = item.url || '';
+    return (
+      url.startsWith('inventories/') || url.startsWith('clientHome/') || url.startsWith('logistics/') || url === 'production/wineryNews'
+    );
   }
 
   // Identifica el grupo "Panel de Control" y su item "Dashboard" (/production).
@@ -242,7 +292,14 @@ export class MenuAccessService {
     // de Producción (para "Visualizar Ensamble") + "Gestión de Estructuras"; el resto de
     // Producción queda oculto.
     if (area === 'INGENIERIA INDUSTRIAL') {
-      return ['INGENIERÍA DE PRODUCTO', 'INGENIERÍA INDUSTRIAL', 'ENSAMBLE', 'GESTIÓN DE ESTRUCTURAS', 'PLANIFICACIÓN Y CAPACIDAD', 'AUDITORÍA DE COSTOS'].includes(title);
+      return [
+        'INGENIERÍA DE PRODUCTO',
+        'INGENIERÍA INDUSTRIAL',
+        'ENSAMBLE',
+        'GESTIÓN DE ESTRUCTURAS',
+        'PLANIFICACIÓN Y CAPACIDAD',
+        'AUDITORÍA DE COSTOS'
+      ].includes(title);
     }
 
     return true;
@@ -256,10 +313,13 @@ export class MenuAccessService {
       return true;
     }
 
-    // ANALISTA DE PRESUPUESTO: Dashboard (production) y Gestión de Estructuras (engineering);
+    // ANALISTA DE PRESUPUESTO: Dashboard (production), Gestión de Estructuras (engineering)
+    // y Logística (inventories = Bodega, clientHome = Casa Cliente, logistics = Almacén);
     // el Estadístico (/stadistics) va fuera de validModules
     if (this.isBudgetAnalyst(area, dept)) {
-      return module === 'production' || module === 'engineering';
+      return (
+        module === 'production' || module === 'engineering' || module === 'inventories' || module === 'clientHome' || module === 'logistics'
+      );
     }
 
     if (module === 'all') {
@@ -284,7 +344,11 @@ export class MenuAccessService {
     if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
     if (area === 'PRODUCCION' && dept === 'PLANEACION' && module === 'inventories') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
-    if ((area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') && module === 'engineering') return true;
+    if (
+      (area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') &&
+      module === 'engineering'
+    )
+      return true;
     if ((area === 'SST' || area === 'SEGURIDAD INDUSTRIAL') && module === 'health-safety') return true;
     if ((area === 'TH' || area === 'RECURSOS HUMANOS') && module === 'human-resources') return true;
     if (area === 'MANTENIMIENTO' && module === 'maintenance') return true;
@@ -300,7 +364,7 @@ export class MenuAccessService {
       if (module === 'logistics') return true;
     }
 
-    if (area === 'FINANCIERO' ) return true;
+    if (area === 'FINANCIERO') return true;
 
     return false;
   }
