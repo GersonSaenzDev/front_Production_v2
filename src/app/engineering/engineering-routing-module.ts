@@ -40,6 +40,11 @@ const routes: Routes = [
     loadComponent: () =>
       import('./structure-managements/material-master/material-master').then(c => c.MaterialMaster)
   },
+  {
+    path: 'structureManagements/priceListLoad',
+    loadComponent: () =>
+      import('./structure-managements/price-list-load/price-list-load').then(c => c.PriceListLoad)
+  },
   // Planificación y Capacidad
   {
     path: 'structureManagements/requirementsCalculation',

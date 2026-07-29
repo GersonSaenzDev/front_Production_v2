@@ -1,0 +1,80 @@
+<!-- app/engineering/structure-managements/price-list-load/price-list-load.html -->
+<div class="container-fluid py-4 price-list-container">
+
+  <!-- HEADER PRINCIPAL -->
+  <div class="price-list-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-currency-dollar"></i>
+      </div>
+      <div>
+        <h3 class="header-title mb-1">Cargue de Lista de Precios</h3>
+        <p class="header-subtitle mb-0">Carga la lista de precios de los productos desde Excel.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETA DEL FORMULARIO -->
+  <div class="card form-card border-0 mt-4">
+    <div class="card-body p-4 p-md-5">
+      <form (ngSubmit)="onSubmit()">
+        <div class="section-block">
+          <div class="section-header">
+            <div class="section-number">1</div>
+            <div>
+              <h6 class="section-title">Archivo de la Lista de Precios</h6>
+              <small class="section-subtitle">Lista de precios en formato Excel (.xlsx)</small>
+            </div>
+          </div>
+
+          <div class="dropzone" [class.has-file]="priceListFile"
+               (drop)="onFileDropped($event)" (dragover)="onDragOver($event)">
+            <input type="file" id="priceListFile" class="dropzone-input" [accept]="acceptedFiles"
+                   (change)="onFileSelected($event)">
+            <ng-container *ngIf="!priceListFile">
+              <i class="ti ti-cloud-upload dropzone-icon"></i>
+              <p class="dropzone-text mb-1">Arrastra el archivo aquí o <span>haz clic para seleccionar</span></p>
+              <small class="dropzone-hint">Formatos permitidos: .xlsx, .xls</small>
+            </ng-container>
+            <div class="file-preview" *ngIf="priceListFile">
+              <i class="ti ti-file-spreadsheet file-icon"></i>
+              <div class="file-info">
+                <span class="file-name">{{ priceListFile.name }}</span>
+                <small class="file-size">{{ formatSize(priceListFile.size) }}</small>
+              </div>
+              <button type="button" class="btn-remove" (click)="clearFile()" title="Quitar archivo">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-end mt-4 pt-3 border-top">
+          <button type="submit" class="btn btn-submit-price-list" [disabled]="isSubmitting">
+            <span *ngIf="!isSubmitting" class="d-inline-flex align-items-center">
+              <i class="ti ti-upload me-2"></i> Cargar Lista de Precios
+            </span>
+            <span *ngIf="isSubmitting" class="d-inline-flex align-items-center">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Cargando...
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <!-- PANEL DE RESULTADO -->
+      <div class="result-panel mt-4" *ngIf="lastResult">
+        <div class="result-header">
+          <i class="ti ti-circle-check"></i>
+          <span>{{ lastResult.message }}</span>
+        </div>
+        <div class="result-metrics">
+          <div class="metric-chip" *ngFor="let metric of lastResult.metrics">
+            <span class="metric-value">{{ metric.value }}</span>
+            <span class="metric-label">{{ metric.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

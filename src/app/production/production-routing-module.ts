@@ -29,6 +29,16 @@ const routes: Routes = [
     loadComponent: () => import('./planning/dash-planning/dash-planning').then((c) => c.DashPlanning)
   },
   {
+    // Path completo: /production/planning/monthly (consulta de planeación mensual registrada)
+    path: 'planning/monthly',
+    loadComponent: () => import('./planning/planning-month/planning-month').then((c) => c.PlanningMonth)
+  },
+  {
+    // Path completo: /production/planning/valuation (cruce planeado vs. ejecutado, valorizado con la lista de precios)
+    path: 'planning/valuation',
+    loadComponent: () => import('./planning/planning-valuation/planning-valuation').then((c) => c.PlanningValuation)
+  },
+  {
     // Path completo: /production/wineryNews
     path: 'wineryNews',
     loadComponent: () => import('./assembly/winery-news/winery-news').then((c) => c.WineryNews)

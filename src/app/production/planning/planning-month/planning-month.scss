@@ -1,0 +1,671 @@
+// src/app/production/planning/planning-month/planning-month.scss
+// =======================================================
+//   Planeación Mensual — estilos del componente
+//   Paleta de marca ABBA: #004a99 / #003366 / #575756
+// =======================================================
+
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-gray: #575756;
+$body-bg: #f8fafc;
+$border-soft: #e8edf3;
+$text-soft: #64748b;
+
+// Semáforo (mismos códigos que el dashboard de planeación)
+$ok: #16a34a;
+$ok-bg: #e7f6ec;
+$warn: #d97706;
+$warn-bg: #fdf3e3;
+$danger: #dc2626;
+$danger-bg: #fdeaea;
+$extra: #2563eb;
+$extra-bg: #e8f0fe;
+
+:host {
+  display: block;
+}
+
+.planning-month-container {
+  background: $body-bg;
+  min-height: 100%;
+}
+
+// -------------------------------------------------------
+//   Header azul (banner)
+// -------------------------------------------------------
+.month-header {
+  background: linear-gradient(120deg, $abba-blue-dark 0%, $abba-blue 60%, lighten($abba-blue, 8%) 100%);
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 2.25rem !important;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -5%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(#fff, 0.12) 0%, rgba(#fff, 0) 70%);
+    pointer-events: none;
+  }
+
+  h2 {
+    letter-spacing: -0.02em;
+    font-size: 1.6rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    background: rgba(#fff, 0.15);
+    color: #fff;
+    font-size: 1.5rem;
+    backdrop-filter: blur(2px);
+  }
+
+  &__label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(#fff, 0.85);
+  }
+
+  &__input {
+    border: 1px solid rgba(#fff, 0.25);
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    font-weight: 600;
+    color: $abba-blue-dark;
+    background-color: rgba(#fff, 0.96);
+    box-shadow: 0 4px 10px rgba($abba-blue-dark, 0.18);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+
+    &:hover {
+      background-color: #fff;
+      transform: translateY(-1px);
+    }
+
+    &:focus {
+      background-color: #fff;
+      border-color: rgba(#fff, 0.9);
+      box-shadow: 0 0 0 0.2rem rgba(#fff, 0.45);
+    }
+  }
+
+  .year-input {
+    width: 110px;
+  }
+
+  &__btn {
+    color: $abba-blue;
+    border-radius: 0.5rem;
+
+    &:hover:not(:disabled) {
+      color: $abba-blue-dark;
+      background-color: #fff;
+    }
+  }
+}
+
+.period-filter {
+  min-width: 140px;
+}
+
+// -------------------------------------------------------
+//   Tarjetas KPI
+// -------------------------------------------------------
+.kpi-row {
+  position: relative;
+  z-index: 2;
+  margin-top: -1.5rem;
+}
+
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.9rem !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 4px;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.75rem 1.5rem rgba($abba-blue-dark, 0.12) !important;
+  }
+
+  h6.kpi-title {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: $abba-blue-dark;
+  }
+
+  h3 {
+    font-size: 1.85rem;
+    letter-spacing: -0.02em;
+  }
+
+  .flex-shrink-0 {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem !important;
+  }
+
+  &--primary::before { background: $abba-blue; }
+  &--success::before { background: $ok; }
+  &--warning::before { background: $warn; }
+  &--info::before    { background: $extra; }
+}
+
+.kpi-card--compliance {
+  .progress {
+    height: 7px;
+    border-radius: 999px;
+    background: #eef2f8;
+  }
+  .progress-bar {
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+
+  small {
+    font-size: 0.72rem;
+  }
+
+  &.is-green {
+    &::before { background: $ok; }
+    .compliance-icon { background: $ok; color: #fff; }
+    .compliance-value { color: $ok; }
+    .progress-bar { background: $ok; }
+  }
+  &.is-orange {
+    &::before { background: $warn; }
+    .compliance-icon { background: $warn; color: #fff; }
+    .compliance-value { color: $warn; }
+    .progress-bar { background: $warn; }
+  }
+  &.is-red {
+    &::before { background: $danger; }
+    .compliance-icon { background: $danger; color: #fff; }
+    .compliance-value { color: $danger; }
+    .progress-bar { background: $danger; }
+  }
+}
+
+// -------------------------------------------------------
+//   Tarjeta de la tabla
+// -------------------------------------------------------
+.matrix-card {
+  border-radius: 0.9rem !important;
+
+  .btn-outline-primary {
+    border-radius: 0.5rem;
+    font-weight: 600;
+  }
+}
+
+// -------------------------------------------------------
+//   Filtros (chips por línea + buscador)
+// -------------------------------------------------------
+.filter-toolbar {
+  background: #f6f9fd;
+  border: 1px solid $border-soft;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.filter-chip {
+  border: 1px solid $border-soft;
+  background: #fff;
+  color: $abba-blue-dark;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: $abba-blue;
+    color: $abba-blue;
+    background: rgba($abba-blue, 0.06);
+  }
+
+  &.active {
+    background: $abba-blue;
+    border-color: $abba-blue;
+    color: #fff;
+    box-shadow: 0 3px 8px rgba($abba-blue, 0.3);
+  }
+}
+
+.search-box {
+  min-width: 260px;
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.7rem;
+    transform: translateY(-50%);
+    color: $text-soft;
+    pointer-events: none;
+    font-size: 0.9rem;
+  }
+
+  .search-input {
+    padding-left: 2rem;
+    padding-right: 1.9rem;
+    border-radius: 0.6rem;
+    border-color: $border-soft;
+
+    &:focus {
+      border-color: $abba-blue;
+      box-shadow: 0 0 0 0.2rem rgba($abba-blue, 0.12);
+    }
+  }
+
+  .search-clear {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: $text-soft;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+
+    &:hover { color: $danger; }
+  }
+}
+
+// -------------------------------------------------------
+//   Tabla principal
+// -------------------------------------------------------
+// El listado puede tener muchas líneas/referencias: se le da su propio scroll
+// interno (con cabecera fija) para que ninguna fila quede oculta dependiendo
+// del alto de la ventana o de qué tan abajo esté el footer de la página.
+.table-scroll {
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.table {
+  --bs-table-bg: #fff;
+  border-color: $border-soft;
+  margin-bottom: 0;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: linear-gradient(180deg, #f4f7fb 0%, #eef2f8 100%);
+    color: $abba-blue-dark;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    border-color: $border-soft;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    border-color: $border-soft;
+    vertical-align: middle;
+    padding: 0.5rem 0.6rem;
+  }
+
+  // Respiro para que la última fila nunca quede pegada al borde del scroll
+  tbody tr:last-child td {
+    padding-bottom: 0.85rem;
+  }
+}
+
+.assembly-header {
+  cursor: pointer;
+  user-select: none;
+
+  td {
+    background: linear-gradient(90deg, rgba($abba-blue, 0.12) 0%, rgba($abba-blue, 0.04) 100%);
+    border-left: 3px solid $abba-blue;
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+    transition: background 0.15s ease;
+  }
+
+  &:hover td {
+    background: linear-gradient(90deg, rgba($abba-blue, 0.2) 0%, rgba($abba-blue, 0.06) 100%);
+  }
+
+  &__title {
+    color: $abba-blue-dark;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .chevron {
+    color: $abba-blue;
+    transition: transform 0.2s ease;
+    transform: rotate(90deg);
+  }
+
+  &.is-collapsed .chevron {
+    transform: rotate(0deg);
+  }
+
+  .ref-count {
+    background: rgba($abba-blue, 0.12);
+    color: $abba-blue;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  &__totals {
+    color: $text-soft;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    padding-right: 0.5rem;
+
+    strong {
+      color: $abba-blue-dark;
+      font-size: 0.85rem;
+    }
+
+    .sep {
+      margin: 0 0.35rem;
+      color: rgba($abba-blue, 0.4);
+    }
+  }
+}
+
+.data-row {
+  transition: background-color 0.12s ease;
+
+  &:hover td {
+    background-color: #f6f9fd;
+  }
+}
+
+.cell-plan {
+  color: $abba-blue-dark;
+  font-weight: 600;
+  background-color: #fbfcfe;
+}
+
+.cell-prod {
+  font-weight: 700;
+  position: relative;
+
+  small {
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  &.status-green  { color: $ok;     background-color: $ok-bg; }
+  &.status-orange { color: $warn;   background-color: $warn-bg; }
+  &.status-red    { color: $danger; background-color: $danger-bg; }
+  &.status-yellow { color: $extra;  background-color: $extra-bg; }
+  &.status-none   { color: #cbd5e1; }
+}
+
+// Badge de auditoría en la tabla principal
+.badge-changes {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: $text-soft;
+  background: #f1f5fa;
+  border: 1px solid $border-soft;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+
+  &--active {
+    color: $warn;
+    background: $warn-bg;
+    border-color: rgba($warn, 0.25);
+  }
+}
+
+.btn-detail {
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+// Scroll suave
+.table-responsive {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2e0 transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #c7d2e0;
+    border-radius: 8px;
+  }
+}
+
+// =========================================================
+//   MODAL DE DETALLE
+// =========================================================
+.section-label {
+  color: $abba-blue-dark;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.85rem;
+}
+
+.summary-chips {
+  .summary-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 96px;
+    padding: 0.65rem 0.9rem;
+    background: #f6f9fd;
+    border: 1px solid $border-soft;
+    border-radius: 12px;
+
+    &__value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: $abba-blue-dark;
+      line-height: 1.1;
+    }
+
+    &__label {
+      font-size: 0.7rem;
+      color: $text-soft;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+
+    &--accent {
+      background: $ok-bg;
+      border-color: rgba($ok, 0.25);
+
+      .summary-chip__value { color: $ok; }
+    }
+  }
+}
+
+.daily-plan-table {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid $border-soft;
+  border-radius: 10px;
+
+  table {
+    margin-bottom: 0;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .daily-row {
+    &.has-audit {
+      cursor: pointer;
+    }
+
+    &:hover td {
+      background-color: #f6f9fd;
+    }
+  }
+
+  .expand-icon {
+    color: $abba-blue;
+    transition: transform 0.2s ease;
+
+    &.is-open {
+      transform: rotate(180deg);
+    }
+  }
+
+  .audit-row td {
+    background: #f8fafc;
+    padding: 0.6rem 0.9rem;
+  }
+
+  .audit-entry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed $border-soft;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &__action {
+      font-weight: 700;
+      color: $abba-blue-dark;
+    }
+
+    &__meta {
+      color: $text-soft;
+    }
+
+    &__obs {
+      color: $abba-gray;
+      font-style: italic;
+      flex-basis: 100%;
+    }
+  }
+}
+
+.change-timeline {
+  position: relative;
+  padding-left: 1.5rem;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: $border-soft;
+  }
+
+  .timeline-entry {
+    position: relative;
+    padding-bottom: 1.1rem;
+
+    &:last-child {
+      padding-bottom: 0;
+    }
+
+    &__marker {
+      position: absolute;
+      left: -1.5rem;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: $abba-blue;
+      box-shadow: 0 0 0 3px rgba($abba-blue, 0.15);
+    }
+
+    &__content {
+      background: #f6f9fd;
+      border: 1px solid $border-soft;
+      border-radius: 10px;
+      padding: 0.65rem 0.9rem;
+    }
+
+    &__action {
+      font-weight: 700;
+      color: $abba-blue-dark;
+      font-size: 0.85rem;
+    }
+
+    &__date {
+      color: $text-soft;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    &__by {
+      color: $abba-gray;
+      font-size: 0.78rem;
+      margin-top: 2px;
+    }
+
+    &__obs {
+      color: $abba-gray;
+      font-style: italic;
+      font-size: 0.78rem;
+      margin-top: 4px;
+    }
+
+    &__week {
+      color: $text-soft;
+      font-size: 0.72rem;
+      margin-top: 4px;
+    }
+  }
+}

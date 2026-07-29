@@ -68,6 +68,13 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'engineering/structureManagements/materialMaster',
             breadcrumbs: true
+          },
+          {
+            id: 'gestion-estructuras-cargue-precios',
+            title: 'Cargue de Lista de Precios',
+            type: 'item',
+            url: 'engineering/structureManagements/priceListLoad',
+            breadcrumbs: true
           }
         ]
       },
@@ -172,6 +179,24 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'ti ti-presentation-analytics',
         classes: 'nav-item',
         url: 'production/planning/dashPlanning',
+        breadcrumbs: false
+      },
+      {
+        id: 'planeacion-mensual-item',
+        title: 'Planeación Mensual',
+        type: 'item',
+        icon: 'ti ti-calendar-stats',
+        classes: 'nav-item',
+        url: 'production/planning/monthly',
+        breadcrumbs: false
+      },
+      {
+        id: 'planeacion-valorizacion-item',
+        title: 'Valorización de Planeación',
+        type: 'item',
+        icon: 'ti ti-currency-dollar',
+        classes: 'nav-item',
+        url: 'production/planning/valuation',
         breadcrumbs: false
       }
     ]

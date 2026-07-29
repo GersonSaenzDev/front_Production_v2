@@ -1,0 +1,503 @@
+// src/app/production/planning/planning-valuation/planning-valuation.scss
+// =======================================================
+//   Valorización de Planeación — estilos del componente
+//   Paleta de marca ABBA: #004a99 / #003366 / #575756
+// =======================================================
+@use 'sass:color';
+
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-gray: #575756;
+$body-bg: #f8fafc;
+$border-soft: #e8edf3;
+$text-soft: #64748b;
+
+// Semáforo (mismos códigos que el resto del módulo de planeación)
+$ok: #16a34a;
+$ok-bg: #e7f6ec;
+$warn: #d97706;
+$warn-bg: #fdf3e3;
+$danger: #dc2626;
+$danger-bg: #fdeaea;
+$extra: #2563eb;
+$extra-bg: #e8f0fe;
+
+:host {
+  display: block;
+}
+
+.planning-valuation-container {
+  background: $body-bg;
+  min-height: 100%;
+}
+
+// -------------------------------------------------------
+//   Header azul (banner)
+// -------------------------------------------------------
+.valuation-header {
+  background: linear-gradient(120deg, $abba-blue-dark 0%, $abba-blue 60%, color.adjust($abba-blue, $lightness: 8%) 100%);
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 3.75rem !important;
+  z-index: 1;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -5%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(#fff, 0.12) 0%, rgba(#fff, 0) 70%);
+    pointer-events: none;
+  }
+
+  h2 {
+    letter-spacing: -0.02em;
+    font-size: 1.6rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    background: rgba(#fff, 0.15);
+    color: #fff;
+    font-size: 1.5rem;
+    backdrop-filter: blur(2px);
+  }
+
+  &__label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(#fff, 0.85);
+  }
+
+  &__date {
+    min-width: 165px;
+    border: 1px solid rgba(#fff, 0.25);
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    font-weight: 600;
+    color: $abba-blue-dark;
+    background-color: rgba(#fff, 0.96);
+    box-shadow: 0 4px 10px rgba($abba-blue-dark, 0.18);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+
+    &:hover {
+      background-color: #fff;
+      transform: translateY(-1px);
+    }
+
+    &:focus {
+      background-color: #fff;
+      border-color: rgba(#fff, 0.9);
+      box-shadow: 0 0 0 0.2rem rgba(#fff, 0.45);
+    }
+
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s ease;
+    }
+    &:hover::-webkit-calendar-picker-indicator {
+      opacity: 1;
+    }
+  }
+
+  &__btn {
+    color: $abba-blue;
+    border-radius: 0.5rem;
+
+    &:hover:not(:disabled) {
+      color: $abba-blue-dark;
+      background-color: #fff;
+    }
+  }
+}
+
+// -------------------------------------------------------
+//   Tarjetas KPI
+// -------------------------------------------------------
+.kpi-row {
+  position: relative;
+  z-index: 2;
+  margin-top: -3rem;
+}
+
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.9rem !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 4px;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.75rem 1.5rem rgba($abba-blue-dark, 0.12) !important;
+  }
+
+  .card-body {
+    padding: 1.15rem 1.3rem;
+  }
+
+  h6.kpi-title {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: $abba-blue-dark;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  // Los KPI en $ muestran el valor compacto ("$ 15.966,5 M"); el valor exacto
+  // queda en el `title` (tooltip) para no desbordar la tarjeta.
+  .kpi-value {
+    cursor: help;
+    white-space: nowrap;
+  }
+
+  .flex-shrink-0 {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem !important;
+  }
+
+  &--primary::before { background: $abba-blue; }
+  &--success::before { background: $ok; }
+  &--warning::before { background: $warn; }
+  &--danger::before  { background: $danger; }
+  &--info::before    { background: $extra; }
+}
+
+.kpi-card--compliance {
+  .progress {
+    height: 7px;
+    border-radius: 999px;
+    background: #eef2f8;
+  }
+  .progress-bar {
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+
+  &.is-green {
+    &::before { background: $ok; }
+    .compliance-icon { background: $ok; color: #fff; }
+    .compliance-value { color: $ok; }
+    .progress-bar { background: $ok; }
+  }
+  &.is-orange {
+    &::before { background: $warn; }
+    .compliance-icon { background: $warn; color: #fff; }
+    .compliance-value { color: $warn; }
+    .progress-bar { background: $warn; }
+  }
+  &.is-red {
+    &::before { background: $danger; }
+    .compliance-icon { background: $danger; color: #fff; }
+    .compliance-value { color: $danger; }
+    .progress-bar { background: $danger; }
+  }
+}
+
+// -------------------------------------------------------
+//   Tarjeta de la tabla
+// -------------------------------------------------------
+.matrix-card {
+  border-radius: 0.9rem !important;
+
+  .btn-outline-primary {
+    border-radius: 0.5rem;
+    font-weight: 600;
+  }
+
+  // Botones "«" / "»" para desplazar el rango de fechas consultado.
+  .range-nav {
+    .btn-outline-secondary {
+      color: $abba-blue;
+      border-color: $border-soft;
+      padding: 0.3rem 0.6rem;
+
+      &:hover:not(:disabled) {
+        background-color: $abba-blue;
+        border-color: $abba-blue;
+        color: #fff;
+      }
+    }
+  }
+}
+
+// -------------------------------------------------------
+//   Filtros (chips por línea + buscador)
+// -------------------------------------------------------
+.filter-toolbar {
+  background: #f6f9fd;
+  border: 1px solid $border-soft;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.filter-chip {
+  border: 1px solid $border-soft;
+  background: #fff;
+  color: $abba-blue-dark;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: $abba-blue;
+    color: $abba-blue;
+    background: rgba($abba-blue, 0.06);
+  }
+
+  &.active {
+    background: $abba-blue;
+    border-color: $abba-blue;
+    color: #fff;
+    box-shadow: 0 3px 8px rgba($abba-blue, 0.3);
+  }
+
+  &--unplanned {
+    color: $extra;
+    &:hover { border-color: $extra; color: $extra; background: rgba($extra, 0.07); }
+    &.active { background: $extra; border-color: $extra; color: #fff; box-shadow: 0 3px 8px rgba($extra, 0.3); }
+  }
+}
+
+.search-box {
+  min-width: 260px;
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.7rem;
+    transform: translateY(-50%);
+    color: $text-soft;
+    pointer-events: none;
+    font-size: 0.9rem;
+  }
+
+  .search-input {
+    padding-left: 2rem;
+    padding-right: 1.9rem;
+    border-radius: 0.6rem;
+    border-color: $border-soft;
+
+    &:focus {
+      border-color: $abba-blue;
+      box-shadow: 0 0 0 0.2rem rgba($abba-blue, 0.12);
+    }
+  }
+
+  .search-clear {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: $text-soft;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+
+    &:hover { color: $danger; }
+  }
+}
+
+// -------------------------------------------------------
+//   Tabla / listado con scroll interno
+// -------------------------------------------------------
+.table-scroll {
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.table {
+  --bs-table-bg: #fff;
+  border-color: $border-soft;
+  margin-bottom: 0;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: linear-gradient(180deg, #f4f7fb 0%, #eef2f8 100%);
+    color: $abba-blue-dark;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    border-color: $border-soft;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    border-color: $border-soft;
+    vertical-align: middle;
+    padding: 0.5rem 0.6rem;
+  }
+
+  tbody tr:last-child td {
+    padding-bottom: 0.85rem;
+  }
+}
+
+// Anchos fijos por columna: evita que el layout "auto" reparta el espacio
+// sobrante de forma dispareja y deje huecos enormes entre columnas.
+.valuation-table {
+  table-layout: fixed;
+  font-size: 0.85rem;
+
+  th:nth-child(1) { width: 26%; }
+  th:nth-child(2) { width: 11%; }
+  th:nth-child(3) { width: 11%; }
+  th:nth-child(4) { width: 14%; }
+  th:nth-child(5) { width: 18%; }
+  th:nth-child(6) { width: 20%; }
+}
+
+.ref-name {
+  max-width: 100%;
+}
+
+.assembly-header {
+  cursor: pointer;
+  user-select: none;
+
+  td {
+    background: linear-gradient(90deg, rgba($abba-blue, 0.12) 0%, rgba($abba-blue, 0.04) 100%);
+    border-left: 3px solid $abba-blue;
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+    transition: background 0.15s ease;
+  }
+
+  &:hover td {
+    background: linear-gradient(90deg, rgba($abba-blue, 0.2) 0%, rgba($abba-blue, 0.06) 100%);
+  }
+
+  &__title {
+    color: $abba-blue-dark;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .chevron {
+    color: $abba-blue;
+    transition: transform 0.2s ease;
+    transform: rotate(90deg);
+  }
+
+  &.is-collapsed .chevron {
+    transform: rotate(0deg);
+  }
+
+  .ref-count {
+    background: rgba($abba-blue, 0.12);
+    color: $abba-blue;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  &__totals {
+    color: $text-soft;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    padding-right: 0.5rem;
+
+    strong {
+      color: $abba-blue-dark;
+      font-size: 0.85rem;
+      text-transform: none;
+    }
+
+    .sep {
+      margin: 0 0.35rem;
+      color: rgba($abba-blue, 0.4);
+    }
+  }
+}
+
+.data-row {
+  transition: background-color 0.12s ease;
+
+  &:hover td {
+    background-color: #f6f9fd;
+  }
+}
+
+.cell-plan {
+  color: $abba-blue-dark;
+  font-weight: 600;
+  background-color: #fbfcfe;
+}
+
+.cell-prod {
+  font-weight: 700;
+  position: relative;
+
+  small {
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  &.status-green  { color: $ok;     background-color: $ok-bg; }
+  &.status-orange { color: $warn;   background-color: $warn-bg; }
+  &.status-red    { color: $danger; background-color: $danger-bg; }
+  &.status-yellow { color: $extra;  background-color: $extra-bg; }
+  &.status-none   { color: #cbd5e1; }
+}
+
+// Scroll suave
+.table-responsive {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2e0 transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #c7d2e0;
+    border-radius: 8px;
+  }
+}

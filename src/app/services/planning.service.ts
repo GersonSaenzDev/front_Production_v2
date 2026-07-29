@@ -13,7 +13,11 @@ import {
   PlanningDayResponse,
   PlanningRangePayload,
   PlanningRangeResponse,
-  RangeTotalProductsResponse
+  RangeTotalProductsResponse,
+  PlanningMonthPayload,
+  PlanningMonthResponse,
+  PlanningDetailPayload,
+  PlanningDetailResponse
 } from '../interfaces/planning.interface';
 
 @Injectable({
@@ -28,6 +32,8 @@ export class PlanningService {
   private readonly DAY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/day`;
   private readonly RANGE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/range`;
   private readonly RANGE_PRODUCTION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/rangeTotalProducts`;
+  private readonly MONTH_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/month`;
+  private readonly DETAIL_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/plannig/detail`;
 
   // El header `x-token` lo agrega automáticamente el authInterceptor para
   // cualquier petición al backend, por lo que no se setea manualmente aquí.
@@ -110,6 +116,31 @@ export class PlanningService {
   getRangeTotalProducts(payload: PlanningRangePayload): Observable<RangeTotalProductsResponse> {
     return this.http
       .post<RangeTotalProductsResponse>(this.RANGE_PRODUCTION_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Obtiene la planeación mensual consolidada por referencia, con filtro
+   * opcional por línea de ensamble (POST /plannig/month).
+   * @param {PlanningMonthPayload} payload - Año, mes y línea de ensamble opcional.
+   * @returns {Observable<PlanningMonthResponse>}
+   */
+  getPlanningByMonth(payload: PlanningMonthPayload): Observable<PlanningMonthResponse> {
+    return this.http
+      .post<PlanningMonthResponse>(this.MONTH_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Obtiene el detalle completo de una planeación (dailyPlan + changeHistory),
+   * por `_id` o por clave compuesta assemblyLine + referenceCode + planningYear + planningMonth
+   * (POST /plannig/detail).
+   * @param {PlanningDetailPayload} payload - Identificador único o clave compuesta de la planeación.
+   * @returns {Observable<PlanningDetailResponse>}
+   */
+  getPlanningDetail(payload: PlanningDetailPayload): Observable<PlanningDetailResponse> {
+    return this.http
+      .post<PlanningDetailResponse>(this.DETAIL_ENDPOINT, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 

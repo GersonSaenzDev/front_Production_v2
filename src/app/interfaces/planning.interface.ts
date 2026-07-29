@@ -137,6 +137,133 @@ export interface PlanningRangeResponse {
 }
 
 /**
+ * @description Payload para consultar la planeación mensual consolidada por referencia (POST /plannig/month).
+ */
+export interface PlanningMonthPayload {
+  planningYear: number;
+  planningMonth: number;
+  assemblyLine?: string;
+}
+
+/**
+ * @description Registro consolidado de planeación mensual por referencia.
+ */
+export interface PlanningMonthItem {
+  _id: string;
+  assemblyLine: string;
+  referenceCode: string;
+  reference: string;
+  planningYear: number;
+  planningMonth: number;
+  planningLabel: string;
+  managementQuantity: number;
+  kamPendingQuantity: number;
+  totalRequirement: number;
+  totalPlanned: number;
+  totalQuantity: number;
+  totalExecuted: number;
+  userCreate: string;
+  dateCreate: string;
+  hasChanges: boolean;
+  changesCount: number;
+  lastModifiedBy: string | null;
+  lastModifiedAt: string | null;
+}
+
+/**
+ * @description Respuesta del backend con la planeación mensual consolidada.
+ */
+export interface PlanningMonthResponse {
+  ok: boolean;
+  planningYear: number;
+  planningMonth: number;
+  total: number;
+  data: PlanningMonthItem[];
+}
+
+/**
+ * @description Payload para consultar el detalle de una planeación por `_id` (POST /plannig/detail).
+ */
+export interface PlanningDetailByIdPayload {
+  _id: string;
+}
+
+/**
+ * @description Payload para consultar el detalle de una planeación por clave compuesta (POST /plannig/detail).
+ */
+export interface PlanningDetailByKeyPayload {
+  assemblyLine: string;
+  referenceCode: string;
+  planningYear: number;
+  planningMonth: number;
+}
+
+/**
+ * @description Payload de /plannig/detail: por `_id`, o por clave compuesta.
+ */
+export type PlanningDetailPayload = PlanningDetailByIdPayload | PlanningDetailByKeyPayload;
+
+/**
+ * @description Entrada del historial de cambios de una planeación (changeHistory).
+ */
+export interface PlanningChangeHistoryEntry {
+  date: string;
+  action: string;
+  modifiedBy: string;
+  modifiedAt: string;
+  observation: string | null;
+  previousState: unknown | null;
+  week: string;
+}
+
+/**
+ * @description Registro diario dentro del `dailyPlan` del detalle de una planeación.
+ */
+export interface PlanningDetailDayEntry {
+  date: string;
+  plannedQuantity: number;
+  quantity: number;
+  executedQuantity: number | null;
+  auditTrail: PlanningAuditTrail[];
+}
+
+/**
+ * @description Documento completo de planeación devuelto por /plannig/detail,
+ * con el `dailyPlan` de los días del mes y el `changeHistory` de auditoría.
+ */
+export interface PlanningDetailItem {
+  _id: string;
+  assemblyLine: string;
+  referenceCode: string;
+  reference: string;
+  planningYear: number;
+  planningMonth: number;
+  planningLabel: string;
+  managementQuantity: number;
+  kamPendingQuantity: number;
+  totalRequirement: number;
+  totalPlanned: number;
+  totalQuantity: number;
+  totalExecuted: number;
+  userCreate: string;
+  dateCreate: string;
+  dailyPlan: PlanningDetailDayEntry[];
+  hasChanges: boolean;
+  changesCount: number;
+  lastModifiedBy: string | null;
+  lastModifiedAt: string | null;
+  changeHistory: PlanningChangeHistoryEntry[];
+}
+
+/**
+ * @description Respuesta del backend con el detalle completo de una planeación.
+ */
+export interface PlanningDetailResponse {
+  ok: boolean;
+  data: PlanningDetailItem;
+}
+
+/**
  * @description Elemento devuelto por la consulta de producción total por rango.
  */
 export interface TotalProductItem {
