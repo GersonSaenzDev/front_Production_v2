@@ -209,8 +209,8 @@ export class MenuAccessService {
     return item.url === '/stadistics';
   }
 
-  // Identifica el grupo "Planeación" y sus items (collapse "Cargue", "Planeacion Producción"
-  // y "Dashboard Planeación").
+  // Identifica el grupo "Planeación" y sus items (collapse "Cargue", "Planeacion Producción",
+  // "Dashboard Planeación", "Planeación Mensual", "Valorización de Planeación").
   private isPlanningNavItem(item: any): boolean {
     const title = item.title?.toUpperCase().trim() || '';
     if (item.type === 'group') {
@@ -219,7 +219,8 @@ export class MenuAccessService {
     if (item.type === 'collapse') {
       return title === 'CARGUE';
     }
-    return item.url === 'production/planningLoad' || item.url === 'production/planning/dashPlanning';
+    const url = item.url || '';
+    return url === 'production/planningLoad' || url.startsWith('production/planning/');
   }
 
   // Identifica el grupo "Gestión de Estructuras" y sus 3 collapses (Gestión de Estructuras,
