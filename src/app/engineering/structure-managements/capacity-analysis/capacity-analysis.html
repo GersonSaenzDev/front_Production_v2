@@ -75,6 +75,16 @@
     <div class="card-body p-4">
       <app-work-config-editor #configEditor></app-work-config-editor>
 
+      <!-- Fecha de entrega (opcional): activa el Gantt hacia atrás — cuándo debe iniciar cada
+           bodega para que la última unidad llegue a tiempo. -->
+      <div class="row mt-3 pt-3 border-top">
+        <div class="col-md-4">
+          <label class="field-label">Fecha de entrega (opcional)</label>
+          <input type="date" class="form-control" [(ngModel)]="dueDate" name="dueDate">
+          <small class="text-muted">Si se indica, calcula cuándo debe iniciar cada bodega (y Almacén) para llegar a tiempo.</small>
+        </div>
+      </div>
+
       <div class="text-end mt-3 pt-3 border-top">
         <button type="button" class="btn btn-analyze" [disabled]="selectedCount === 0 || isAnalyzing" (click)="analyze()">
           <span *ngIf="!isAnalyzing" class="d-inline-flex align-items-center">
@@ -253,21 +263,70 @@
                 <tr *ngIf="filteredWarehouses.length === 0">
                   <td colspan="6" class="text-center text-muted py-3">Sin resultados para tu búsqueda.</td>
                 </tr>
-                <tr *ngFor="let wh of filteredWarehouses" [class.table-danger]="wh.isBottleneck">
+                <tr *ngFor="let wh of filteredWarehouses" [class.table-danger]="wh.isBottleneck" [class.table-warning]="!wh.staff">
                   <td>
                     <div>{{ wh.warehouseName }}</div>
-                    <small class="text-muted">{{ wh.warehouseCode }} · {{ wh.staff.departament }}</small>
+                    <small class="text-muted">
+                      {{ wh.warehouseCode }} · {{ wh.staff?.departament || 'Sin cruzar' }}
+                      <span *ngIf="wh.staff?.missingDepartments?.length" class="text-warning ms-1"
+                            [title]="'Falta en RH: ' + (wh.staff?.missingDepartments)?.join(', ')">
+                        <i class="ti ti-alert-triangle"></i>
+                      </span>
+                    </small>
                   </td>
                   <td class="text-end">{{ wh.totalManHours | number:'1.0-2' }}</td>
-                  <td class="text-end">{{ wh.staff.availablePeople }} / {{ wh.staff.totalPeople }}</td>
-                  <td><span class="badge badge-neutral">{{ wh.staff.matchedBy }}</span></td>
-                  <td class="text-end">{{ wh.dailyCapacityHours }}</td>
-                  <td class="text-end">{{ wh.daysRequired }}</td>
+                  <td class="text-end">
+                    <ng-container *ngIf="wh.staff; else noStaffPeople">{{ wh.staff.availablePeople }} / {{ wh.staff.totalPeople }}</ng-container>
+                    <ng-template #noStaffPeople>—</ng-template>
+                  </td>
+                  <td>
+                    <span *ngIf="wh.staff" class="badge badge-neutral">{{ wh.staff.matchedBy }}</span>
+                    <span *ngIf="!wh.staff" class="badge bg-warning text-dark" [title]="wh.reason">Sin RH</span>
+                  </td>
+                  <td class="text-end">{{ wh.dailyCapacityHours ?? '—' }}</td>
+                  <td class="text-end">{{ wh.daysRequired ?? '—' }}</td>
                 </tr>
               </ng-container>
             </tbody>
           </table>
         </div>
+
+        <!-- Bodegas sin departamento de RH cruzado (staff: null en byWarehouse). Con el split
+             Exportación/Nacional de ED/SE es donde se ve, ej., que "SE-EXPORT" todavía no tiene
+             el departamento "SUB-ENSAMBLES USA" en RH. -->
+        <div class="alert alert-warning mt-3 mb-0" *ngIf="result.unmatchedWarehouses.length">
+          <strong>
+            <i class="ti ti-alert-triangle me-1"></i>
+            {{ result.unmatchedWarehouses.length }} bodega(s) sin personal cruzado en RH:
+          </strong>
+          <ul class="mb-0 mt-1">
+            <li *ngFor="let u of result.unmatchedWarehouses">
+              <strong>{{ u.warehouseName }}</strong> ({{ u.warehouseCode }})
+              <span *ngIf="u.missingDepartments?.length"> — falta: {{ u.missingDepartments?.join(', ') }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- GANTT DE ENTREGA (solo si se indicó fecha de entrega) -->
+    <div class="card results-card border-0 mt-4" *ngIf="result.gantt">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="section-title mb-0">Gantt de Entrega — Programación hacia atrás</h6>
+          <span class="badge" [class.bg-success]="result.gantt.feasible" [class.bg-danger]="!result.gantt.feasible">
+            {{ result.gantt.feasible ? 'Plan factible' : 'Plan NO factible' }}
+          </span>
+        </div>
+        <p class="note-text mb-3">
+          Fecha de entrega: <strong>{{ result.gantt.dueDate }}</strong>
+          · Inicio general estimado: <strong>{{ result.gantt.overallMustStartBy || '—' }}</strong>
+        </p>
+        <app-gantt-chart
+          [byWarehouse]="result.byWarehouse"
+          [ganttSummary]="result.gantt"
+          [almacenDeliverySchedule]="result.almacenDeliverySchedule || []"
+        ></app-gantt-chart>
       </div>
     </div>
   </ng-container>

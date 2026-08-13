@@ -840,12 +840,15 @@ export type WarehouseStaffMap = Record<string, string | string[]>;
 
 /**
  * @description Payload compartido por el análisis de capacidad y la optimización de producción.
+ * `dueDate` ('DD/MM/YYYY', opcional, no anterior a hoy) activa el Gantt de entrega hacia atrás
+ * en el análisis de capacidad (ver `GanttSummary`/`GanttInfo`) — no aplica a la optimización.
  */
 export interface CapacityAnalysisPayload {
   references: MaterialsAnalysisReferenceInput[];
   workSchedules: WorkSchedule[];
   staffArea: string;
   warehouseStaffMap: WarehouseStaffMap;
+  dueDate?: string;
 }
 
 /**
@@ -894,6 +897,10 @@ export interface CapacityBottleneck {
 
 /**
  * @description Personal disponible asociado a una bodega dentro del análisis de capacidad.
+ * `matchedBy` incluye 'nombre' | 'warehouseStaffMap' | 'warehousePeopleOverride' |
+ * 'exportNationalMap:export' | 'exportNationalMap:national' (ver `CapacityWarehouseLoad`).
+ * `missingDepartments` aparece cuando alguno (no todos) de los departamentos cruzados no
+ * existe aún en RH — el resto de personas sí se suma.
  */
 export interface CapacityStaff {
   departament: string;
@@ -901,10 +908,24 @@ export interface CapacityStaff {
   availablePeople: number;
   nonProductive: number;
   matchedBy: string;
+  missingDepartments?: string[];
 }
 
 /**
  * @description Carga y capacidad de una bodega dentro del análisis de capacidad.
+ *
+ * Bodegas Exportación/Nacional (ED "ENSAMBLE EXPORTACIONES" y SE "SUB-ENSAMBLES"): si no se
+ * overridearon a mano en `warehouseStaffMap`/`warehousePeopleOverride`, el backend las reporta
+ * PARTIDAS en dos filas — `warehouseCode` viene con sufijo `-EXPORT` / `-NATIONAL` (ej.
+ * "ED-EXPORT", "ED-NATIONAL") y `warehouseName` con la etiqueta "(Exportación)"/"(Nacional)" —
+ * cada una con las horas-hombre reales de ese tipo de referencia (internalCode inicia en "7" =
+ * Exportación) cruzadas contra su propio equipo de RH. Ver EXPORT_NATIONAL_STAFF_MAP en el
+ * backend (dao/staffControl.js).
+ *
+ * `staff`/`dailyCapacityHours`/`daysRequired` vienen en `null` y `reason` con el motivo cuando
+ * la bodega no tiene departamento de personal cruzado o el departamento no tiene gente activa
+ * (ej. mientras RH no reasigne al equipo de "SUB-ENSAMBLES USA", "SE-EXPORT" llega así) —
+ * `weeksRequired`/`rank`/`isBottleneck` solo vienen presentes cuando SÍ se pudo calcular.
  */
 export interface CapacityWarehouseLoad {
   warehouseCode: string;
@@ -912,22 +933,119 @@ export interface CapacityWarehouseLoad {
   totalManHours: number;
   totalPieces: number;
   workSchedule: WorkScheduleSummary;
-  staff: CapacityStaff;
-  dailyCapacityHours: number;
-  daysRequired: number;
-  weeksRequired: number;
-  rank: number;
-  isBottleneck: boolean;
+  staff: CapacityStaff | null;
+  dailyCapacityHours: number | null;
+  daysRequired: number | null;
+  weeksRequired?: number;
+  rank?: number;
+  isBottleneck?: boolean;
+  reason?: string;
+  /** Solo presente cuando el payload envió `dueDate` (Gantt de entrega). */
+  gantt?: GanttInfo | null;
+}
+
+/**
+ * @description Bodega sin departamento de personal cruzado dentro del análisis de capacidad
+ * (mismas entradas que en `byWarehouse` con `staff: null`, aquí solo para filtrarlas rápido).
+ */
+export interface CapacityUnmatchedWarehouse {
+  warehouseCode: string;
+  warehouseName: string;
+  totalManHours: number;
+  missingDepartments?: string[];
+}
+
+// =====================================================================
+//  GANTT DE ENTREGA (dueDate en /capacity — ver CapacityAnalysisPayload)
+// =====================================================================
+
+/**
+ * @description Programación hacia atrás de UNA bodega, calculada desde `dueDate`: cuándo debe
+ * iniciar/terminar para que el flujo de producción (`flows`) llegue a tiempo a la bodega
+ * terminal. `mustStartBy`/`mustFinishBy` en formato `DD/MM/YYYY HH:mm` (zona horaria Bogotá).
+ * - `terminal`: bodega final (sin salida en `flows`) — `mustFinishBy` = `dueDate` a la hora de
+ *   fin del último turno de su jornada.
+ * - `scheduled`: bodega intermedia, resuelta normalmente.
+ * - `blocked`: no se pudo determinar `mustFinishBy` porque al menos una bodega sucesora
+ *   (`blockedBy`) no está resuelta (sin personal, cíclica, o ella misma bloqueada en cascada).
+ * - `noStaff`: la bodega no tiene departamento de personal cruzado (mismo caso que
+ *   `staff: null` en `CapacityWarehouseLoad`) — `mustFinishBy` sí puede venir calculado
+ *   (informativo), pero no `mustStartBy`.
+ * - `cyclic`: la bodega quedó dentro de un ciclo detectado en `flows` — no se puede programar.
+ */
+export interface GanttInfo {
+  status: 'terminal' | 'scheduled' | 'blocked' | 'noStaff' | 'cyclic';
+  mustStartBy: string | null;
+  mustFinishBy: string | null;
+  wallClockHoursRequired?: number;
+  blockedBy?: string[];
+  reason?: string;
+}
+
+/** @description Bodega identificada como Sub-Ensamble o Ensamble (por nombre, ver `GanttSummary.assemblySequencing`). */
+export interface GanttAssemblyWarehouseRef {
+  warehouseCode: string;
+  warehouseName: string;
+}
+
+/**
+ * @description Resumen del Gantt de entrega para todo el análisis de capacidad.
+ * `feasible:false` cuando alguna bodega necesitaría haber iniciado ya (respecto a "ahora"),
+ * con `feasibilityGapHours` = el mayor atraso encontrado. `holidaysCoverage.missing` lista los
+ * años sin datos cargados en el calendario de RH (indusel.holidays) — para esos años se asumió
+ * únicamente el domingo como día no laboral (festivos NO reflejados, aviso para el usuario).
+ * `assemblySequencing` documenta la regla de negocio: Sub-Ensamble y Ensamble son siempre las
+ * dos últimas etapas (toda otra bodega debe entregar antes de ambas, y Sub-Ensamble antes de
+ * Ensamble), aunque el BOM no las encadene como flujo de material directo.
+ */
+export interface GanttSummary {
+  dueDate: string;
+  feasible: boolean;
+  feasibilityGapHours: number;
+  overallMustStartBy: string | null;
+  cyclicWarehouses: string[];
+  holidaysCoverage: { covered: number[]; missing: number[] };
+  assemblySequencing?: {
+    subAssemblyWarehouses: GanttAssemblyWarehouseRef[];
+    assemblyWarehouses: GanttAssemblyWarehouseRef[];
+    componentWarehousesCount: number;
+  };
+}
+
+/** @description Material `supplyOnly` (Almacén lo entrega, no lleva mano de obra en bodega). */
+export interface AlmacenSupplyOnlyMaterial {
+  productCode: string;
+  name: string;
+  quantity: number;
+}
+
+/**
+ * @description Fecha límite en que Almacén debe haber entregado los materiales `supplyOnly` a
+ * una bodega consumidora, derivada del `mustStartBy` de esa bodega en el Gantt (el más
+ * temprano, si la bodega quedó partida Exportación/Nacional). `status`/`reason` reflejan el
+ * mismo estado que `GanttInfo` de la(s) bodega(s) asociada(s) cuando no se pudo calcular.
+ */
+export interface AlmacenDeliveryEntry {
+  warehouseCode: string;
+  warehouseName: string;
+  mustDeliverBy: string | null;
+  status: string;
+  reason?: string;
+  supplyOnlyMaterials: AlmacenSupplyOnlyMaterial[];
 }
 
 /**
  * @description Resultado completo del análisis de capacidad de planta.
+ * `gantt`/`almacenDeliverySchedule` solo vienen presentes cuando el payload envió `dueDate`.
  */
 export interface CapacityAnalysisResult {
   references: ScenarioReferenceResult[];
   summary: CapacitySummary;
   bottlenecks: CapacityBottleneck[];
   byWarehouse: CapacityWarehouseLoad[];
+  unmatchedWarehouses: CapacityUnmatchedWarehouse[];
+  gantt?: GanttSummary;
+  almacenDeliverySchedule?: AlmacenDeliveryEntry[];
 }
 
 /**
@@ -1054,6 +1172,11 @@ export interface OptimalMix {
 
 /**
  * @description Capacidad disponible de una bodega considerada en la optimización.
+ *
+ * Bodegas Exportación/Nacional (ver `CapacityWarehouseLoad` en el análisis de capacidad, mismo
+ * criterio acá): si no vienen overrideadas a mano, cada bodega se parte en dos secciones del LP
+ * ("<code>-EXPORT" / "<code>-NATIONAL", ej. "ED-EXPORT"), cada una restringida por su propio
+ * equipo de RH.
  */
 export interface OptimizationSection {
   warehouseCode: string;
@@ -1062,6 +1185,17 @@ export interface OptimizationSection {
   availablePeople: number;
   effectiveHoursPerDay: number;
   capacityHours: number;
+}
+
+/**
+ * @description Sección sin personal cruzado (o sin gente activa): queda fuera del LP y se trata
+ * como capacidad ilimitada. Con el split Exportación/Nacional es el lugar donde se ve, por
+ * ejemplo, que "SE-EXPORT" no tiene aún departamento de RH ("SUB-ENSAMBLES USA").
+ */
+export interface OptimizationExcludedSection {
+  warehouseCode: string;
+  warehouseName: string;
+  reason: string;
 }
 
 /**
@@ -1074,6 +1208,8 @@ export interface OptimizationResult {
   proportionalMix: OptimizationProportionalMix;
   optimalMix: OptimalMix;
   sections: OptimizationSection[];
+  excludedSections: OptimizationExcludedSection[];
+  notFound: string[];
 }
 
 /**

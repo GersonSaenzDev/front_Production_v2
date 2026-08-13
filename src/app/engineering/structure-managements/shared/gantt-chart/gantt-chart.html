@@ -1,0 +1,112 @@
+<!-- app/engineering/structure-managements/shared/gantt-chart/gantt-chart.html -->
+<div class="gantt-chart-wrapper">
+
+  <!-- Alertas de factibilidad / cobertura de festivos -->
+  <div class="alert alert-danger mb-3" *ngIf="ganttSummary && !ganttSummary.feasible">
+    <strong><i class="ti ti-alert-triangle me-1"></i>El plan no es factible con la fecha de entrega indicada:</strong>
+    al menos una bodega necesitaría haber iniciado hace {{ ganttSummary.feasibilityGapHours | number:'1.0-1' }} horas.
+  </div>
+  <div class="alert alert-warning mb-3" *ngIf="ganttSummary?.holidaysCoverage?.missing?.length">
+    <strong><i class="ti ti-calendar-exclamation me-1"></i>Calendario de festivos incompleto:</strong>
+    no hay festivos cargados para {{ ganttSummary?.holidaysCoverage?.missing?.join(', ') }} — para esos años solo se
+    asumió el domingo como día no laboral (los festivos de esos años NO se tuvieron en cuenta).
+  </div>
+  <div class="alert alert-secondary mb-3" *ngIf="ganttSummary?.cyclicWarehouses?.length">
+    <strong><i class="ti ti-refresh-alert me-1"></i>Ciclo detectado en el flujo de producción:</strong>
+    {{ ganttSummary?.cyclicWarehouses?.join(', ') }} — esas bodegas y las que les entregan piezas no se pudieron programar.
+  </div>
+  <div class="alert alert-info mb-3" *ngIf="ganttSummary?.assemblySequencing as seq">
+    <strong><i class="ti ti-sitemap me-1"></i>Secuencia de ensamblaje aplicada:</strong>
+    todas las demás bodegas deben entregar antes de iniciar
+    <span *ngIf="seq.subAssemblyWarehouses.length">Sub-Ensamble ({{ warehouseNames(seq.subAssemblyWarehouses) }})</span>
+    <span *ngIf="seq.subAssemblyWarehouses.length && seq.assemblyWarehouses.length"> y </span>
+    <span *ngIf="seq.assemblyWarehouses.length">Ensamble ({{ warehouseNames(seq.assemblyWarehouses) }})</span>
+    <span *ngIf="seq.subAssemblyWarehouses.length && seq.assemblyWarehouses.length">, y Sub-Ensamble debe entregar antes de que Ensamble inicie</span>.
+  </div>
+
+  <!-- Gráfico -->
+  <div *ngIf="chartHasData; else noChart">
+    <apx-chart
+      [series]="chartOptions.series"
+      [chart]="chartOptions.chart"
+      [plotOptions]="chartOptions.plotOptions"
+      [dataLabels]="chartOptions.dataLabels"
+      [xaxis]="chartOptions.xaxis"
+      [tooltip]="chartOptions.tooltip"
+      [legend]="chartOptions.legend"
+    ></apx-chart>
+  </div>
+  <ng-template #noChart>
+    <p class="text-muted text-center py-3">Ninguna bodega tiene una fecha calculada todavía para graficar.</p>
+  </ng-template>
+
+  <!-- Detalle por bodega -->
+  <div class="table-responsive mt-3">
+    <table class="table table-sm table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Bodega</th>
+          <th>Estado</th>
+          <th>Debe iniciar</th>
+          <th>Debe terminar</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="sortedRows.length === 0">
+          <td colspan="5" class="text-center text-muted py-3">Sin datos de Gantt.</td>
+        </tr>
+        <tr *ngFor="let w of sortedRows">
+          <td>
+            <div>{{ w.warehouseName }}</div>
+            <small class="text-muted">{{ w.warehouseCode }}</small>
+          </td>
+          <td>
+            <span class="badge" [style.background-color]="statusColor(w.gantt?.status)">
+              {{ statusLabel[w.gantt?.status || ''] || w.gantt?.status }}
+            </span>
+          </td>
+          <td>{{ w.gantt?.mustStartBy || '—' }}</td>
+          <td>{{ w.gantt?.mustFinishBy || '—' }}</td>
+          <td>
+            <small class="text-muted" *ngIf="w.gantt?.reason">{{ w.gantt?.reason }}</small>
+            <small class="text-muted" *ngIf="w.gantt?.blockedBy?.length">Bloqueada por: {{ w.gantt?.blockedBy?.join(', ') }}</small>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Entregas de Almacén -->
+  <div class="mt-4" *ngIf="almacenDeliverySchedule.length">
+    <h6 class="section-title mb-2">Entregas de Almacén</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Bodega</th>
+            <th>Debe entregar Almacén</th>
+            <th>Estado</th>
+            <th class="text-end">Materiales</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of almacenDeliverySchedule">
+            <td>
+              <div>{{ a.warehouseName }}</div>
+              <small class="text-muted">{{ a.warehouseCode }}</small>
+            </td>
+            <td>{{ a.mustDeliverBy || '—' }}</td>
+            <td>
+              <span class="badge" [style.background-color]="statusColor(a.status)">
+                {{ statusLabel[a.status] || a.status }}
+              </span>
+              <div *ngIf="a.reason"><small class="text-muted">{{ a.reason }}</small></div>
+            </td>
+            <td class="text-end">{{ a.supplyOnlyMaterials.length }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

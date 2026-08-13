@@ -8,24 +8,31 @@ import * as XLSX from 'xlsx';
 
 import { CustomerHouseService } from '../../services/customer-house.service';
 import { FreightDispatch, FreightDispatchRequest } from '../../interfaces/customer-house.interface';
+import { parseInvoicePdf } from './invoice-pdf-parser';
 
 registerLocaleData(localeEs, 'es');
 
 interface FreightItemFormRow {
   client: string;
   destinationCity: string;
+  ean: string;
   product: string;
   quantity: number | null;
   unitValue: number | null;
-  unitVolume: number | null;
+  freightCost: number | null;
+  invoiceNumber: string;
 }
 
 interface FreightDispatchFormState {
-  dispatchNumber: string;
+  dispatchNumber: string; // Previsualizado por el backend, de solo lectura
   dispatchDate: string; // yyyy-MM-dd (binding de <input type="date">)
+  warehouseExitDate: string; // yyyy-MM-dd (binding de <input type="date">)
   carrier: string;
   totalFreightCost: number | null;
+  additionalCosts: number | null;
   items: FreightItemFormRow[];
+  invoiceFiles: File[];
+  invoiceMeta: { invoiceNumber: string }[];
 }
 
 @Component({
@@ -65,8 +72,8 @@ export class FreightManagement implements OnInit {
     return this.allDispatches.reduce((acc, dispatch) => acc + (dispatch.totalFreightCost || 0), 0);
   }
 
-  get totalVolumeSum(): number {
-    return this.allDispatches.reduce((acc, dispatch) => acc + (dispatch.totalVolume || 0), 0);
+  get totalAdditionalCostsSum(): number {
+    return this.allDispatches.reduce((acc, dispatch) => acc + (dispatch.additionalCosts || 0), 0);
   }
 
   ngOnInit(): void {
@@ -116,7 +123,8 @@ export class FreightManagement implements OnInit {
             dispatch.carrier,
             ...dispatch.items.map((item) => item.client),
             ...dispatch.items.map((item) => item.destinationCity),
-            ...dispatch.items.map((item) => item.product)
+            ...dispatch.items.map((item) => item.product),
+            ...dispatch.items.map((item) => item.ean)
           ]
             .filter((value): value is string => !!value)
             .join(' ')
@@ -154,15 +162,21 @@ export class FreightManagement implements OnInit {
 
   public showFormModal = false;
   public isSaving = false;
+  public isLoadingDispatchNumber = false;
+  public isParsingInvoices = false;
   public form: FreightDispatchFormState = this.buildEmptyForm();
 
   private buildEmptyForm(): FreightDispatchFormState {
     return {
       dispatchNumber: '',
       dispatchDate: this.formatDate(new Date()),
+      warehouseExitDate: this.formatDate(new Date()),
       carrier: '',
       totalFreightCost: null,
-      items: [this.buildEmptyItemRow()]
+      additionalCosts: null,
+      items: [this.buildEmptyItemRow()],
+      invoiceFiles: [],
+      invoiceMeta: []
     };
   }
 
@@ -170,16 +184,37 @@ export class FreightManagement implements OnInit {
     return {
       client: '',
       destinationCity: '',
+      ean: '',
       product: '',
       quantity: null,
       unitValue: null,
-      unitVolume: null
+      freightCost: null,
+      invoiceNumber: ''
     };
+  }
+
+  private isItemRowEmpty(row: FreightItemFormRow): boolean {
+    return !row.client.trim() && !row.destinationCity.trim() && !row.ean.trim() && !row.product.trim() && !row.quantity && !row.unitValue;
   }
 
   public openFormModal(): void {
     this.form = this.buildEmptyForm();
     this.showFormModal = true;
+
+    this.isLoadingDispatchNumber = true;
+    this.customerHouseService.getNextDispatchNumber().subscribe({
+      next: (response) => {
+        if (response.ok && response.data) {
+          this.form.dispatchNumber = response.data.dispatchNumber;
+        }
+      },
+      error: () => {
+        this.toastr.warning('No se pudo previsualizar el N° de despacho. Se generará al registrar.');
+      },
+      complete: () => {
+        this.isLoadingDispatchNumber = false;
+      }
+    });
   }
 
   public closeFormModal(): void {
@@ -195,21 +230,79 @@ export class FreightManagement implements OnInit {
     this.form.items.splice(index, 1);
   }
 
+  // ============================================================
+  //  CARGA DE FACTURAS PDF
+  // ============================================================
+
+  public async onInvoiceFilesSelected(fileList: FileList | null): Promise<void> {
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList);
+    this.isParsingInvoices = true;
+
+    for (const file of files) {
+      try {
+        const result = await parseInvoicePdf(file);
+
+        if (result.rows.length === 0) {
+          this.toastr.warning(`No se encontraron líneas de producto en "${file.name}".`);
+          continue;
+        }
+
+        if (this.form.items.length === 1 && this.isItemRowEmpty(this.form.items[0])) {
+          this.form.items.splice(0, 1);
+        }
+
+        for (const row of result.rows) {
+          this.form.items.push({
+            client: row.client,
+            destinationCity: row.destinationCity,
+            ean: row.ean,
+            product: row.product,
+            quantity: row.quantity,
+            unitValue: row.unitValue,
+            freightCost: null,
+            invoiceNumber: row.invoiceNumber
+          });
+        }
+
+        this.form.invoiceFiles.push(file);
+        this.form.invoiceMeta.push({ invoiceNumber: result.rows[0].invoiceNumber || '' });
+
+        result.warnings.forEach((warning) => this.toastr.warning(warning));
+        this.toastr.success(`"${file.name}": ${result.rows.length} línea(s) cargada(s). Complete el Flete de cada línea.`);
+      } catch {
+        this.toastr.error(`No se pudo leer la factura "${file.name}". Verifique que sea un PDF válido.`);
+      }
+    }
+
+    if (this.form.items.length === 0) {
+      this.form.items.push(this.buildEmptyItemRow());
+    }
+
+    this.isParsingInvoices = false;
+  }
+
+  public removeInvoiceFile(index: number): void {
+    this.form.invoiceFiles.splice(index, 1);
+    this.form.invoiceMeta.splice(index, 1);
+  }
+
   public get isFormValid(): boolean {
-    if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.carrier.trim()) return false;
+    if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.warehouseExitDate || !this.form.carrier.trim()) return false;
     if (this.form.totalFreightCost === null || this.form.totalFreightCost <= 0) return false;
+    if (this.form.additionalCosts !== null && this.form.additionalCosts < 0) return false;
 
     return this.form.items.every(
       (item) =>
         !!item.client.trim() &&
         !!item.destinationCity.trim() &&
-        !!item.product.trim() &&
         item.quantity !== null &&
         item.quantity > 0 &&
         item.unitValue !== null &&
         item.unitValue >= 0 &&
-        item.unitVolume !== null &&
-        item.unitVolume >= 0
+        item.freightCost !== null &&
+        item.freightCost >= 0
     );
   }
 
@@ -220,22 +313,25 @@ export class FreightManagement implements OnInit {
     }
 
     const payload: FreightDispatchRequest = {
-      dispatchNumber: this.form.dispatchNumber.trim(),
       dispatchDate: this.formatDateForBackend(this.form.dispatchDate),
+      warehouseExitDate: this.formatDateForBackend(this.form.warehouseExitDate),
       carrier: this.form.carrier.trim(),
       totalFreightCost: Number(this.form.totalFreightCost),
+      additionalCosts: Number(this.form.additionalCosts) || 0,
       items: this.form.items.map((item) => ({
         client: item.client.trim(),
         destinationCity: item.destinationCity.trim(),
+        ean: item.ean.trim(),
         product: item.product.trim(),
         quantity: Number(item.quantity),
         unitValue: Number(item.unitValue),
-        unitVolume: Number(item.unitVolume)
+        freightCost: Number(item.freightCost),
+        invoiceNumber: item.invoiceNumber.trim()
       }))
     };
 
     this.isSaving = true;
-    this.customerHouseService.createFreightDispatch(payload).subscribe({
+    this.customerHouseService.createFreightDispatch(payload, this.form.invoiceFiles, this.form.invoiceMeta).subscribe({
       next: (response) => {
         if (response.ok) {
           this.toastr.success(response.msg || 'Despacho de flete registrado exitosamente.');
@@ -298,19 +394,19 @@ export class FreightManagement implements OnInit {
       dispatch.items.map((item) => ({
         DESPACHO: dispatch.dispatchNumber,
         FECHA: dispatch.dispatchDate,
+        SALIDA_BODEGA: dispatch.warehouseExitDate,
         TRANSPORTADOR: dispatch.carrier,
         COSTO_FLETE_TOTAL: dispatch.totalFreightCost,
-        VOLUMEN_TOTAL_DESPACHO: dispatch.totalVolume,
+        COSTOS_ADICIONALES: dispatch.additionalCosts,
         CLIENTE: item.client,
         CIUDAD_DESTINO: item.destinationCity,
+        EAN: item.ean,
         PRODUCTO: item.product,
         CANTIDAD: item.quantity,
         VALOR_UNITARIO: item.unitValue,
-        VOLUMEN_UNITARIO: item.unitVolume,
-        VOLUMEN_ITEM: item.itemVolume,
-        PORCENTAJE_VOLUMEN: item.volumePercentage,
-        FLETE_ASIGNADO: item.allocatedFreightCost,
+        FLETE_LINEA: item.freightCost,
         FLETE_POR_UNIDAD: item.freightCostPerUnit,
+        FACTURA_ORIGEN: item.invoiceNumber,
         ESTADO: dispatch.status ? 'Activo' : 'Inactivo',
         REGISTRADO_POR: dispatch.userCreate,
         FECHA_REGISTRO: dispatch.dateCreate

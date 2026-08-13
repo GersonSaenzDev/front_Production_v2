@@ -142,6 +142,10 @@ export class ProductionOptimization implements OnInit {
 
   queueRiskClass(risk: string): string {
     const normalized = (risk || '').toUpperCase();
+    // SATURADA (utilización >= 100%) es más crítica que ALTA — con el split
+    // Exportación/Nacional de ED/SE es habitual verla mientras el departamento
+    // de RH correspondiente tenga poca o ninguna gente asignada todavía.
+    if (normalized === 'SATURADA') return 'badge bg-dark';
     if (normalized === 'ALTA') return 'badge bg-danger';
     if (normalized === 'MEDIA') return 'badge bg-warning text-dark';
     return 'badge bg-success';

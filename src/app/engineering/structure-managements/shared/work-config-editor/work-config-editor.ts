@@ -84,6 +84,16 @@ export class WorkConfigEditor implements OnInit {
     schedule.shifts.splice(index, 1);
   }
 
+  /** Normaliza el texto ingresado a formato 24H 'HH:mm' (ej: '6', '600', '18:5' -> '06:00', '18:05'). */
+  normalizeShiftTime(shift: WorkScheduleShift, field: 'start' | 'end'): void {
+    const raw = (shift[field] || '').trim();
+    const match = raw.match(/^(\d{1,2}):?(\d{0,2})$/);
+    if (!match) return;
+    const hours = Math.min(23, Math.max(0, parseInt(match[1], 10) || 0));
+    const minutes = Math.min(59, Math.max(0, parseInt(match[2], 10) || 0));
+    shift[field] = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
   // =======================
   //  MAPEO BODEGA → DEPARTAMENTO
   // =======================

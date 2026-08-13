@@ -169,6 +169,22 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Secciones excluidas del LP: sin departamento de RH cruzado o sin gente activa
+             (se tratan como capacidad ilimitada). Con el split Exportación/Nacional de ED/SE
+             es donde se ve, ej., que "SE-EXPORT" todavía no tiene el departamento
+             "SUB-ENSAMBLES USA" en RH. -->
+        <div class="alert alert-warning mt-3 mb-0" *ngIf="result.excludedSections.length">
+          <strong>
+            <i class="ti ti-alert-triangle me-1"></i>
+            {{ result.excludedSections.length }} sección(es) excluida(s) del cálculo (capacidad tratada como ilimitada):
+          </strong>
+          <ul class="mb-0 mt-1">
+            <li *ngFor="let ex of result.excludedSections">
+              <strong>{{ ex.warehouseName }}</strong> ({{ ex.warehouseCode }}) — {{ ex.reason }}
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 

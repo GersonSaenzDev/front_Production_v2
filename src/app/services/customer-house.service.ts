@@ -11,7 +11,8 @@ import {
   FreightDispatchResponse,
   FreightDispatchDateRangeFilter,
   FreightDispatchListResponse,
-  FreightDispatchDetailResponse
+  FreightDispatchDetailResponse,
+  FreightNextDispatchNumberResponse
 } from '../interfaces/customer-house.interface';
 
 @Injectable({
@@ -25,6 +26,7 @@ export class CustomerHouseService {
   private readonly FREIGHT_DISPATCH_ENDPOINT = `${this.BASE_ENDPOINT}/freightDispatch`;
   private readonly FREIGHT_DISPATCH_LIST_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/list`;
   private readonly FREIGHT_DISPATCH_DETAIL_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/detail`;
+  private readonly FREIGHT_DISPATCH_NEXT_NUMBER_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/nextNumber`;
 
   /**
    * @description Manejo centralizado de errores HTTP.
@@ -45,15 +47,41 @@ export class CustomerHouseService {
   }
 
   /**
-   * @description Registra un despacho de flete multicliente, con el prorrateo por línea.
-   * @param {FreightDispatchRequest} body - Datos del despacho a registrar.
+   * @description Registra un despacho de flete multicliente. El N° de despacho lo genera
+   * el servidor; las facturas PDF adjuntas se reenvían a InduTalent para archivarse.
+   * @param {FreightDispatchRequest} body - Datos del despacho a registrar (sin dispatchNumber).
+   * @param {File[]} invoiceFiles - Facturas PDF adjuntas (0-n).
+   * @param {{invoiceNumber: string}[]} invoiceMeta - Metadata alineada por índice con invoiceFiles.
    * @returns {Observable<FreightDispatchResponse>}
    */
-  createFreightDispatch(body: FreightDispatchRequest): Observable<FreightDispatchResponse> {
-    return this.http.post<FreightDispatchResponse>(this.FREIGHT_DISPATCH_ENDPOINT, body).pipe(
+  createFreightDispatch(
+    body: FreightDispatchRequest,
+    invoiceFiles: File[] = [],
+    invoiceMeta: { invoiceNumber: string }[] = []
+  ): Observable<FreightDispatchResponse> {
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify({ ...body, invoiceMeta }));
+    invoiceFiles.forEach((file) => formData.append('invoices', file));
+
+    return this.http.post<FreightDispatchResponse>(this.FREIGHT_DISPATCH_ENDPOINT, formData).pipe(
       catchError(this.handleError.bind(this)),
       map((response) => {
         console.log('CUSTOMER HOUSE SERVICE - CONTROL: Respuesta del backend (createFreightDispatch):', response);
+        return response;
+      })
+    );
+  }
+
+  /**
+   * @description Previsualiza (sin reservar) el próximo N° de despacho, para mostrarlo
+   * de solo lectura al abrir el formulario.
+   * @returns {Observable<FreightNextDispatchNumberResponse>}
+   */
+  getNextDispatchNumber(): Observable<FreightNextDispatchNumberResponse> {
+    return this.http.get<FreightNextDispatchNumberResponse>(this.FREIGHT_DISPATCH_NEXT_NUMBER_ENDPOINT).pipe(
+      catchError(this.handleError.bind(this)),
+      map((response) => {
+        console.log('CUSTOMER HOUSE SERVICE - CONTROL: Respuesta del backend (getNextDispatchNumber):', response);
         return response;
       })
     );

@@ -10,11 +10,14 @@ export interface WarehouseStaffRow {
 /** Jornadas de trabajo reales de la planta, usadas como valor inicial editable. */
 export const DEFAULT_WORK_SCHEDULES: WorkSchedule[] = [
   {
-    name: 'Ensamble',
+    name: 'Ensamble (2 turnos)',
     warehouses: ['ED', 'EA', 'SE'],
-    shifts: [{ start: '07:00', end: '16:00' }],
-    breakMinutes: 40,
-    daysPerWeek: 5
+    shifts: [
+      { start: '06:00', end: '13:00' },
+      { start: '13:00', end: '20:00' }
+    ],
+    breakMinutes: 20,
+    daysPerWeek: 6
   },
   {
     name: 'Planta (2 turnos)',
@@ -23,7 +26,8 @@ export const DEFAULT_WORK_SCHEDULES: WorkSchedule[] = [
       { start: '06:00', end: '13:00' },
       { start: '13:00', end: '20:00' }
     ],
-    daysPerWeek: 5
+    breakMinutes: 20,
+    daysPerWeek: 6
   }
 ];
 
@@ -46,8 +50,8 @@ export const DEFAULT_WAREHOUSE_STAFF_MAP: WarehouseStaffMap = {
   CE: 'CONJUNTOS ELECTRICOS',
   NP: 'PULIMENTO CROMADO',
   MS: 'MECANIZADO VALVULAS',
-  ED: ['ENSAMBLE USA', 'SUBENSAMBLE USA'],
-  SE: ['SUBENSAMBLE USA']
+  ED: ['ENSAMBLE USA', 'SUB-ENSAMBLES USA'],
+  SE: ['SUB-ENSAMBLES USA']
 };
 
 /** Convierte el diccionario bodega→departamento(s) en filas editables para una tabla. */

@@ -9,7 +9,7 @@
       </div>
       <div class="header-text">
         <h3 class="header-title mb-1">Gestión de Fletes</h3>
-        <p class="header-subtitle mb-0">Casa Cliente INDUSEL — Registro y prorrateo de despachos multicliente</p>
+        <p class="header-subtitle mb-0">Casa Cliente INDUSEL — Registro de despachos multicliente</p>
       </div>
 
       <div class="header-actions">
@@ -64,9 +64,9 @@
       <span class="summary-count">Suma de todos los despachos</span>
     </div>
     <div class="summary-card row-mantenimiento">
-      <span class="summary-time">{{ totalVolumeSum | number }}</span>
-      <span class="summary-category">Volumen Total</span>
-      <span class="summary-count">Unidades de volumen acumuladas</span>
+      <span class="summary-time">{{ totalAdditionalCostsSum | currency:'COP':'symbol':'1.0-0' }}</span>
+      <span class="summary-category">Costos Adicionales</span>
+      <span class="summary-count">Suma de todos los despachos</span>
     </div>
   </div>
 
@@ -78,7 +78,7 @@
       <div class="view-toolbar">
         <div class="toolbar-title">
           <h6 class="section-title mb-0">Despachos de Flete</h6>
-          <small class="section-subtitle">Prorrateo automático del costo de flete por línea y por volumen</small>
+          <small class="section-subtitle">Flete asignado manualmente por línea, con carga masiva desde facturas PDF</small>
         </div>
 
         <div class="search-wrapper">
@@ -86,7 +86,7 @@
           <input
             type="text"
             class="form-control search-input"
-            placeholder="Buscar por despacho, transportador, cliente, ciudad o producto..."
+            placeholder="Buscar por despacho, transportador, cliente, ciudad, EAN o producto..."
             [(ngModel)]="searchTerm"
             (input)="applyFilter()">
         </div>
@@ -99,7 +99,7 @@
             <tr>
               <th scope="col">Despacho</th>
               <th scope="col">Transportador</th>
-              <th scope="col">Costo Flete / Volumen</th>
+              <th scope="col">Costo Flete / Adicionales</th>
               <th scope="col">Líneas</th>
               <th scope="col">Estado</th>
               <th scope="col" class="action-col">Acciones</th>
@@ -140,8 +140,8 @@
               <td class="cell-stacked cell-schedule">
                 <strong class="time-value">{{ dispatch.totalFreightCost | currency:'COP':'symbol':'1.0-0' }}</strong>
                 <small class="cell-sub">
-                  <i class="ti ti-box-multiple"></i>
-                  Vol. {{ dispatch.totalVolume | number }}
+                  <i class="ti ti-receipt-2"></i>
+                  Adic. {{ dispatch.additionalCosts | currency:'COP':'symbol':'1.0-0' }}
                 </small>
               </td>
 
@@ -198,7 +198,7 @@
     <div class="response-modal-header">
       <div>
         <h5 class="modal-title">Registrar Despacho de Flete</h5>
-        <small class="modal-subtitle">El prorrateo por línea lo calcula el backend según el volumen</small>
+        <small class="modal-subtitle">Carga 1 o más facturas PDF para precargar las líneas; el Flete se diligencia manualmente por línea</small>
       </div>
       <button type="button" class="modal-close" (click)="closeFormModal()">
         <i class="ti ti-x"></i>
@@ -210,12 +210,23 @@
       <div class="form-grid">
         <div class="form-field">
           <label class="field-label">N° Despacho</label>
-          <input type="text" class="form-control" [(ngModel)]="form.dispatchNumber" placeholder="Ej. Cargue de 30 Cocinas Éxito">
+          <input
+            type="text"
+            class="form-control"
+            [ngModel]="isLoadingDispatchNumber ? 'Generando...' : form.dispatchNumber"
+            readonly
+            disabled
+            title="Consecutivo generado automáticamente por el sistema">
         </div>
 
         <div class="form-field">
           <label class="field-label">Fecha de despacho</label>
           <input type="date" class="form-control" [(ngModel)]="form.dispatchDate">
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Salida Bodega</label>
+          <input type="date" class="form-control" [(ngModel)]="form.warehouseExitDate">
         </div>
 
         <div class="form-field">
@@ -226,6 +237,39 @@
         <div class="form-field">
           <label class="field-label">Costo total del flete</label>
           <input type="number" min="0" class="form-control" [(ngModel)]="form.totalFreightCost" placeholder="0">
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Costos adicionales</label>
+          <input type="number" min="0" class="form-control" [(ngModel)]="form.additionalCosts" placeholder="0">
+        </div>
+      </div>
+
+      <!-- CARGA DE FACTURAS PDF -->
+      <div class="invoices-section">
+        <div class="items-header">
+          <h6 class="mb-0">Facturas (PDF)</h6>
+          <label class="btn-add-item btn-upload-invoice" [class.disabled]="isParsingInvoices">
+            <i class="ti" [ngClass]="isParsingInvoices ? 'ti-loader-2 spin' : 'ti-file-upload'"></i>
+            {{ isParsingInvoices ? 'Procesando...' : 'Cargar facturas' }}
+            <input
+              type="file"
+              accept="application/pdf"
+              multiple
+              hidden
+              [disabled]="isParsingInvoices"
+              (change)="onInvoiceFilesSelected($any($event.target).files); $any($event.target).value = null">
+          </label>
+        </div>
+
+        <div class="invoice-file-list" *ngIf="form.invoiceFiles.length > 0">
+          <div class="invoice-file-chip" *ngFor="let file of form.invoiceFiles; let i = index">
+            <i class="ti ti-file-type-pdf"></i>
+            <span class="invoice-file-name">{{ file.name }}</span>
+            <button type="button" class="btn-remove-item" (click)="removeInvoiceFile(i)" title="Quitar factura de la carga (no elimina las líneas ya agregadas)">
+              <i class="ti ti-x"></i>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -243,10 +287,11 @@
               <tr>
                 <th>Cliente</th>
                 <th>Ciudad Destino</th>
+                <th>EAN</th>
                 <th>Producto</th>
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
-                <th>Volumen Unitario</th>
+                <th>Flete</th>
                 <th></th>
               </tr>
             </thead>
@@ -254,10 +299,11 @@
               <tr *ngFor="let item of form.items; let i = index">
                 <td><input type="text" class="form-control" [(ngModel)]="item.client" placeholder="Cliente"></td>
                 <td><input type="text" class="form-control" [(ngModel)]="item.destinationCity" placeholder="Ciudad"></td>
+                <td><input type="text" class="form-control" [(ngModel)]="item.ean" placeholder="EAN"></td>
                 <td><input type="text" class="form-control" [(ngModel)]="item.product" placeholder="Producto"></td>
                 <td><input type="number" min="0" class="form-control" [(ngModel)]="item.quantity" placeholder="0"></td>
                 <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitValue" placeholder="0"></td>
-                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitVolume" placeholder="0"></td>
+                <td><input type="number" min="0" class="form-control freight-pending-input" [(ngModel)]="item.freightCost" placeholder="Pendiente"></td>
                 <td class="action-col">
                   <button
                     type="button"
@@ -278,7 +324,7 @@
         <button type="button" class="btn-cancel" (click)="closeFormModal()" [disabled]="isSaving">
           Cancelar
         </button>
-        <button type="button" class="btn-confirm" (click)="submitDispatch()" [disabled]="!isFormValid || isSaving">
+        <button type="button" class="btn-confirm" (click)="submitDispatch()" [disabled]="!isFormValid || isSaving || isLoadingDispatchNumber">
           <span *ngIf="!isSaving"><i class="ti ti-device-floppy"></i> Registrar Despacho</span>
           <span *ngIf="isSaving">Guardando...</span>
         </button>
@@ -328,8 +374,13 @@
         </div>
 
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-box-multiple"></i> Volumen Total</span>
-          <span class="detail-value">{{ detailDispatch.totalVolume | number }}</span>
+          <span class="detail-label"><i class="ti ti-receipt-2"></i> Costos Adicionales</span>
+          <span class="detail-value">{{ detailDispatch.additionalCosts | currency:'COP':'symbol':'1.0-0' }}</span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label"><i class="ti ti-building-warehouse"></i> Salida Bodega</span>
+          <span class="detail-value">{{ detailDispatch.warehouseExitDate || '—' }}</span>
         </div>
 
         <div class="detail-item">
@@ -340,6 +391,14 @@
         <div class="detail-item">
           <span class="detail-label"><i class="ti ti-calendar"></i> Fecha de registro</span>
           <span class="detail-value">{{ detailDispatch.dateCreate }}</span>
+        </div>
+      </div>
+
+      <div class="invoice-file-list mt-3" *ngIf="detailDispatch.invoiceDocuments?.length">
+        <div class="invoice-file-chip" *ngFor="let doc of detailDispatch.invoiceDocuments">
+          <i class="ti ti-file-type-pdf"></i>
+          <span class="invoice-file-name">{{ doc.originalName }}</span>
+          <small class="cell-sub" *ngIf="doc.invoiceNumber">Factura {{ doc.invoiceNumber }}</small>
         </div>
       </div>
 
@@ -356,22 +415,22 @@
             <tr>
               <th>Cliente</th>
               <th>Ciudad</th>
+              <th>EAN</th>
               <th>Producto</th>
               <th>Cant.</th>
               <th>Vlr. Unit.</th>
-              <th>% Volumen</th>
-              <th>Flete Asignado</th>
+              <th>Flete</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let item of detailDispatch.items">
               <td>{{ item.client }}</td>
               <td>{{ item.destinationCity }}</td>
+              <td>{{ item.ean }}</td>
               <td>{{ item.product }}</td>
               <td>{{ item.quantity | number }}</td>
               <td>{{ item.unitValue | currency:'COP':'symbol':'1.0-0' }}</td>
-              <td>{{ item.volumePercentage | percent:'1.0-2' }}</td>
-              <td>{{ item.allocatedFreightCost | currency:'COP':'symbol':'1.0-0' }}</td>
+              <td>{{ item.freightCost | currency:'COP':'symbol':'1.0-0' }}</td>
             </tr>
           </tbody>
         </table>

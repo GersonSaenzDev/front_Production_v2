@@ -12,6 +12,7 @@ import {
 import { ProductStructureServices } from '../../../services/product-structure-services';
 import { GlobalFilterPipe } from '../../../shared/pipes/global-filter.pipe';
 import { WorkConfigEditor } from '../shared/work-config-editor/work-config-editor';
+import { GanttChart } from '../shared/gantt-chart/gantt-chart';
 
 /** Fila seleccionable de la tabla de referencias, con la cantidad a analizar. */
 interface SelectableStructure {
@@ -23,7 +24,7 @@ interface SelectableStructure {
 @Component({
   selector: 'app-capacity-analysis',
   standalone: true,
-  imports: [CommonModule, FormsModule, GlobalFilterPipe, WorkConfigEditor],
+  imports: [CommonModule, FormsModule, GlobalFilterPipe, WorkConfigEditor, GanttChart],
   templateUrl: './capacity-analysis.html',
   styleUrl: './capacity-analysis.scss'
 })
@@ -39,6 +40,10 @@ export class CapacityAnalysis implements OnInit {
 
   isAnalyzing = false;
   result: CapacityAnalysisResult | null = null;
+
+  // Fecha de entrega (Gantt hacia atrás, opcional): binding nativo yyyy-MM-dd
+  // de <input type="date">, igual que en freight-management.ts.
+  dueDate = '';
 
   // Buscadores inteligentes de las tablas de resultado (filtran por cualquier campo)
   referencesResultSearchTerm = '';
@@ -109,7 +114,8 @@ export class CapacityAnalysis implements OnInit {
       references: selected.map((r) => ({ internalCode: r.structure.internalCode, quantity: r.quantity })),
       workSchedules: config.workSchedules,
       staffArea: config.staffArea,
-      warehouseStaffMap: config.warehouseStaffMap
+      warehouseStaffMap: config.warehouseStaffMap,
+      ...(this.dueDate ? { dueDate: this.formatDateForBackend(this.dueDate) } : {})
     };
 
     this.isAnalyzing = true;
@@ -134,5 +140,11 @@ export class CapacityAnalysis implements OnInit {
 
   clearResult(): void {
     this.result = null;
+  }
+
+  // yyyy-MM-dd (binding nativo de <input type="date">) -> DD/MM/YYYY (convención del backend).
+  private formatDateForBackend(dateString: string): string {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
   }
 }

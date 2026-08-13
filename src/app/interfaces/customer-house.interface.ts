@@ -2,34 +2,57 @@
 
 /**
  * @description Línea de producto dentro de un despacho de flete multicliente.
+ * El flete de cada línea (freightCost) lo asigna manualmente el usuario (no
+ * hay prorrateo automático por volumen).
  */
 export interface FreightDispatchItemInput {
   client: string;
   destinationCity: string;
+  ean: string;
   product: string;
   quantity: number;
   unitValue: number;
-  unitVolume: number;
+  freightCost: number;
+  invoiceNumber?: string;
+}
+
+/**
+ * @description Referencia a la factura PDF original archivada en InduTalent
+ * (DOCUMENTS_NETWORK_PATH/invoicesAndOrders), con huella de integridad SHA-256.
+ */
+export interface FreightInvoiceDocument {
+  storedFilename: string;
+  relativePath: string;
+  fullPath: string;
+  originalName: string;
+  extension: string;
+  mimeType: string;
+  originalSize: number;
+  storedSize: number;
+  fileHash: string;
+  hashAlgorithm: string;
+  invoiceNumber: string;
+  uploadedAt: string;
+  uploadedBy: string;
 }
 
 /**
  * @description Payload para registrar un despacho de flete (POST /customerHouse/freightDispatch).
+ * El N° de despacho lo genera el servidor (consecutivo AAAAMM####), no se envía desde el formulario.
  */
 export interface FreightDispatchRequest {
-  dispatchNumber: string;
   dispatchDate: string; // Formato: "DD/MM/YYYY"
+  warehouseExitDate: string; // Formato: "DD/MM/YYYY"
   carrier: string;
   totalFreightCost: number;
+  additionalCosts: number;
   items: FreightDispatchItemInput[];
 }
 
 /**
- * @description Línea de producto ya procesada por el backend, con el prorrateo de flete calculado.
+ * @description Línea de producto ya procesada por el backend.
  */
 export interface FreightDispatchItem extends FreightDispatchItemInput {
-  itemVolume: number;
-  volumePercentage: number;
-  allocatedFreightCost: number;
   freightCostPerUnit: number;
   _id: string;
 }
@@ -45,16 +68,18 @@ export interface FreightDispatchAuditEntry {
 }
 
 /**
- * @description Despacho de flete multicliente, con el prorrateo por línea y su trazabilidad.
+ * @description Despacho de flete multicliente, con sus líneas y su trazabilidad.
  */
 export interface FreightDispatch {
   _id: string;
   dispatchNumber: string;
   dispatchDate: string; // "DD/MM/YYYY"
+  warehouseExitDate: string; // "DD/MM/YYYY"
   carrier: string;
   totalFreightCost: number;
-  totalVolume: number;
+  additionalCosts: number;
   items: FreightDispatchItem[];
+  invoiceDocuments: FreightInvoiceDocument[];
   status: boolean;
   auditTrail: FreightDispatchAuditEntry[];
   userCreate: string;
@@ -69,6 +94,15 @@ export interface FreightDispatchResponse {
   ok: boolean;
   msg: string;
   data: FreightDispatch;
+}
+
+/**
+ * @description Respuesta del backend con el próximo N° de despacho previsualizado.
+ */
+export interface FreightNextDispatchNumberResponse {
+  ok: boolean;
+  msg: string;
+  data: { dispatchNumber: string };
 }
 
 /**

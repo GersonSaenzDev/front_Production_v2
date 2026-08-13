@@ -733,7 +733,8 @@ $abba-dark: #1e1e1e;
   }
 }
 
-.items-section {
+.items-section,
+.invoices-section {
   .items-header {
     display: flex;
     align-items: center;
@@ -745,6 +746,74 @@ $abba-dark: #1e1e1e;
       font-weight: 700;
     }
   }
+}
+
+.invoices-section {
+  margin-bottom: 1.5rem;
+}
+
+.btn-upload-invoice {
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.invoice-file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.invoice-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  color: $abba-dark;
+
+  i.ti-file-type-pdf {
+    color: #dc2626;
+    font-size: 1rem;
+  }
+
+  .invoice-file-name {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .btn-remove-item {
+    width: 24px;
+    height: 24px;
+  }
+
+  small.cell-sub {
+    color: $abba-gray;
+    margin-left: 0.25rem;
+  }
+}
+
+// Input de flete pendiente de diligenciar (precargado desde una factura)
+.freight-pending-input::placeholder {
+  color: #ea580c;
+  font-weight: 600;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+  display: inline-block;
 }
 
 .btn-add-item {

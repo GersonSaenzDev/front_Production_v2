@@ -133,6 +133,15 @@ export class ProductStructureServices {
   /**
    * @description Analiza la capacidad de planta (personal disponible vs. horas-hombre requeridas) para
    * 1..N referencias (POST /plannig/productStructure/capacity).
+   *
+   * Exportación/Nacional automático: para las bodegas ED ("ENSAMBLE EXPORTACIONES") y SE
+   * ("SUB-ENSAMBLES"), el backend ya separa el personal según el tipo de cada referencia
+   * (internalCode inicia en "7" = Exportación; cualquier otro dígito = Nacional) sin que haga
+   * falta enviar nada especial en `warehouseStaffMap` — el resultado trae la bodega partida en
+   * dos filas de `byWarehouse` (`warehouseCode` "ED-EXPORT" / "ED-NATIONAL"). Si se envía
+   * `warehouseStaffMap`/`warehousePeopleOverride` para esa bodega puntual, ese override manda y
+   * NO se parte. Ver `CapacityWarehouseLoad` para el detalle de campos (incluye `staff: null` +
+   * `reason` cuando el departamento de RH correspondiente aún no existe).
    * @param {CapacityAnalysisPayload} payload - Referencias, jornadas de trabajo y mapeo bodega→departamento.
    * @returns {Observable<CapacityAnalysisResponse>}
    */
@@ -145,6 +154,12 @@ export class ProductStructureServices {
   /**
    * @description Calcula la mezcla óptima de producción sujeta a la capacidad de planta
    * (POST /plannig/productStructure/optimization).
+   *
+   * Mismo split automático Exportación/Nacional que `analyzeCapacity` para ED/SE: cada bodega
+   * entra al modelo (Simplex) como dos secciones independientes ("ED-EXPORT"/"ED-NATIONAL"),
+   * cada referencia solo carga la sección de su propio tipo. Las secciones sin personal cruzado
+   * (ej. "SE-EXPORT" mientras RH no tenga el departamento "SUB-ENSAMBLES USA") llegan en
+   * `excludedSections`, no en `sections`.
    * @param {ProductionOptimizationPayload} payload - Referencias, jornadas de trabajo y mapeo bodega→departamento.
    * @returns {Observable<ProductionOptimizationResponse>}
    */

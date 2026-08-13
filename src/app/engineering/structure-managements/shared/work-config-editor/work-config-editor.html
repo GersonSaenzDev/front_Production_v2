@@ -58,11 +58,15 @@
         </div>
         <div class="row g-2 align-items-end mb-1" *ngFor="let shift of schedule.shifts; let j = index">
           <div class="col-md-4">
-            <input type="time" class="form-control form-control-sm" [(ngModel)]="shift.start"
+            <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:mm"
+                   pattern="^([01]\d|2[0-3]):[0-5]\d$" class="form-control form-control-sm"
+                   [(ngModel)]="shift.start" (blur)="normalizeShiftTime(shift, 'start')"
                    [name]="'shiftStart-' + i + '-' + j">
           </div>
           <div class="col-md-4">
-            <input type="time" class="form-control form-control-sm" [(ngModel)]="shift.end"
+            <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:mm"
+                   pattern="^([01]\d|2[0-3]):[0-5]\d$" class="form-control form-control-sm"
+                   [(ngModel)]="shift.end" (blur)="normalizeShiftTime(shift, 'end')"
                    [name]="'shiftEnd-' + i + '-' + j">
           </div>
           <div class="col-md-4">
