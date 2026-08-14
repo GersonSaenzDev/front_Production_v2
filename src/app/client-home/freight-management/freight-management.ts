@@ -80,7 +80,8 @@ export class FreightManagement implements OnInit {
   //  FILTRO POR RANGO DE FECHAS
   // ============================================================
 
-  public dateIni: string = this.formatDate(new Date());
+  // Por defecto: del 1° del mes en curso hasta hoy.
+  public dateIni: string = this.formatDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   public dateEnd: string = this.formatDate(new Date());
   public isLoading = false;
   public searchTerm = '';
@@ -141,6 +142,7 @@ export class FreightManagement implements OnInit {
           this.allDispatches = [];
           this.applyFilter();
           this.toastr.error(err.message || 'No se pudieron cargar los despachos de flete.');
+          this.isLoading = false;
         },
         complete: () => {
           this.isLoading = false;
@@ -152,24 +154,43 @@ export class FreightManagement implements OnInit {
   //  BÚSQUEDA Y PAGINACIÓN
   // ============================================================
 
+  /** Minúsculas y sin tildes/acentos, para que la búsqueda no dependa de escribirlos igual. */
+  private normalizeSearchText(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
+      .toLowerCase()
+      .trim();
+  }
+
+  /**
+   * Búsqueda por múltiples términos: cada palabra escrita (en cualquier orden) debe
+   * aparecer en algún campo del despacho o de sus líneas para que el despacho coincida.
+   */
   public applyFilter(): void {
-    const term = this.searchTerm.toLowerCase().trim();
-    this.filteredDispatches = !term
-      ? [...this.allDispatches]
-      : this.allDispatches.filter((dispatch) => {
-          const haystack = [
-            dispatch.dispatchNumber,
-            dispatch.carrier,
-            ...dispatch.items.map((item) => item.client),
-            ...dispatch.items.map((item) => item.destinationCity),
-            ...dispatch.items.map((item) => item.product),
-            ...dispatch.items.map((item) => item.ean)
-          ]
-            .filter((value): value is string => !!value)
-            .join(' ')
-            .toLowerCase();
-          return haystack.includes(term);
-        });
+    const tokens = this.normalizeSearchText(this.searchTerm).split(/\s+/).filter(Boolean);
+
+    this.filteredDispatches =
+      tokens.length === 0
+        ? [...this.allDispatches]
+        : this.allDispatches.filter((dispatch) => {
+            const haystack = this.normalizeSearchText(
+              [
+                dispatch.dispatchNumber,
+                dispatch.dispatchDate,
+                dispatch.carrier,
+                dispatch.status,
+                ...dispatch.items.map((item) => item.client),
+                ...dispatch.items.map((item) => item.destinationCity),
+                ...dispatch.items.map((item) => item.product),
+                ...dispatch.items.map((item) => item.ean),
+                ...dispatch.items.map((item) => item.invoiceNumber)
+              ]
+                .filter((value): value is string => !!value)
+                .join(' ')
+            );
+            return tokens.every((token) => haystack.includes(token));
+          });
 
     this.currentPage = 1;
     this.updatePagination();
