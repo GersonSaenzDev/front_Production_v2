@@ -41,6 +41,7 @@ export interface ParsedInvoiceRow {
 export interface ParsedInvoiceResult {
   fileName: string;
   rows: ParsedInvoiceRow[];
+  totalValue: number; // "TOTAL IMPORTE" del PDF: valor de los productos, sin IVA
   warnings: string[];
 }
 
@@ -139,6 +140,16 @@ function extractItemRows(fullText: string): Array<{ ean: string; quantity: numbe
 }
 
 /**
+ * Extrae el "TOTAL IMPORTE" (valor de los productos entregados, antes de
+ * IVA) — importante para dimensionar la carga transportada (ej. reclamos de
+ * siniestro), distinto del "TOTAL NETO A PAGAR" que incluye impuestos.
+ */
+function extractTotalValue(fullText: string): number {
+  const match = fullText.match(/TOTAL\s+IMPORTE\s+([\d.,]+)/i);
+  return match ? cleanNumber(match[1]) : 0;
+}
+
+/**
  * Parsea un PDF de factura (puede tener varias páginas) y devuelve las filas
  * a precargar en la grilla de ítems del despacho. El encabezado (cliente,
  * ciudad, N° factura) se toma de la primera página donde se identifique y se
@@ -152,6 +163,7 @@ export async function parseInvoicePdf(file: File): Promise<ParsedInvoiceResult> 
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
 
   let header: InvoiceHeader | null = null;
+  let totalValue = 0;
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
@@ -169,6 +181,10 @@ export async function parseInvoicePdf(file: File): Promise<ParsedInvoiceResult> 
 
     const fullText = joinLines(items).join('\n');
     const itemRows = extractItemRows(fullText);
+
+    if (!totalValue) {
+      totalValue = extractTotalValue(fullText);
+    }
 
     if (itemRows.length === 0) {
       warnings.push(`Página ${pageNumber}: no se encontraron líneas de producto.`);
@@ -194,6 +210,9 @@ export async function parseInvoicePdf(file: File): Promise<ParsedInvoiceResult> 
   if (rows.length === 0) {
     warnings.push('No se encontraron líneas de producto en el archivo.');
   }
+  if (!totalValue) {
+    warnings.push('No se pudo identificar el TOTAL IMPORTE de la factura.');
+  }
 
-  return { fileName: file.name, rows, warnings };
+  return { fileName: file.name, rows, totalValue, warnings };
 }

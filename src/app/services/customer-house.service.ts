@@ -9,6 +9,7 @@ import { environment } from 'src/environments/environment';
 import {
   FreightDispatchRequest,
   FreightDispatchResponse,
+  FreightDispatchUpdateRequest,
   FreightDispatchDateRangeFilter,
   FreightDispatchListResponse,
   FreightDispatchDetailResponse,
@@ -27,6 +28,7 @@ export class CustomerHouseService {
   private readonly FREIGHT_DISPATCH_LIST_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/list`;
   private readonly FREIGHT_DISPATCH_DETAIL_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/detail`;
   private readonly FREIGHT_DISPATCH_NEXT_NUMBER_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/nextNumber`;
+  private readonly FREIGHT_DISPATCH_INVOICE_DOCUMENT_ENDPOINT = `${this.FREIGHT_DISPATCH_ENDPOINT}/invoiceDocument`;
 
   /**
    * @description Manejo centralizado de errores HTTP.
@@ -48,16 +50,16 @@ export class CustomerHouseService {
 
   /**
    * @description Registra un despacho de flete multicliente. El N° de despacho lo genera
-   * el servidor; las facturas PDF adjuntas se reenvían a InduTalent para archivarse.
+   * el servidor; las facturas PDF adjuntas se archivan en el disco de red compartido.
    * @param {FreightDispatchRequest} body - Datos del despacho a registrar (sin dispatchNumber).
    * @param {File[]} invoiceFiles - Facturas PDF adjuntas (0-n).
-   * @param {{invoiceNumber: string}[]} invoiceMeta - Metadata alineada por índice con invoiceFiles.
+   * @param {{invoiceNumber: string, totalValue: number}[]} invoiceMeta - Metadata alineada por índice con invoiceFiles.
    * @returns {Observable<FreightDispatchResponse>}
    */
   createFreightDispatch(
     body: FreightDispatchRequest,
     invoiceFiles: File[] = [],
-    invoiceMeta: { invoiceNumber: string }[] = []
+    invoiceMeta: { invoiceNumber: string; totalValue: number }[] = []
   ): Observable<FreightDispatchResponse> {
     const formData = new FormData();
     formData.append('payload', JSON.stringify({ ...body, invoiceMeta }));
@@ -115,5 +117,36 @@ export class CustomerHouseService {
         return response;
       })
     );
+  }
+
+  /**
+   * @description Actualiza un despacho de flete: agrega una novedad/detalle de entrega,
+   * opcionalmente una nueva entrada de costos adicionales, y opcionalmente cambia el estado.
+   * @param {string} id - _id del despacho.
+   * @param {FreightDispatchUpdateRequest} body - { additionalCosts?, detail, status? }.
+   * @returns {Observable<FreightDispatchResponse>}
+   */
+  updateFreightDispatch(id: string, body: FreightDispatchUpdateRequest): Observable<FreightDispatchResponse> {
+    return this.http.patch<FreightDispatchResponse>(`${this.FREIGHT_DISPATCH_ENDPOINT}/${id}`, body).pipe(
+      catchError(this.handleError.bind(this)),
+      map((response) => {
+        console.log('CUSTOMER HOUSE SERVICE - CONTROL: Respuesta del backend (updateFreightDispatch):', response);
+        return response;
+      })
+    );
+  }
+
+  /**
+   * @description Descarga/visualiza una factura PDF ya archivada.
+   * @param {string} relativePath - invoiceDocuments[].relativePath del despacho.
+   * @returns {Observable<Blob>}
+   */
+  downloadInvoiceDocument(relativePath: string): Observable<Blob> {
+    return this.http
+      .get(this.FREIGHT_DISPATCH_INVOICE_DOCUMENT_ENDPOINT, {
+        params: { relativePath },
+        responseType: 'blob'
+      })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 }

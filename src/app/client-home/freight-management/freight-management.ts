@@ -7,7 +7,12 @@ import { ToastrService } from 'ngx-toastr';
 import * as XLSX from 'xlsx';
 
 import { CustomerHouseService } from '../../services/customer-house.service';
-import { FreightDispatch, FreightDispatchRequest } from '../../interfaces/customer-house.interface';
+import {
+  FreightDispatch,
+  FreightDispatchRequest,
+  FreightDispatchStatus,
+  FreightInvoiceDocument
+} from '../../interfaces/customer-house.interface';
 import { parseInvoicePdf } from './invoice-pdf-parser';
 
 registerLocaleData(localeEs, 'es');
@@ -19,21 +24,30 @@ interface FreightItemFormRow {
   product: string;
   quantity: number | null;
   unitValue: number | null;
-  freightCost: number | null;
+  freightCost: number | null; // No obligatorio: puede quedar pendiente tras cargar una factura
   invoiceNumber: string;
 }
 
 interface FreightDispatchFormState {
   dispatchNumber: string; // Previsualizado por el backend, de solo lectura
   dispatchDate: string; // yyyy-MM-dd (binding de <input type="date">)
-  warehouseExitDate: string; // yyyy-MM-dd (binding de <input type="date">)
+  warehouseExitDate: string; // Texto libre (no es una fecha)
   carrier: string;
   totalFreightCost: number | null;
   additionalCosts: number | null;
+  creationDetail: string;
   items: FreightItemFormRow[];
   invoiceFiles: File[];
-  invoiceMeta: { invoiceNumber: string }[];
+  invoiceMeta: { invoiceNumber: string; totalValue: number }[];
 }
+
+const FREIGHT_STATUS_PILL_CLASS: Record<string, string> = {
+  Pendiente: 'status-pending',
+  Finalizado: 'status-closed',
+  Parcial: 'status-partial',
+  'Siniestro Parcial': 'status-claim-partial',
+  'Siniestro Completo': 'status-claim-full'
+};
 
 @Component({
   selector: 'app-freight-management',
@@ -46,6 +60,14 @@ interface FreightDispatchFormState {
 export class FreightManagement implements OnInit {
   private readonly customerHouseService = inject(CustomerHouseService);
   private readonly toastr = inject(ToastrService);
+
+  public readonly statusOptions: FreightDispatchStatus[] = [
+    'Pendiente',
+    'Finalizado',
+    'Parcial',
+    'Siniestro Parcial',
+    'Siniestro Completo'
+  ];
 
   // ============================================================
   //  FILTRO POR RANGO DE FECHAS
@@ -73,7 +95,17 @@ export class FreightManagement implements OnInit {
   }
 
   get totalAdditionalCostsSum(): number {
-    return this.allDispatches.reduce((acc, dispatch) => acc + (dispatch.additionalCosts || 0), 0);
+    return this.allDispatches.reduce((acc, dispatch) => acc + this.currentAdditionalCosts(dispatch), 0);
+  }
+
+  /** Valor vigente de los costos adicionales: la última entrada del historial. */
+  public currentAdditionalCosts(dispatch: FreightDispatch): number {
+    const entries = dispatch.additionalCosts || [];
+    return entries.length ? entries[entries.length - 1].value : 0;
+  }
+
+  public statusPillClass(status: string): string {
+    return FREIGHT_STATUS_PILL_CLASS[status] || 'status-pending';
   }
 
   ngOnInit(): void {
@@ -170,10 +202,11 @@ export class FreightManagement implements OnInit {
     return {
       dispatchNumber: '',
       dispatchDate: this.formatDate(new Date()),
-      warehouseExitDate: this.formatDate(new Date()),
+      warehouseExitDate: '',
       carrier: '',
       totalFreightCost: null,
       additionalCosts: null,
+      creationDetail: '',
       items: [this.buildEmptyItemRow()],
       invoiceFiles: [],
       invoiceMeta: []
@@ -267,7 +300,7 @@ export class FreightManagement implements OnInit {
         }
 
         this.form.invoiceFiles.push(file);
-        this.form.invoiceMeta.push({ invoiceNumber: result.rows[0].invoiceNumber || '' });
+        this.form.invoiceMeta.push({ invoiceNumber: result.rows[0].invoiceNumber || '', totalValue: result.totalValue });
 
         result.warnings.forEach((warning) => this.toastr.warning(warning));
         this.toastr.success(`"${file.name}": ${result.rows.length} línea(s) cargada(s). Complete el Flete de cada línea.`);
@@ -289,7 +322,7 @@ export class FreightManagement implements OnInit {
   }
 
   public get isFormValid(): boolean {
-    if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.warehouseExitDate || !this.form.carrier.trim()) return false;
+    if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.warehouseExitDate.trim() || !this.form.carrier.trim()) return false;
     if (this.form.totalFreightCost === null || this.form.totalFreightCost <= 0) return false;
     if (this.form.additionalCosts !== null && this.form.additionalCosts < 0) return false;
 
@@ -301,8 +334,7 @@ export class FreightManagement implements OnInit {
         item.quantity > 0 &&
         item.unitValue !== null &&
         item.unitValue >= 0 &&
-        item.freightCost !== null &&
-        item.freightCost >= 0
+        (item.freightCost === null || item.freightCost >= 0)
     );
   }
 
@@ -314,10 +346,11 @@ export class FreightManagement implements OnInit {
 
     const payload: FreightDispatchRequest = {
       dispatchDate: this.formatDateForBackend(this.form.dispatchDate),
-      warehouseExitDate: this.formatDateForBackend(this.form.warehouseExitDate),
+      warehouseExitDate: this.form.warehouseExitDate.trim(),
       carrier: this.form.carrier.trim(),
       totalFreightCost: Number(this.form.totalFreightCost),
       additionalCosts: Number(this.form.additionalCosts) || 0,
+      creationDetail: this.form.creationDetail.trim(),
       items: this.form.items.map((item) => ({
         client: item.client.trim(),
         destinationCity: item.destinationCity.trim(),
@@ -325,7 +358,7 @@ export class FreightManagement implements OnInit {
         product: item.product.trim(),
         quantity: Number(item.quantity),
         unitValue: Number(item.unitValue),
-        freightCost: Number(item.freightCost),
+        freightCost: item.freightCost !== null ? Number(item.freightCost) : 0,
         invoiceNumber: item.invoiceNumber.trim()
       }))
     };
@@ -351,22 +384,31 @@ export class FreightManagement implements OnInit {
   }
 
   // ============================================================
-  //  DETALLE (MODAL)
+  //  DETALLE (MODAL) — visualización y actualización
   // ============================================================
 
   public showDetailModal = false;
   public isLoadingDetail = false;
+  public isUpdatingDispatch = false;
   public detailDispatch: FreightDispatch | null = null;
+
+  public updateForm = {
+    additionalCosts: null as number | null,
+    detail: '',
+    status: '' as FreightDispatchStatus | ''
+  };
 
   public openDetail(dispatch: FreightDispatch): void {
     this.detailDispatch = dispatch;
     this.showDetailModal = true;
     this.isLoadingDetail = true;
+    this.resetUpdateForm(dispatch);
 
     this.customerHouseService.getFreightDispatchDetail({ dateIni: dispatch.dispatchDate, dateEnd: dispatch.dispatchDate }).subscribe({
       next: (response) => {
         if (response.ok && response.msg) {
           this.detailDispatch = response.msg;
+          this.resetUpdateForm(response.msg);
         }
       },
       error: () => {
@@ -378,9 +420,64 @@ export class FreightManagement implements OnInit {
     });
   }
 
+  private resetUpdateForm(dispatch: FreightDispatch): void {
+    this.updateForm = {
+      additionalCosts: this.currentAdditionalCosts(dispatch),
+      detail: '',
+      status: dispatch.status
+    };
+  }
+
   public closeDetail(): void {
     this.showDetailModal = false;
     this.detailDispatch = null;
+  }
+
+  public submitDispatchUpdate(): void {
+    if (!this.detailDispatch) return;
+
+    if (!this.updateForm.detail.trim()) {
+      this.toastr.warning('Debes indicar el detalle o novedad de la actualización.');
+      return;
+    }
+
+    this.isUpdatingDispatch = true;
+    this.customerHouseService
+      .updateFreightDispatch(this.detailDispatch._id, {
+        additionalCosts: this.updateForm.additionalCosts !== null ? Number(this.updateForm.additionalCosts) : undefined,
+        detail: this.updateForm.detail.trim(),
+        status: this.updateForm.status || undefined
+      })
+      .subscribe({
+        next: (response) => {
+          if (response.ok) {
+            this.toastr.success(response.msg || 'Despacho actualizado exitosamente.');
+            this.detailDispatch = response.data;
+            this.resetUpdateForm(response.data);
+            this.loadDispatches();
+          } else {
+            this.toastr.error(response.msg || 'No se pudo actualizar el despacho.');
+          }
+        },
+        error: (err) => {
+          this.toastr.error(err.message || 'Error al actualizar el despacho.');
+        },
+        complete: () => {
+          this.isUpdatingDispatch = false;
+        }
+      });
+  }
+
+  public viewInvoiceDocument(doc: FreightInvoiceDocument): void {
+    this.customerHouseService.downloadInvoiceDocument(doc.relativePath).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      },
+      error: (err) => {
+        this.toastr.error(err.message || 'No se pudo abrir la factura.');
+      }
+    });
   }
 
   // ============================================================
@@ -397,7 +494,7 @@ export class FreightManagement implements OnInit {
         SALIDA_BODEGA: dispatch.warehouseExitDate,
         TRANSPORTADOR: dispatch.carrier,
         COSTO_FLETE_TOTAL: dispatch.totalFreightCost,
-        COSTOS_ADICIONALES: dispatch.additionalCosts,
+        COSTOS_ADICIONALES: this.currentAdditionalCosts(dispatch),
         CLIENTE: item.client,
         CIUDAD_DESTINO: item.destinationCity,
         EAN: item.ean,
@@ -407,7 +504,7 @@ export class FreightManagement implements OnInit {
         FLETE_LINEA: item.freightCost,
         FLETE_POR_UNIDAD: item.freightCostPerUnit,
         FACTURA_ORIGEN: item.invoiceNumber,
-        ESTADO: dispatch.status ? 'Activo' : 'Inactivo',
+        ESTADO: dispatch.status,
         REGISTRADO_POR: dispatch.userCreate,
         FECHA_REGISTRO: dispatch.dateCreate
       }))

@@ -141,7 +141,7 @@
                 <strong class="time-value">{{ dispatch.totalFreightCost | currency:'COP':'symbol':'1.0-0' }}</strong>
                 <small class="cell-sub">
                   <i class="ti ti-receipt-2"></i>
-                  Adic. {{ dispatch.additionalCosts | currency:'COP':'symbol':'1.0-0' }}
+                  Adic. {{ currentAdditionalCosts(dispatch) | currency:'COP':'symbol':'1.0-0' }}
                 </small>
               </td>
 
@@ -150,8 +150,8 @@
               </td>
 
               <td>
-                <span class="status-pill" [ngClass]="dispatch.status ? 'status-closed' : 'status-pending'">
-                  {{ dispatch.status ? 'Activo' : 'Inactivo' }}
+                <span class="status-pill" [ngClass]="statusPillClass(dispatch.status)">
+                  {{ dispatch.status }}
                 </span>
               </td>
 
@@ -226,7 +226,7 @@
 
         <div class="form-field">
           <label class="field-label">Salida Bodega</label>
-          <input type="date" class="form-control" [(ngModel)]="form.warehouseExitDate">
+          <input type="text" class="form-control" [(ngModel)]="form.warehouseExitDate" placeholder="Ej. Bodega Principal, 13/08/2026 3:00pm...">
         </div>
 
         <div class="form-field">
@@ -242,6 +242,11 @@
         <div class="form-field">
           <label class="field-label">Costos adicionales</label>
           <input type="number" min="0" class="form-control" [(ngModel)]="form.additionalCosts" placeholder="0">
+        </div>
+
+        <div class="form-field form-field-wide">
+          <label class="field-label">Detalle de creación</label>
+          <textarea class="form-control" rows="2" [(ngModel)]="form.creationDetail" placeholder="Ej. Motivo del despacho, observaciones iniciales..."></textarea>
         </div>
       </div>
 
@@ -362,8 +367,8 @@
         <div class="detail-item">
           <span class="detail-label"><i class="ti ti-circle-check"></i> Estado</span>
           <span class="detail-value">
-            <span class="status-pill" [ngClass]="detailDispatch.status ? 'status-closed' : 'status-pending'">
-              {{ detailDispatch.status ? 'Activo' : 'Inactivo' }}
+            <span class="status-pill" [ngClass]="statusPillClass(detailDispatch.status)">
+              {{ detailDispatch.status }}
             </span>
           </span>
         </div>
@@ -375,7 +380,7 @@
 
         <div class="detail-item">
           <span class="detail-label"><i class="ti ti-receipt-2"></i> Costos Adicionales</span>
-          <span class="detail-value">{{ detailDispatch.additionalCosts | currency:'COP':'symbol':'1.0-0' }}</span>
+          <span class="detail-value">{{ currentAdditionalCosts(detailDispatch) | currency:'COP':'symbol':'1.0-0' }}</span>
         </div>
 
         <div class="detail-item">
@@ -395,11 +400,28 @@
       </div>
 
       <div class="invoice-file-list mt-3" *ngIf="detailDispatch.invoiceDocuments?.length">
-        <div class="invoice-file-chip" *ngFor="let doc of detailDispatch.invoiceDocuments">
+        <button
+          type="button"
+          class="invoice-file-chip invoice-file-chip-clickable"
+          *ngFor="let doc of detailDispatch.invoiceDocuments"
+          (click)="viewInvoiceDocument(doc)"
+          title="Ver factura">
           <i class="ti ti-file-type-pdf"></i>
           <span class="invoice-file-name">{{ doc.originalName }}</span>
-          <small class="cell-sub" *ngIf="doc.invoiceNumber">Factura {{ doc.invoiceNumber }}</small>
-        </div>
+          <small class="cell-sub" *ngIf="doc.invoiceNumber">
+            Factura {{ doc.invoiceNumber }} · {{ doc.totalValue | currency:'COP':'symbol':'1.0-0' }}
+          </small>
+        </button>
+      </div>
+
+      <div class="history-section mt-3" *ngIf="detailDispatch.details?.length">
+        <h6 class="history-title">Detalles y novedades</h6>
+        <ul class="history-list">
+          <li *ngFor="let entry of detailDispatch.details">
+            <span class="history-text">{{ entry.description }}</span>
+            <small class="cell-sub">{{ entry.modifiedBy }} · {{ entry.modifiedAt }}</small>
+          </li>
+        </ul>
       </div>
 
       <div class="table-wrapper mt-3" *ngIf="isLoadingDetail">
@@ -434,6 +456,40 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="update-section mt-3">
+        <h6 class="history-title">Actualizar despacho</h6>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label">Costos adicionales</label>
+            <input type="number" min="0" class="form-control" [(ngModel)]="updateForm.additionalCosts" placeholder="0">
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">Estado</label>
+            <select class="form-control" [(ngModel)]="updateForm.status">
+              <option *ngFor="let option of statusOptions" [value]="option">{{ option }}</option>
+            </select>
+          </div>
+
+          <div class="form-field form-field-wide">
+            <label class="field-label">Detalle o novedad de entrega</label>
+            <textarea class="form-control" rows="2" [(ngModel)]="updateForm.detail" placeholder="Describe el motivo de la actualización (obligatorio)..."></textarea>
+          </div>
+        </div>
+
+        <div class="response-actions">
+          <button
+            type="button"
+            class="btn-confirm"
+            (click)="submitDispatchUpdate()"
+            [disabled]="isUpdatingDispatch || !updateForm.detail.trim()">
+            <span *ngIf="!isUpdatingDispatch"><i class="ti ti-device-floppy"></i> Guardar actualización</span>
+            <span *ngIf="isUpdatingDispatch">Guardando...</span>
+          </button>
+        </div>
       </div>
 
       <div class="response-actions">

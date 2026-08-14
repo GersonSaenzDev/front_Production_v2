@@ -508,8 +508,11 @@ $abba-dark: #1e1e1e;
   text-transform: uppercase;
   white-space: nowrap;
 
-  &.status-pending { background: #fef3c7; color: #92400e; }
-  &.status-closed  { background: #dcfce7; color: #166534; }
+  &.status-pending      { background: #fef3c7; color: #92400e; }
+  &.status-closed       { background: #dcfce7; color: #166534; }
+  &.status-partial      { background: #dbeafe; color: #1e40af; }
+  &.status-claim-partial { background: #ffedd5; color: #9a3412; }
+  &.status-claim-full    { background: #fee2e2; color: #991b1b; }
 }
 
 // =======================
@@ -726,6 +729,14 @@ $abba-dark: #1e1e1e;
   flex-direction: column;
   gap: 0.35rem;
 
+  &.form-field-wide {
+    grid-column: 1 / -1;
+  }
+
+  textarea.form-control {
+    resize: vertical;
+  }
+
   .field-label {
     font-size: 0.78rem;
     font-weight: 600;
@@ -797,6 +808,81 @@ $abba-dark: #1e1e1e;
   small.cell-sub {
     color: $abba-gray;
     margin-left: 0.25rem;
+  }
+}
+
+// Variante clicable (ver factura archivada, en el modal de detalle): es un
+// <button>, por lo que se resetean los estilos por defecto del navegador.
+.invoice-file-chip-clickable {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+
+  i.ti-file-type-pdf {
+    align-self: flex-start;
+  }
+
+  small.cell-sub {
+    margin-left: 0;
+  }
+
+  &:hover {
+    background: $abba-blue-light;
+    border-color: $abba-blue;
+  }
+}
+
+// =======================
+//  HISTORIAL (detalles/novedades) Y ACTUALIZACIÓN DEL DESPACHO
+// =======================
+.history-section,
+.update-section {
+  .history-title {
+    color: $abba-blue-dark;
+    font-weight: 700;
+    font-size: 0.92rem;
+    margin-bottom: 0.6rem;
+  }
+}
+
+.update-section {
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 1rem;
+
+  .form-grid {
+    margin-bottom: 0.75rem;
+  }
+
+  .response-actions {
+    padding-top: 0;
+  }
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  li {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.55rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .history-text {
+    color: $abba-dark;
+    font-size: 0.88rem;
   }
 }
 

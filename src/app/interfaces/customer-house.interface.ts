@@ -1,9 +1,15 @@
 // src/app/interfaces/customer-house.interface.ts
 
 /**
+ * @description Estados posibles de un despacho de flete.
+ */
+export type FreightDispatchStatus = 'Pendiente' | 'Finalizado' | 'Parcial' | 'Siniestro Parcial' | 'Siniestro Completo';
+
+/**
  * @description Línea de producto dentro de un despacho de flete multicliente.
  * El flete de cada línea (freightCost) lo asigna manualmente el usuario (no
- * hay prorrateo automático por volumen).
+ * hay prorrateo automático por volumen) y no es obligatorio: puede quedar
+ * pendiente de diligenciar tras cargar una factura.
  */
 export interface FreightDispatchItemInput {
   client: string;
@@ -12,13 +18,13 @@ export interface FreightDispatchItemInput {
   product: string;
   quantity: number;
   unitValue: number;
-  freightCost: number;
+  freightCost: number | null;
   invoiceNumber?: string;
 }
 
 /**
- * @description Referencia a la factura PDF original archivada en InduTalent
- * (DOCUMENTS_NETWORK_PATH/invoicesAndOrders), con huella de integridad SHA-256.
+ * @description Referencia a la factura PDF original archivada en el disco de
+ * red compartido, con huella de integridad SHA-256.
  */
 export interface FreightInvoiceDocument {
   storedFilename: string;
@@ -32,8 +38,30 @@ export interface FreightInvoiceDocument {
   fileHash: string;
   hashAlgorithm: string;
   invoiceNumber: string;
+  totalValue: number; // "TOTAL IMPORTE" extraído del PDF (valor de los productos, sin IVA)
   uploadedAt: string;
   uploadedBy: string;
+}
+
+/**
+ * @description Entrada de historial: costo adicional vigente en un momento
+ * dado. El valor "actual" del despacho es siempre la última entrada.
+ */
+export interface FreightCostEntry {
+  value: number;
+  observation: string;
+  modifiedBy: string;
+  modifiedAt: string;
+}
+
+/**
+ * @description Entrada de historial: detalle de creación y, luego, novedades
+ * de entrega, agregadas desde la actualización del despacho.
+ */
+export interface FreightDetailEntry {
+  description: string;
+  modifiedBy: string;
+  modifiedAt: string;
 }
 
 /**
@@ -42,11 +70,21 @@ export interface FreightInvoiceDocument {
  */
 export interface FreightDispatchRequest {
   dispatchDate: string; // Formato: "DD/MM/YYYY"
-  warehouseExitDate: string; // Formato: "DD/MM/YYYY"
+  warehouseExitDate: string; // Texto libre (ya no es una fecha)
   carrier: string;
   totalFreightCost: number;
-  additionalCosts: number;
+  additionalCosts: number; // Primer valor del historial additionalCosts[]
+  creationDetail: string; // Primera entrada del historial details[]
   items: FreightDispatchItemInput[];
+}
+
+/**
+ * @description Payload para actualizar un despacho existente (PATCH /customerHouse/freightDispatch/:id).
+ */
+export interface FreightDispatchUpdateRequest {
+  additionalCosts?: number;
+  detail: string;
+  status?: FreightDispatchStatus;
 }
 
 /**
@@ -74,21 +112,24 @@ export interface FreightDispatch {
   _id: string;
   dispatchNumber: string;
   dispatchDate: string; // "DD/MM/YYYY"
-  warehouseExitDate: string; // "DD/MM/YYYY"
+  warehouseExitDate: string;
   carrier: string;
   totalFreightCost: number;
-  additionalCosts: number;
+  additionalCosts: FreightCostEntry[];
   items: FreightDispatchItem[];
   invoiceDocuments: FreightInvoiceDocument[];
-  status: boolean;
+  details: FreightDetailEntry[];
+  status: FreightDispatchStatus;
   auditTrail: FreightDispatchAuditEntry[];
   userCreate: string;
   dateCreate: string; // "DD/MM/YYYY, HH:MM:SS"
+  userUpdate?: string;
+  dateUpdate?: string;
   __v?: number;
 }
 
 /**
- * @description Respuesta del backend al registrar un despacho de flete.
+ * @description Respuesta del backend al registrar/actualizar un despacho de flete.
  */
 export interface FreightDispatchResponse {
   ok: boolean;
