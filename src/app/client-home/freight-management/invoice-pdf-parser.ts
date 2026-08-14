@@ -8,16 +8,36 @@
 // varias páginas (el encabezado normalmente solo está en la primera página;
 // se reutiliza para todas las líneas encontradas en el resto de páginas).
 //
-// Lógica validada contra una factura real de muestra (src/assets/images/
-// FC_PTE2000400611SOAPRD.PDF): el layout de encabezado tiene dos columnas
-// superpuestas (CLIENTE a la izquierda / ENTREGADO A a la derecha) cuyas filas
-// NO comparten la misma coordenada Y entre columnas, por lo que agrupar todo
-// el texto de la página por línea visual (sin separar columnas) mezcla el
-// orden de aparición de "CIUDAD" y puede tomar la ciudad de facturación en vez
-// de la de entrega. Por eso el encabezado se extrae dividiendo los items de
-// texto en columna izquierda/derecha según su posición X (usando la etiqueta
-// "ENTREGADO A" como límite), y solo después se reconstruyen líneas dentro de
-// cada columna por separado.
+// Lógica validada contra facturas reales de muestra (src/assets/images/
+// FC_PTE2000400611SOAPRD.PDF y FC_pte2000399038SOAPRD.pdf — esta última una
+// factura de EXPORTACIÓN sin código EAN, con encabezado multi-columna y
+// formato dual-moneda COP/USD):
+//
+// - El layout de encabezado tiene dos columnas superpuestas (CLIENTE a la
+//   izquierda / ENTREGADO A a la derecha) cuyas filas NO comparten la misma
+//   coordenada Y entre columnas, por lo que agrupar todo el texto de la
+//   página por línea visual (sin separar columnas) mezcla el orden de
+//   aparición de "CIUDAD" y puede tomar la ciudad de facturación en vez de la
+//   de entrega. Por eso el encabezado se extrae dividiendo los items de texto
+//   en columna izquierda/derecha según su posición X (usando la etiqueta
+//   "ENTREGADO A" como límite), y solo después se reconstruyen líneas dentro
+//   de cada columna por separado.
+// - El nombre del cliente puede partirse en varias líneas visuales (nombres
+//   largos), por eso se captura hasta la siguiente etiqueta conocida
+//   ("CÓDIGO") en vez de solo el resto de la línea actual.
+// - La ciudad de entrega se captura como una sola palabra en mayúsculas: en
+//   algunas facturas la etiqueta "CIUDAD" y su valor quedan como un único
+//   item de pdfjs ("CIUDAD TEGUCIGALPA"), en otras como dos items separados
+//   ("CIUDAD" + "MALAMBO"); además la columna derecha puede tener más
+//   subcolumnas (RUTA/TERRITORIO/AREA VENTAS/No. INTERNO) cuyo contenido
+//   puede terminar en la misma línea agrupada que una etiqueta "CIUDAD"
+//   vacía — limitar la captura a una sola palabra evita arrastrar ese texto
+//   vecino no relacionado.
+// - No todas las facturas tienen código EAN (las de exportación solo traen
+//   "código interno", ej. "AE 403-3 G"): las líneas de producto se detectan
+//   por el patrón "cantidad + unidad de medida (C##) + valor unitario"
+//   (siempre presente), no por la presencia de un EAN de 13 dígitos. Cuando
+//   no hay EAN se usa el código interno como Producto.
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Se sirve como asset estático (copiado por angular.json desde
@@ -88,14 +108,20 @@ function extractHeader(items: TextItem[], pageWidth: number): InvoiceHeader {
   const rightText = joinLines(items.filter((it) => it.x >= splitX)).join('\n');
   const fullText = items.map((i) => i.str).join(' ');
 
-  const clientMatch = leftText.match(/CLIENTE\s+(.+)/i);
+  // Hasta la siguiente etiqueta conocida: el nombre puede partirse en varias
+  // líneas visuales cuando es largo.
+  const clientMatch = leftText.match(/CLIENTE\s+([\s\S]+?)\s*C[OÓ]DIGO\b/i);
   // La ciudad de entrega real está bajo "ENTREGADO A" (columna derecha), no la
   // ciudad de facturación del cliente (columna izquierda, bajo "CLIENTE").
-  const cityMatch = rightText.match(/CIUDAD\s+(.+)/i);
+  // Una sola palabra en mayúsculas (sin flag /i en la clase de caracteres,
+  // para no matchear minúsculas por accidente) y se toma la PRIMERA
+  // ocurrencia (orden de arriba hacia abajo) para no caer en una etiqueta
+  // "CIUDAD" vacía que aparezca más abajo en la misma columna.
+  const cityMatch = rightText.match(/CIUDAD\s*([A-ZÁÉÍÓÚÑ]+)/);
   const invoiceMatch = fullText.match(/\bP\d{6}\b/);
 
   return {
-    client: clientMatch ? clientMatch[1].trim() : '',
+    client: clientMatch ? clientMatch[1].replace(/\s+/g, ' ').trim() : '',
     destinationCity: cityMatch ? cityMatch[1].trim() : '',
     invoiceNumber: invoiceMatch ? invoiceMatch[0] : '',
   };
@@ -109,31 +135,33 @@ function cleanNumber(raw: string): number {
 }
 
 /**
- * Extrae las líneas de producto: bloques de texto que empiezan con un código
- * EAN de 13 dígitos, hasta el siguiente EAN (la descripción puede partirse en
- * varias líneas visuales, por eso se busca por bloque y no por línea única).
- * Dentro de cada bloque se busca cantidad + unidad de medida (C##) + valor
- * unitario, justo antes del marcador "IVA" de esa línea.
+ * Extrae las líneas de producto. El ancla es el patrón "cantidad + unidad de
+ * medida (C##) + valor unitario", siempre presente en la línea reconstruida
+ * de cada ítem (con o sin EAN, con o sin descripción multi-línea previa) —
+ * no se ancla en el EAN porque las facturas de exportación no lo traen.
+ * Si la línea trae un EAN de 13 dígitos antes de la cantidad, se usa ese
+ * EAN; si no, se usa el "código interno" (ej. "AE 403-3 G") como Producto.
  */
-function extractItemRows(fullText: string): Array<{ ean: string; quantity: number; unitValue: number }> {
-  const rows: Array<{ ean: string; quantity: number; unitValue: number }> = [];
-  const eanPositions = [...fullText.matchAll(/\b(\d{13})\b/g)];
+function extractItemRows(fullText: string): Array<{ ean: string; internalCode: string; quantity: number; unitValue: number }> {
+  const rows: Array<{ ean: string; internalCode: string; quantity: number; unitValue: number }> = [];
 
-  for (let i = 0; i < eanPositions.length; i++) {
-    const start = eanPositions[i].index ?? 0;
-    const end = i + 1 < eanPositions.length ? (eanPositions[i + 1].index ?? fullText.length) : fullText.length;
-    const block = fullText.slice(start, Math.min(end, start + 400));
+  for (const line of fullText.split('\n')) {
+    if (/TOTAL\s+NRO\s+L[IÍ]NEAS/i.test(line)) break;
+    if (!/IVA/i.test(line)) continue;
 
-    const match = block.match(/(\d+(?:[.,]\d{1,2})?)\s+C\d{2}\s+([\d.,]+)\s+[\d.,]+\s+IVA/i);
+    const match = line.match(/^(.*?)(\d+(?:[.,]\d{1,2})?)\s+C\d{2}\s+([\d.,]+)/);
     if (!match) continue;
 
-    rows.push({
-      ean: eanPositions[i][1],
-      quantity: cleanNumber(match[1]),
-      unitValue: cleanNumber(match[2]),
-    });
+    const prefix = match[1].trim();
+    const eanMatch = prefix.match(/\b(\d{13})\b/);
+    const codeMatch = !eanMatch ? prefix.match(/^([A-Z]{1,3}\s?\d{2,4}[-\s][A-Z0-9]{1,3}(?:\s[A-Z]{1,3})?)/) : null;
 
-    if (/TOTAL\s+NRO\s+L[IÍ]NEAS/i.test(block)) break;
+    rows.push({
+      ean: eanMatch ? eanMatch[1] : '',
+      internalCode: eanMatch ? '' : (codeMatch ? codeMatch[1].trim() : ''),
+      quantity: cleanNumber(match[2]),
+      unitValue: cleanNumber(match[3]),
+    });
   }
 
   return rows;
@@ -192,11 +220,14 @@ export async function parseInvoicePdf(file: File): Promise<ParsedInvoiceResult> 
     }
 
     for (const item of itemRows) {
+      if (!item.ean && !item.internalCode) {
+        warnings.push(`Página ${pageNumber}: una línea no trajo EAN ni código interno identificable; verifique el Producto manualmente.`);
+      }
       rows.push({
         client: header?.client || '',
         destinationCity: header?.destinationCity || '',
         ean: item.ean,
-        product: item.ean.slice(-6),
+        product: item.ean ? item.ean.slice(-6) : item.internalCode,
         quantity: item.quantity,
         unitValue: item.unitValue,
         invoiceNumber: header?.invoiceNumber || '',
