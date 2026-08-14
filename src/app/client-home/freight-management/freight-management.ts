@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 
 import { CustomerHouseService } from '../../services/customer-house.service';
 import {
+  FreightCostEntryInput,
   FreightDispatch,
   FreightDispatchRequest,
   FreightDispatchStatus,
@@ -28,13 +29,19 @@ interface FreightItemFormRow {
   invoiceNumber: string;
 }
 
+/** Fila editable de costo adicional: valor + su descripción (obligatoria al guardar). */
+interface AdditionalCostFormRow {
+  value: number | null;
+  observation: string;
+}
+
 interface FreightDispatchFormState {
   dispatchNumber: string; // Previsualizado por el backend, de solo lectura
   dispatchDate: string; // yyyy-MM-dd (binding de <input type="date">)
   warehouseExitDate: string; // Texto libre (no es una fecha)
   carrier: string;
   totalFreightCost: number | null;
-  additionalCosts: number | null;
+  additionalCosts: AdditionalCostFormRow[];
   creationDetail: string;
   items: FreightItemFormRow[];
   invoiceFiles: File[];
@@ -98,10 +105,10 @@ export class FreightManagement implements OnInit {
     return this.allDispatches.reduce((acc, dispatch) => acc + this.currentAdditionalCosts(dispatch), 0);
   }
 
-  /** Valor vigente de los costos adicionales: la última entrada del historial. */
+  /** Costos adicionales del despacho: suma de todas las entradas del historial (cada una con su propia descripción). */
   public currentAdditionalCosts(dispatch: FreightDispatch): number {
     const entries = dispatch.additionalCosts || [];
-    return entries.length ? entries[entries.length - 1].value : 0;
+    return entries.reduce((sum, entry) => sum + (entry.value || 0), 0);
   }
 
   public statusPillClass(status: string): string {
@@ -205,12 +212,38 @@ export class FreightManagement implements OnInit {
       warehouseExitDate: '',
       carrier: '',
       totalFreightCost: null,
-      additionalCosts: null,
+      additionalCosts: [],
       creationDetail: '',
       items: [this.buildEmptyItemRow()],
       invoiceFiles: [],
       invoiceMeta: []
     };
+  }
+
+  /** Costo total del producto en la línea (cantidad × valor unitario, sin IVA). */
+  public itemTotalValue(item: FreightItemFormRow): number {
+    return (item.quantity || 0) * (item.unitValue || 0);
+  }
+
+  // ============================================================
+  //  COSTOS ADICIONALES (lista dinámica: valor + descripción)
+  // ============================================================
+
+  public addCostEntry(list: AdditionalCostFormRow[]): void {
+    list.push({ value: null, observation: '' });
+  }
+
+  public removeCostEntry(list: AdditionalCostFormRow[], index: number): void {
+    list.splice(index, 1);
+  }
+
+  /** Cada costo adicional agregado debe traer valor (>= 0) y descripción no vacía. */
+  private areCostEntriesValid(list: AdditionalCostFormRow[]): boolean {
+    return list.every((cost) => cost.value !== null && cost.value >= 0 && !!cost.observation.trim());
+  }
+
+  private mapCostEntries(list: AdditionalCostFormRow[]): FreightCostEntryInput[] {
+    return list.map((cost) => ({ value: Number(cost.value), observation: cost.observation.trim() }));
   }
 
   private buildEmptyItemRow(): FreightItemFormRow {
@@ -324,7 +357,7 @@ export class FreightManagement implements OnInit {
   public get isFormValid(): boolean {
     if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.warehouseExitDate.trim() || !this.form.carrier.trim()) return false;
     if (this.form.totalFreightCost === null || this.form.totalFreightCost <= 0) return false;
-    if (this.form.additionalCosts !== null && this.form.additionalCosts < 0) return false;
+    if (!this.areCostEntriesValid(this.form.additionalCosts)) return false;
 
     return this.form.items.every(
       (item) =>
@@ -340,7 +373,7 @@ export class FreightManagement implements OnInit {
 
   public submitDispatch(): void {
     if (!this.isFormValid) {
-      this.toastr.warning('Completa todos los campos requeridos antes de registrar el despacho.');
+      this.toastr.warning('Completa todos los campos requeridos antes de registrar el despacho. Si agregaste un costo adicional, indica su descripción.');
       return;
     }
 
@@ -349,7 +382,7 @@ export class FreightManagement implements OnInit {
       warehouseExitDate: this.form.warehouseExitDate.trim(),
       carrier: this.form.carrier.trim(),
       totalFreightCost: Number(this.form.totalFreightCost),
-      additionalCosts: Number(this.form.additionalCosts) || 0,
+      additionalCosts: this.mapCostEntries(this.form.additionalCosts),
       creationDetail: this.form.creationDetail.trim(),
       items: this.form.items.map((item) => ({
         client: item.client.trim(),
@@ -358,6 +391,7 @@ export class FreightManagement implements OnInit {
         product: item.product.trim(),
         quantity: Number(item.quantity),
         unitValue: Number(item.unitValue),
+        totalValue: this.itemTotalValue(item),
         freightCost: item.freightCost !== null ? Number(item.freightCost) : 0,
         invoiceNumber: item.invoiceNumber.trim()
       }))
@@ -393,7 +427,7 @@ export class FreightManagement implements OnInit {
   public detailDispatch: FreightDispatch | null = null;
 
   public updateForm = {
-    additionalCosts: null as number | null,
+    additionalCosts: [] as AdditionalCostFormRow[],
     detail: '',
     status: '' as FreightDispatchStatus | ''
   };
@@ -422,7 +456,7 @@ export class FreightManagement implements OnInit {
 
   private resetUpdateForm(dispatch: FreightDispatch): void {
     this.updateForm = {
-      additionalCosts: this.currentAdditionalCosts(dispatch),
+      additionalCosts: [], // Costos nuevos a agregar en esta actualización (no precarga los ya existentes)
       detail: '',
       status: dispatch.status
     };
@@ -441,10 +475,15 @@ export class FreightManagement implements OnInit {
       return;
     }
 
+    if (!this.areCostEntriesValid(this.updateForm.additionalCosts)) {
+      this.toastr.warning('Cada costo adicional debe indicar un valor y su descripción.');
+      return;
+    }
+
     this.isUpdatingDispatch = true;
     this.customerHouseService
       .updateFreightDispatch(this.detailDispatch._id, {
-        additionalCosts: this.updateForm.additionalCosts !== null ? Number(this.updateForm.additionalCosts) : undefined,
+        additionalCosts: this.updateForm.additionalCosts.length ? this.mapCostEntries(this.updateForm.additionalCosts) : undefined,
         detail: this.updateForm.detail.trim(),
         status: this.updateForm.status || undefined
       })
@@ -495,18 +534,24 @@ export class FreightManagement implements OnInit {
         TRANSPORTADOR: dispatch.carrier,
         COSTO_FLETE_TOTAL: dispatch.totalFreightCost,
         COSTOS_ADICIONALES: this.currentAdditionalCosts(dispatch),
+        COSTOS_ADICIONALES_DETALLE: (dispatch.additionalCosts || [])
+          .map((cost) => `${cost.value} (${cost.observation})`)
+          .join(' | '),
         CLIENTE: item.client,
         CIUDAD_DESTINO: item.destinationCity,
         EAN: item.ean,
         PRODUCTO: item.product,
         CANTIDAD: item.quantity,
         VALOR_UNITARIO: item.unitValue,
+        VALOR_TOTAL_PRODUCTO: item.totalValue,
         FLETE_LINEA: item.freightCost,
         FLETE_POR_UNIDAD: item.freightCostPerUnit,
         FACTURA_ORIGEN: item.invoiceNumber,
         ESTADO: dispatch.status,
         REGISTRADO_POR: dispatch.userCreate,
-        FECHA_REGISTRO: dispatch.dateCreate
+        FECHA_REGISTRO: dispatch.dateCreate,
+        ACTUALIZADO_POR: dispatch.userUpdate || '',
+        FECHA_ACTUALIZACION: dispatch.dateUpdate || ''
       }))
     );
 

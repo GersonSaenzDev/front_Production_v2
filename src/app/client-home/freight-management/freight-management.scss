@@ -422,6 +422,13 @@ $abba-dark: #1e1e1e;
     padding: 0.4rem 0.55rem;
     font-size: 0.85rem;
   }
+
+  // Costo total por línea: valor calculado (cantidad × valor unitario), no editable
+  td.cell-readonly {
+    color: $abba-blue-dark;
+    font-weight: 600;
+    white-space: nowrap;
+  }
 }
 
 // =======================

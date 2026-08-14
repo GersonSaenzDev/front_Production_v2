@@ -239,14 +239,42 @@
           <input type="number" min="0" class="form-control" [(ngModel)]="form.totalFreightCost" placeholder="0">
         </div>
 
-        <div class="form-field">
-          <label class="field-label">Costos adicionales</label>
-          <input type="number" min="0" class="form-control" [(ngModel)]="form.additionalCosts" placeholder="0">
-        </div>
-
         <div class="form-field form-field-wide">
           <label class="field-label">Detalle de creación</label>
           <textarea class="form-control" rows="2" [(ngModel)]="form.creationDetail" placeholder="Ej. Motivo del despacho, observaciones iniciales..."></textarea>
+        </div>
+      </div>
+
+      <!-- COSTOS ADICIONALES (lista dinámica: valor + descripción obligatoria) -->
+      <div class="items-section">
+        <div class="items-header">
+          <h6 class="mb-0">Costos adicionales</h6>
+          <button type="button" class="btn-add-item" (click)="addCostEntry(form.additionalCosts)">
+            <i class="ti ti-plus"></i> Agregar costo
+          </button>
+        </div>
+
+        <div class="table-wrapper" *ngIf="form.additionalCosts.length > 0">
+          <table class="freight-table items-table">
+            <thead>
+              <tr>
+                <th>Valor</th>
+                <th>Descripción</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let cost of form.additionalCosts; let i = index">
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0"></td>
+                <td><input type="text" class="form-control" [(ngModel)]="cost.observation" placeholder="Descripción del costo (obligatoria)"></td>
+                <td class="action-col">
+                  <button type="button" class="btn-remove-item" (click)="removeCostEntry(form.additionalCosts, i)" title="Quitar costo">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -296,6 +324,7 @@
                 <th>Producto</th>
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
+                <th>Costo Total</th>
                 <th>Flete</th>
                 <th></th>
               </tr>
@@ -308,6 +337,7 @@
                 <td><input type="text" class="form-control" [(ngModel)]="item.product" placeholder="Producto"></td>
                 <td><input type="number" min="0" class="form-control" [(ngModel)]="item.quantity" placeholder="0"></td>
                 <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitValue" placeholder="0"></td>
+                <td class="cell-readonly">{{ itemTotalValue(item) | currency:'COP':'symbol':'1.0-0' }}</td>
                 <td><input type="number" min="0" class="form-control freight-pending-input" [(ngModel)]="item.freightCost" placeholder="Pendiente"></td>
                 <td class="action-col">
                   <button
@@ -414,6 +444,16 @@
         </button>
       </div>
 
+      <div class="history-section mt-3" *ngIf="detailDispatch.additionalCosts?.length">
+        <h6 class="history-title">Historial de costos adicionales</h6>
+        <ul class="history-list">
+          <li *ngFor="let entry of detailDispatch.additionalCosts">
+            <span class="history-text">{{ entry.value | currency:'COP':'symbol':'1.0-0' }} — {{ entry.observation }}</span>
+            <small class="cell-sub">{{ entry.modifiedBy }} · {{ entry.modifiedAt }}</small>
+          </li>
+        </ul>
+      </div>
+
       <div class="history-section mt-3" *ngIf="detailDispatch.details?.length">
         <h6 class="history-title">Detalles y novedades</h6>
         <ul class="history-list">
@@ -441,6 +481,7 @@
               <th>Producto</th>
               <th>Cant.</th>
               <th>Vlr. Unit.</th>
+              <th>Costo Total</th>
               <th>Flete</th>
             </tr>
           </thead>
@@ -452,6 +493,7 @@
               <td>{{ item.product }}</td>
               <td>{{ item.quantity | number }}</td>
               <td>{{ item.unitValue | currency:'COP':'symbol':'1.0-0' }}</td>
+              <td>{{ item.totalValue | currency:'COP':'symbol':'1.0-0' }}</td>
               <td>{{ item.freightCost | currency:'COP':'symbol':'1.0-0' }}</td>
             </tr>
           </tbody>
@@ -463,11 +505,6 @@
 
         <div class="form-grid">
           <div class="form-field">
-            <label class="field-label">Costos adicionales</label>
-            <input type="number" min="0" class="form-control" [(ngModel)]="updateForm.additionalCosts" placeholder="0">
-          </div>
-
-          <div class="form-field">
             <label class="field-label">Estado</label>
             <select class="form-control" [(ngModel)]="updateForm.status">
               <option *ngFor="let option of statusOptions" [value]="option">{{ option }}</option>
@@ -477,6 +514,38 @@
           <div class="form-field form-field-wide">
             <label class="field-label">Detalle o novedad de entrega</label>
             <textarea class="form-control" rows="2" [(ngModel)]="updateForm.detail" placeholder="Describe el motivo de la actualización (obligatorio)..."></textarea>
+          </div>
+        </div>
+
+        <div class="items-section">
+          <div class="items-header">
+            <h6 class="mb-0">Nuevos costos adicionales</h6>
+            <button type="button" class="btn-add-item" (click)="addCostEntry(updateForm.additionalCosts)">
+              <i class="ti ti-plus"></i> Agregar costo
+            </button>
+          </div>
+
+          <div class="table-wrapper" *ngIf="updateForm.additionalCosts.length > 0">
+            <table class="freight-table items-table">
+              <thead>
+                <tr>
+                  <th>Valor</th>
+                  <th>Descripción</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let cost of updateForm.additionalCosts; let i = index">
+                  <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0"></td>
+                  <td><input type="text" class="form-control" [(ngModel)]="cost.observation" placeholder="Descripción del costo (obligatoria)"></td>
+                  <td class="action-col">
+                    <button type="button" class="btn-remove-item" (click)="removeCostEntry(updateForm.additionalCosts, i)" title="Quitar costo">
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

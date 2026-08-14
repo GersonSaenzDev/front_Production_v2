@@ -18,6 +18,7 @@ export interface FreightDispatchItemInput {
   product: string;
   quantity: number;
   unitValue: number;
+  totalValue: number; // Costo total del producto (cantidad × valor unitario), sin IVA
   freightCost: number | null;
   invoiceNumber?: string;
 }
@@ -55,6 +56,16 @@ export interface FreightCostEntry {
 }
 
 /**
+ * @description Costo adicional a agregar desde el formulario (creación o
+ * actualización). La descripción es obligatoria: identifica a qué corresponde
+ * el valor (ej. "Recargo por zona", "Reproceso de entrega").
+ */
+export interface FreightCostEntryInput {
+  value: number;
+  observation: string;
+}
+
+/**
  * @description Entrada de historial: detalle de creación y, luego, novedades
  * de entrega, agregadas desde la actualización del despacho.
  */
@@ -73,7 +84,7 @@ export interface FreightDispatchRequest {
   warehouseExitDate: string; // Texto libre (ya no es una fecha)
   carrier: string;
   totalFreightCost: number;
-  additionalCosts: number; // Primer valor del historial additionalCosts[]
+  additionalCosts: FreightCostEntryInput[]; // Costos adicionales iniciales del historial additionalCosts[], cada uno con su descripción
   creationDetail: string; // Primera entrada del historial details[]
   items: FreightDispatchItemInput[];
 }
@@ -82,7 +93,7 @@ export interface FreightDispatchRequest {
  * @description Payload para actualizar un despacho existente (PATCH /customerHouse/freightDispatch/:id).
  */
 export interface FreightDispatchUpdateRequest {
-  additionalCosts?: number;
+  additionalCosts?: FreightCostEntryInput[]; // Nuevos costos adicionales a agregar al historial, cada uno con su descripción
   detail: string;
   status?: FreightDispatchStatus;
 }
