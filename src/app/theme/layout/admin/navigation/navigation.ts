@@ -663,6 +663,13 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'inventories/finalInventoryReport',
             breadcrumbs: false
+          },
+          {
+            id: 'gestion-fletes-item',
+            title: 'Gestión de Fletes',
+            type: 'item',
+            url: 'clientHome/freightManagement',
+            breadcrumbs: false
           }
         ]
       },
@@ -702,13 +709,6 @@ export const NavigationItems: NavigationItem[] = [
             url: 'clientHome/shippingManagement',
             breadcrumbs: false
           },
-          {
-            id: 'gestion-fletes-item',
-            title: 'Gestión de Fletes',
-            type: 'item',
-            url: 'clientHome/freightManagement',
-            breadcrumbs: false
-          }
         ]
       },
       {
