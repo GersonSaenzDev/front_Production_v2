@@ -228,4 +228,85 @@ export interface NewsReplyResponse {
   };
 }
 
+/**
+ * @description Identidad de quien realiza una acción de control cruzado de Packing List.
+ * El backend también acepta un simple string (login/usuario), que se interpreta como `userApp`.
+ */
+export interface PackingListActorRef {
+  uid?: string;
+  userApp?: string;
+  name?: string;
+}
+
+/**
+ * @description Cada entrada del historial de auditoría del control de Packing List
+ * (queda una entrada por cada check/uncheck realizado sobre el item).
+ */
+export interface PackingListAuditItem {
+  action: string;
+  modifiedBy?: PackingListActorRef;
+  modifiedAt?: string;
+  observation?: string;
+  previousState?: unknown;
+}
+
+/**
+ * @description Estado de verificación cruzada (packing) de un registro de picking.
+ */
+export interface PackingListStatus {
+  checked: boolean;
+  checkedBy?: PackingListActorRef;
+  checkedAt?: string;
+  observation?: string;
+  auditTrail?: PackingListAuditItem[];
+}
+
+/**
+ * @description Registro de picking (LoadBarcode) devuelto por /assembly/packingList,
+ * incluyendo su estado de verificación cruzada (packingList).
+ */
+export interface PackingListRecord {
+  _id: string;
+  barcode: string;
+  productCode: string;
+  productName: string;
+  consecutiveProduct: string;
+  processDate: string;
+  date: string;
+  hour: string;
+  errorMark: string;
+  isDuplicated: boolean;
+  packingList: PackingListStatus;
+}
+
+/**
+ * @description Respuesta del endpoint POST /assembly/packingList.
+ */
+export interface PackingListResponse {
+  ok: boolean;
+  msg: PackingListRecord[];
+}
+
+/**
+ * @description Payload que el frontend envía a POST /assembly/packingList/check.
+ * `checkedBy` acepta el objeto completo o, por conveniencia, un simple login/usuario.
+ */
+export interface PackingListCheckPayload {
+  id: string;
+  checked: boolean;
+  observation?: string;
+  checkedBy: string | PackingListActorRef;
+}
+
+/**
+ * @description Respuesta del endpoint POST /assembly/packingList/check.
+ * - Éxito: `{ ok: true, msg, data: PackingListRecord }`
+ * - Error: `{ ok: false, msg }`
+ */
+export interface PackingListCheckResponse {
+  ok: boolean;
+  msg: string;
+  data?: PackingListRecord;
+}
+
 

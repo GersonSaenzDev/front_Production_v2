@@ -1,3 +1,4 @@
+// src/app/warehouse/warehouse-routing-module.ts
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { DashInventories } from './dash-inventories/dash-inventories';
@@ -37,6 +38,11 @@ const routes: Routes = [
     // Path completo: /production/productionNews
     path: 'orderPreparation',
     loadComponent: () => import('./order-preparation/order-preparation').then((c) => c.OrderPreparation)
+  },
+  {
+    // Path completo: /inventories/packingList
+    path: 'packingList',
+    loadComponent: () => import('./packing-list/packing-list').then((c) => c.PackingList)
   },
 ];
 

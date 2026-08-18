@@ -670,6 +670,13 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'clientHome/freightManagement',
             breadcrumbs: false
+          },
+          {
+            id: 'packing-list-item',
+            title: 'Packing List',
+            type: 'item',
+            url: 'inventories/packingList',
+            breadcrumbs: false
           }
         ]
       },

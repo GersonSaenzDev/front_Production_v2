@@ -12,7 +12,11 @@ import {
     ReferenceSearchResponse,
     ProductionNewsResponse,
     NewsReplyPayload,
-    NewsReplyResponse
+    NewsReplyResponse,
+    PackingListResponse,
+    PackingListRecord,
+    PackingListCheckPayload,
+    PackingListCheckResponse
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -34,6 +38,8 @@ export class DashboardServices {
   private readonly FINAL_INVENTORY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/finalInventoryReport`;
   private readonly RECORDS_ERROR_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/recordsWithError`;
   private readonly REPLY_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/replyNew`;
+  private readonly PACKING_LIST_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList`;
+  private readonly PACKING_LIST_CHECK_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/check`;
 
 
   private handleError(error: any) {
@@ -215,7 +221,7 @@ export class DashboardServices {
   }
 
   getRecordsWithError(date: string): Observable<ErrorRecordsResponse> {
-    
+
     // El backend espera la estructura { "date": "..." }
     const body = { date };
 
@@ -230,5 +236,43 @@ export class DashboardServices {
           return response;
         })
       );
+  }
+
+  /**
+   * @description Consulta los registros de picking (LoadBarcode) en un rango de fechas para
+   * el control cruzado de Packing List: le permite al operario ver, uno a uno, si cada item
+   * leído ya fue verificado físicamente contra el producto terminado.
+   * @param {string} dateIni - Fecha inicio 'DD/MM/YYYY' (también acepta 'YYYY-MM-DD').
+   * @param {string} dateEnd - Fecha fin 'DD/MM/YYYY' (también acepta 'YYYY-MM-DD').
+   * @param {'pending' | 'checked'} [status] - Filtro opcional por estado de verificación.
+   * @param {string} [consultedBy] - Login/usuario de quien consulta (queda en el log de acceso).
+   */
+  getPackingList(dateIni: string, dateEnd: string, status?: 'pending' | 'checked', consultedBy?: string): Observable<PackingListResponse> {
+
+    const body: any = { dateIni, dateEnd };
+    if (status) body.status = status;
+    if (consultedBy) body.consultedBy = consultedBy;
+
+    return this.http.post<PackingListResponse>(this.PACKING_LIST_ENDPOINT, body)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        map(response => {
+          if (!Array.isArray(response.msg)) {
+            return { ok: response.ok, msg: [] as PackingListRecord[] };
+          }
+          return response;
+        })
+      );
+  }
+
+  /**
+   * @description Marca (o desmarca) la verificación física de un item registrado en el
+   * picking, dentro del control cruzado de Packing List. Deja trazabilidad en el auditTrail
+   * del item (quién y cuándo lo verificó).
+   * @param {PackingListCheckPayload} payload - `{ id, checked, observation?, checkedBy }`.
+   */
+  checkPackingListItem(payload: PackingListCheckPayload): Observable<PackingListCheckResponse> {
+    return this.http.post<PackingListCheckResponse>(this.PACKING_LIST_CHECK_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
   }
 }
