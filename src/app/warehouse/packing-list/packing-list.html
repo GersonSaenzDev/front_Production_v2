@@ -34,9 +34,60 @@
           />
         </div>
 
+        <label
+          class="btn-refresh btn-upload-file"
+          [class.disabled]="isUploadingFile"
+          title="Cargar archivo .sal/.txt del ERP para validación cruzada automática"
+        >
+          <i class="ti" [ngClass]="isUploadingFile ? 'ti-loader-2 spin' : 'ti-file-upload'"></i>
+          <span>{{ isUploadingFile ? 'Validando...' : 'Cargar Archivo' }}</span>
+          <input
+            type="file"
+            accept=".sal,.txt"
+            hidden
+            [disabled]="isUploadingFile"
+            (change)="onValidationFileSelected($any($event.target).files); $any($event.target).value = null"
+          />
+        </label>
+
         <button type="button" class="btn-refresh" (click)="loadPackingList()" [disabled]="isLoading" title="Actualizar listado">
           <i class="ti" [ngClass]="isLoading ? 'ti-loader-2 spin' : 'ti-refresh'"></i>
           <span>Actualizar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADO DE LA VALIDACIÓN CRUZADA (archivo .sal/.txt) -->
+  <div class="cross-validate-banner mt-3" *ngIf="crossValidateResult" [class.banner-error]="!crossValidateResult.ok">
+    <div class="banner-main">
+      <i class="ti" [ngClass]="crossValidateResult.ok ? 'ti-circle-check' : 'ti-alert-triangle'"></i>
+      <div class="banner-text">
+        <strong>{{ crossValidateResult.msg }}</strong>
+        <span *ngIf="crossValidateResult.ok" class="banner-counts">
+          {{ crossValidateResult.totalValidados || 0 }} de {{ crossValidateResult.totalSeriales || 0 }} seriales validados contra el picking
+          <ng-container *ngIf="crossValidateResult.unmatchedCount">
+            · {{ crossValidateResult.unmatchedCount }} sin coincidencia
+          </ng-container>
+        </span>
+      </div>
+    </div>
+
+    <div class="banner-actions">
+      <button type="button" class="btn-link-banner" *ngIf="crossValidateResult.unmatchedBarcodes?.length" (click)="toggleUnmatchedList()">
+        {{ showUnmatchedList ? 'Ocultar' : 'Ver' }} sin coincidencia ({{ crossValidateResult.unmatchedBarcodes?.length }})
+      </button>
+      <button type="button" class="btn-close-banner" (click)="dismissCrossValidateResult()" title="Cerrar">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="unmatched-list" *ngIf="showUnmatchedList && crossValidateResult.unmatchedBarcodes?.length">
+      <span class="unmatched-hint">Seriales del archivo que aún no aparecen escaneados en el picking. Verifica si falta escanearlos:</span>
+      <div class="unmatched-chip" *ngFor="let barcode of crossValidateResult.unmatchedBarcodes">
+        <span>{{ barcode }}</span>
+        <button type="button" (click)="locateBarcode(barcode)" title="Buscar este serial en los grupos de horas">
+          <i class="ti ti-search"></i>
         </button>
       </div>
     </div>
@@ -140,6 +191,65 @@
               [(ngModel)]="searchTerm"
               (input)="applyFilter()"
             />
+          </div>
+        </div>
+
+        <!-- FILTROS INTELIGENTES -->
+        <div class="smart-filters">
+          <div class="filter-chip-group">
+            <button type="button" class="filter-chip" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">
+              Todos
+            </button>
+            <button type="button" class="filter-chip" [class.active]="statusFilter === 'checked'" (click)="setStatusFilter('checked')">
+              Verificados
+            </button>
+            <button type="button" class="filter-chip" [class.active]="statusFilter === 'pending'" (click)="setStatusFilter('pending')">
+              Pendientes
+            </button>
+          </div>
+
+          <label class="filter-toggle">
+            <input type="checkbox" [(ngModel)]="onlyErrors" (ngModelChange)="applyFilter()" />
+            Con novedad
+          </label>
+
+          <label class="filter-toggle">
+            <input type="checkbox" [(ngModel)]="onlyDuplicated" (ngModelChange)="applyFilter()" />
+            Duplicados
+          </label>
+
+          <span class="reference-filter-pill" *ngIf="referenceFilter">
+            Referencia: {{ referenceFilter }}
+            <button type="button" (click)="clearReferenceFilter()" title="Quitar filtro de referencia">
+              <i class="ti ti-x"></i>
+            </button>
+          </span>
+        </div>
+
+        <!-- CONSOLIDADO POR REFERENCIA -->
+        <div class="reference-summary-section mt-3" *ngIf="referenceSummaries.length > 0">
+          <h6 class="reference-summary-title">
+            <i class="ti ti-list-numbers"></i>
+            Consolidado por Referencia
+            <small>— compara el conteo físico contra lo escaneado; haz clic para filtrar la tabla</small>
+          </h6>
+
+          <div class="reference-summary-grid">
+            <button
+              type="button"
+              class="reference-summary-card"
+              *ngFor="let summary of referenceSummaries"
+              [class.active]="referenceFilter === summary.productCode"
+              [class.has-pending]="summary.pending > 0"
+              (click)="filterByReference(summary)"
+            >
+              <span class="reference-name" [title]="summary.productName">{{ summary.productName }}</span>
+              <span class="reference-code">{{ summary.productCode }}</span>
+              <div class="reference-counts">
+                <span class="reference-total">{{ summary.total }} escaneados</span>
+                <span class="reference-pending" *ngIf="summary.pending > 0">{{ summary.pending }} pendientes</span>
+              </div>
+            </button>
           </div>
         </div>
 

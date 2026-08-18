@@ -16,7 +16,8 @@ import {
     PackingListResponse,
     PackingListRecord,
     PackingListCheckPayload,
-    PackingListCheckResponse
+    PackingListCheckResponse,
+    PackingListCrossValidateResponse
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -40,6 +41,7 @@ export class DashboardServices {
   private readonly REPLY_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/replyNew`;
   private readonly PACKING_LIST_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList`;
   private readonly PACKING_LIST_CHECK_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/check`;
+  private readonly PACKING_LIST_CROSS_VALIDATE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/crossValidate`;
 
 
   private handleError(error: any) {
@@ -273,6 +275,20 @@ export class DashboardServices {
    */
   checkPackingListItem(payload: PackingListCheckPayload): Observable<PackingListCheckResponse> {
     return this.http.post<PackingListCheckResponse>(this.PACKING_LIST_CHECK_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Sube el archivo plano del ERP (.sal) con los seriales ya cargados, para
+   * validar de forma cruzada y automática los registros de picking cuyo barcode coincida
+   * con alguno de los seriales del archivo (marca packingList.checked = true).
+   * @param {File} file - Archivo .sal obtenido del input type="file".
+   */
+  crossValidatePackingList(file: File): Observable<PackingListCrossValidateResponse> {
+    const formData = new FormData();
+    formData.append('validationFile', file);
+
+    return this.http.post<PackingListCrossValidateResponse>(this.PACKING_LIST_CROSS_VALIDATE_ENDPOINT, formData)
       .pipe(catchError(this.handleError.bind(this)));
   }
 }

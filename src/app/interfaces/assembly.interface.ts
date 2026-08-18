@@ -309,4 +309,18 @@ export interface PackingListCheckResponse {
   data?: PackingListRecord;
 }
 
+/**
+ * @description Respuesta del endpoint POST /assembly/packingList/crossValidate.
+ * - Éxito: `{ ok: true, msg, totalSeriales, totalValidados, unmatchedCount, unmatchedBarcodes }`
+ * - Error: `{ ok: false, msg }` (ej: archivo sin seriales de 27 dígitos válidos)
+ */
+export interface PackingListCrossValidateResponse {
+  ok: boolean;
+  msg: string;
+  totalSeriales?: number;
+  totalValidados?: number;
+  unmatchedCount?: number;
+  unmatchedBarcodes?: string[];
+}
+
 

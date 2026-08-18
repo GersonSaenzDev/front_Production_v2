@@ -173,6 +173,330 @@ $abba-amber: #d97706;
 }
 
 // =======================
+//  BOTÓN CARGAR ARCHIVO (.sal/.txt)
+// =======================
+.btn-upload-file {
+  &.disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+// =======================
+//  BANNER DE RESULTADO DE VALIDACIÓN CRUZADA
+// =======================
+.cross-validate-banner {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  &.banner-error {
+    background: #fef2f2;
+    border-color: #fecaca;
+
+    .banner-main i {
+      color: #b91c1c;
+    }
+  }
+
+  .banner-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    flex: 1;
+    min-width: 260px;
+
+    i {
+      font-size: 1.4rem;
+      color: $abba-green;
+      margin-top: 0.1rem;
+    }
+  }
+
+  .banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    strong {
+      color: $abba-dark;
+      font-size: 0.92rem;
+    }
+
+    .banner-counts {
+      color: $abba-gray;
+      font-size: 0.82rem;
+    }
+  }
+
+  .banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-link-banner {
+    border: none;
+    background: none;
+    color: $abba-blue;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: underline;
+    white-space: nowrap;
+
+    &:hover {
+      color: $abba-blue-dark;
+    }
+  }
+
+  .btn-close-banner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(0, 0, 0, 0.06);
+    color: $abba-gray;
+    border-radius: 7px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+  }
+
+  .unmatched-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+
+    .unmatched-hint {
+      font-size: 0.78rem;
+      color: $abba-gray;
+    }
+  }
+
+  .unmatched-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+    font-size: 0.82rem;
+    color: $abba-dark;
+    width: fit-content;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: $abba-blue-light;
+      color: $abba-blue-dark;
+      border-radius: 50%;
+      cursor: pointer;
+
+      &:hover {
+        background: color.adjust($abba-blue-light, $lightness: -6%);
+      }
+    }
+  }
+}
+
+// =======================
+//  FILTROS INTELIGENTES (dentro del detalle de grupo)
+// =======================
+.smart-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.filter-chip-group {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.filter-chip {
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: $abba-gray;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: $abba-blue;
+    color: $abba-blue-dark;
+  }
+
+  &.active {
+    background: $abba-blue;
+    border-color: $abba-blue;
+    color: #fff;
+  }
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: $abba-gray;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    accent-color: $abba-blue;
+    cursor: pointer;
+  }
+}
+
+.reference-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: $abba-blue-light;
+  color: $abba-blue-dark;
+  border-radius: 999px;
+  padding: 0.3rem 0.4rem 0.3rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.6);
+    color: $abba-blue-dark;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+      background: #fff;
+    }
+  }
+}
+
+// =======================
+//  CONSOLIDADO POR REFERENCIA
+// =======================
+.reference-summary-section {
+  .reference-summary-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: $abba-blue-dark;
+    font-weight: 700;
+    font-size: 0.92rem;
+    margin-bottom: 0.75rem;
+
+    i {
+      color: $abba-blue;
+    }
+
+    small {
+      color: $abba-gray;
+      font-weight: 400;
+      font-size: 0.78rem;
+    }
+  }
+}
+
+.reference-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+.reference-summary-card {
+  text-align: left;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: $abba-blue;
+    background: #fff;
+  }
+
+  &.active {
+    border-color: $abba-blue;
+    background: $abba-blue-light;
+  }
+
+  &.has-pending {
+    border-left: 4px solid $abba-amber;
+  }
+
+  .reference-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: $abba-dark;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .reference-code {
+    font-size: 0.74rem;
+    color: $abba-gray;
+  }
+
+  .reference-counts {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.15rem;
+  }
+
+  .reference-total {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: color.adjust($abba-green, $lightness: -12%);
+  }
+
+  .reference-pending {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: $abba-amber;
+  }
+}
+
+// =======================
 //  TARJETA DE CONTENIDO
 // =======================
 .view-card {

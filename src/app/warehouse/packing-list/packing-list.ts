@@ -6,7 +6,7 @@ import { ToastrService } from 'ngx-toastr';
 
 import { DashboardServices } from '../../services/dashboard-services';
 import { AuthService } from '../../services/auth-services';
-import { PackingListActorRef, PackingListRecord } from '../../interfaces/assembly.interface';
+import { PackingListActorRef, PackingListCrossValidateResponse, PackingListRecord } from '../../interfaces/assembly.interface';
 
 interface PackingHourGroup {
   hour: string;
@@ -15,6 +15,18 @@ interface PackingHourGroup {
   checked: number;
   pending: number;
 }
+
+/** Consolidado de una referencia (productCode) dentro del grupo de horas seleccionado, para que
+ * el operario compare el conteo físico contra lo realmente escaneado. */
+interface PackingReferenceSummary {
+  productCode: string;
+  productName: string;
+  total: number;
+  checked: number;
+  pending: number;
+}
+
+type PackingStatusFilter = 'all' | 'checked' | 'pending';
 
 @Component({
   selector: 'app-packing-list',
@@ -44,7 +56,13 @@ export class PackingList implements OnInit {
   // ============================================================
 
   public selectedGroup: PackingHourGroup | null = null;
+  public referenceSummaries: PackingReferenceSummary[] = [];
+  public referenceFilter: string | null = null;
+
   public searchTerm = '';
+  public statusFilter: PackingStatusFilter = 'all';
+  public onlyErrors = false;
+  public onlyDuplicated = false;
   public filteredItems: PackingListRecord[] = [];
 
   /** ids en proceso de guardado, para bloquear su checkbox mientras responde el backend */
@@ -129,17 +147,55 @@ export class PackingList implements OnInit {
   }
 
   // ============================================================
-  //  SELECCIÓN DE GRUPO Y BÚSQUEDA DENTRO DEL DETALLE
+  //  SELECCIÓN DE GRUPO, FILTROS Y CONSOLIDADO POR REFERENCIA
   // ============================================================
 
   public selectGroup(group: PackingHourGroup | null): void {
     this.selectedGroup = group;
     this.searchTerm = '';
+    this.statusFilter = 'all';
+    this.onlyErrors = false;
+    this.onlyDuplicated = false;
+    this.referenceFilter = null;
+    this.referenceSummaries = group ? this.buildReferenceSummaries(group.items) : [];
     this.applyFilter();
   }
 
   public backToGroups(): void {
     this.selectGroup(null);
+  }
+
+  /** Consolida el grupo de horas por referencia (productCode), para comparar el conteo físico
+   * del operario contra el total realmente escaneado y detectar diferencias. */
+  private buildReferenceSummaries(items: PackingListRecord[]): PackingReferenceSummary[] {
+    const byReference = new Map<string, PackingReferenceSummary>();
+
+    for (const item of items) {
+      const key = item.productCode || 'SIN-CODIGO';
+      const summary = byReference.get(key) || { productCode: key, productName: item.productName, total: 0, checked: 0, pending: 0 };
+      summary.total++;
+      if (item.packingList?.checked) summary.checked++;
+      else summary.pending++;
+      byReference.set(key, summary);
+    }
+
+    return Array.from(byReference.values()).sort((a, b) => b.total - a.total);
+  }
+
+  /** Clic en una fila del consolidado: filtra la tabla de detalle a esa referencia (clic de nuevo la quita). */
+  public filterByReference(summary: PackingReferenceSummary): void {
+    this.referenceFilter = this.referenceFilter === summary.productCode ? null : summary.productCode;
+    this.applyFilter();
+  }
+
+  public clearReferenceFilter(): void {
+    this.referenceFilter = null;
+    this.applyFilter();
+  }
+
+  public setStatusFilter(status: PackingStatusFilter): void {
+    this.statusFilter = status;
+    this.applyFilter();
   }
 
   private normalizeSearchText(value: string): string {
@@ -154,15 +210,19 @@ export class PackingList implements OnInit {
 
     const tokens = this.normalizeSearchText(this.searchTerm).split(/\s+/).filter(Boolean);
 
-    this.filteredItems =
-      tokens.length === 0
-        ? [...this.selectedGroup.items]
-        : this.selectedGroup.items.filter((item) => {
-            const haystack = this.normalizeSearchText(
-              [item.barcode, item.productCode, item.productName, item.consecutiveProduct].filter(Boolean).join(' ')
-            );
-            return tokens.every((token) => haystack.includes(token));
-          });
+    this.filteredItems = this.selectedGroup.items.filter((item) => {
+      if (this.referenceFilter && item.productCode !== this.referenceFilter) return false;
+      if (this.statusFilter === 'checked' && !item.packingList?.checked) return false;
+      if (this.statusFilter === 'pending' && item.packingList?.checked) return false;
+      if (this.onlyErrors && !item.errorMark) return false;
+      if (this.onlyDuplicated && !item.isDuplicated) return false;
+
+      if (tokens.length === 0) return true;
+      const haystack = this.normalizeSearchText(
+        [item.barcode, item.productCode, item.productName, item.consecutiveProduct].filter(Boolean).join(' ')
+      );
+      return tokens.every((token) => haystack.includes(token));
+    });
   }
 
   // ============================================================
@@ -205,9 +265,70 @@ export class PackingList implements OnInit {
           const groupItems = this.selectedGroup.items;
           this.selectedGroup.checked = groupItems.filter((groupItem) => groupItem.packingList?.checked).length;
           this.selectedGroup.pending = this.selectedGroup.total - this.selectedGroup.checked;
+          this.referenceSummaries = this.buildReferenceSummaries(groupItems);
         }
       }
     });
+  }
+
+  // ============================================================
+  //  CARGA DE ARCHIVO PLANO (.sal/.txt) PARA VALIDACIÓN CRUZADA AUTOMÁTICA
+  // ============================================================
+
+  public isUploadingFile = false;
+  public crossValidateResult: PackingListCrossValidateResponse | null = null;
+  public showUnmatchedList = false;
+
+  public onValidationFileSelected(fileList: FileList | null): void {
+    if (!fileList || fileList.length === 0) return;
+    const file = fileList[0];
+
+    this.isUploadingFile = true;
+    this.crossValidateResult = null;
+    this.showUnmatchedList = false;
+
+    this.dashboardService.crossValidatePackingList(file).subscribe({
+      next: (response) => {
+        this.crossValidateResult = response;
+        if (response.ok) {
+          this.toastr.success(response.msg || 'Archivo validado correctamente.');
+          this.loadPackingList();
+        } else {
+          this.toastr.error(response.msg || 'No se pudo validar el archivo.');
+        }
+      },
+      error: (err) => {
+        this.toastr.error(err.message || 'Error al procesar el archivo de validación.');
+      },
+      complete: () => {
+        this.isUploadingFile = false;
+      }
+    });
+  }
+
+  public dismissCrossValidateResult(): void {
+    this.crossValidateResult = null;
+  }
+
+  public toggleUnmatchedList(): void {
+    this.showUnmatchedList = !this.showUnmatchedList;
+  }
+
+  /** Ubica un serial/barcode sin coincidencia dentro de los grupos de horas ya cargados y lo deja
+   * listo en el buscador, para que el operario confirme si realmente falta por escanear. */
+  public locateBarcode(barcode: string): void {
+    const record = this.allRecords.find((item) => item.barcode === barcode);
+    if (!record) {
+      this.toastr.warning(`El serial ${barcode} no se encuentra en el picking del rango de fechas seleccionado.`);
+      return;
+    }
+
+    const group = this.hourGroups.find((hourGroup) => hourGroup.hour === record.hour);
+    if (!group) return;
+
+    this.selectGroup(group);
+    this.searchTerm = barcode;
+    this.applyFilter();
   }
 
   // ============================================================
