@@ -95,7 +95,7 @@ export class MenuAccessService {
 
   // Excepción puntual: usuarios de LOGISTICA EXTERNA (normalmente solo ven CASA CLIENTE)
   // que además deben ver el collapse BODEGA. Identificados por userApp (username de login).
-  private readonly LOGISTICA_EXTERNA_BODEGA_USERS = ['DSPULGARIN', 'DEVERDUGO'];
+  private readonly LOGISTICA_EXTERNA_BODEGA_USERS = ['DSPULGARIN', 'DEVERDUGO', 'ACPEÑA'];
 
   private isLogisticaExternaBodegaUser(userApp?: string): boolean {
     const code = userApp?.toUpperCase().trim() || '';
