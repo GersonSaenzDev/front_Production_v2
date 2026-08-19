@@ -93,6 +93,15 @@ export class MenuAccessService {
     MECANIZADO: ['MECANICA']
   };
 
+  // Excepción puntual: usuarios de LOGISTICA EXTERNA (normalmente solo ven CASA CLIENTE)
+  // que además deben ver el collapse BODEGA. Identificados por userApp (username de login).
+  private readonly LOGISTICA_EXTERNA_BODEGA_USERS = ['DSPULGARIN', 'DEVERDUGO'];
+
+  private isLogisticaExternaBodegaUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.LOGISTICA_EXTERNA_BODEGA_USERS.includes(code);
+  }
+
   // Acceso por DEPARTAMENTO (en MAYÚSCULAS). Tiene prioridad sobre la lógica por área.
   // - navTitles: títulos de los collapse del menú lateral que puede ver (en MAYÚSCULAS).
   // - modules: módulos a los que puede rutear (el guard usa esto).
@@ -172,7 +181,7 @@ export class MenuAccessService {
     }
 
     if (item.type === 'collapse') {
-      return this.canAccessCollapse(item.title, area, dept);
+      return this.canAccessCollapse(item.title, area, dept, userData.userApp);
     }
 
     return true;
@@ -269,7 +278,7 @@ export class MenuAccessService {
     return allowedDepts ? allowedDepts.includes(dept) : false;
   }
 
-  private canAccessCollapse(rawTitle: string, area: string, dept: string): boolean {
+  private canAccessCollapse(rawTitle: string, area: string, dept: string, userApp?: string): boolean {
     const title = rawTitle?.toUpperCase().trim() || '';
 
     if (area === 'PRODUCCION') {
@@ -286,6 +295,7 @@ export class MenuAccessService {
     if (area === 'LOGISTICA') {
       if (dept === 'LOGISTICA EXTERNA' && title === 'CASA CLIENTE') return true;
       if (dept === 'LOGISTICA INTERNA' && title === 'BODEGA') return true;
+      if (dept === 'LOGISTICA EXTERNA' && title === 'BODEGA' && this.isLogisticaExternaBodegaUser(userApp)) return true;
       return false;
     }
 
@@ -362,6 +372,7 @@ export class MenuAccessService {
       if (dept === 'LOGISTICA EXTERNA' && module === 'clientHome') return true;
       if (dept === 'AUDITORIA' && module === 'clientHome') return true;
       if (dept === 'LOGISTICA INTERNA' && module === 'inventories') return true;
+      if (dept === 'LOGISTICA EXTERNA' && module === 'inventories' && this.isLogisticaExternaBodegaUser(user.userApp)) return true;
       if (module === 'logistics') return true;
     }
 
