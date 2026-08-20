@@ -172,6 +172,11 @@
                 {{ group.pending }} pendiente{{ group.pending !== 1 ? 's' : '' }}
               </span>
             </div>
+
+            <div class="hour-group-validators" *ngIf="group.validators.length > 0" [title]="group.validators.join(', ')">
+              <i class="ti ti-user-check"></i>
+              <span>{{ validatorsLabel(group) }}</span>
+            </div>
           </button>
         </div>
       </ng-container>

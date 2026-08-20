@@ -797,6 +797,25 @@ $abba-amber: #d97706;
     flex-wrap: wrap;
     gap: 0.4rem;
   }
+
+  .hour-group-validators {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: $abba-gray;
+
+    i {
+      color: $abba-green;
+      font-size: 0.95rem;
+    }
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 }
 
 // =======================

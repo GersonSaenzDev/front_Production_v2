@@ -15,6 +15,8 @@ interface PackingHourGroup {
   total: number;
   checked: number;
   pending: number;
+  /** Nombres únicos de quienes verificaron al menos un item de este grupo. */
+  validators: string[];
 }
 
 /** Consolidado de una referencia (productCode) dentro del grupo de horas seleccionado, para que
@@ -134,9 +136,26 @@ export class PackingList implements OnInit {
         items,
         total: items.length,
         checked: items.filter((item) => item.packingList?.checked).length,
-        pending: items.filter((item) => !item.packingList?.checked).length
+        pending: items.filter((item) => !item.packingList?.checked).length,
+        validators: this.computeValidators(items)
       }))
       .sort((a, b) => this.compareHours(a.hour, b.hour));
+  }
+
+  /** Nombres únicos de quienes verificaron (checkedBy) al menos un item del grupo. */
+  private computeValidators(items: PackingListRecord[]): string[] {
+    const names = items
+      .filter((item) => item.packingList?.checked)
+      .map((item) => item.packingList?.checkedBy?.name?.trim())
+      .filter((name): name is string => !!name);
+
+    return Array.from(new Set(names));
+  }
+
+  /** Etiqueta corta para mostrar en la card (máx. 2 nombres, luego "+N"); el título completo va en el `title` del elemento. */
+  public validatorsLabel(group: PackingHourGroup): string {
+    if (group.validators.length <= 2) return group.validators.join(', ');
+    return `${group.validators.slice(0, 2).join(', ')} +${group.validators.length - 2}`;
   }
 
   /** Ordena por el primer número que aparezca en la hora (ej. "07:00" antes de "14:00"); si no hay número, cae a orden alfabético. */
@@ -266,6 +285,7 @@ export class PackingList implements OnInit {
           const groupItems = this.selectedGroup.items;
           this.selectedGroup.checked = groupItems.filter((groupItem) => groupItem.packingList?.checked).length;
           this.selectedGroup.pending = this.selectedGroup.total - this.selectedGroup.checked;
+          this.selectedGroup.validators = this.computeValidators(groupItems);
           this.referenceSummaries = this.buildReferenceSummaries(groupItems);
         }
       }
