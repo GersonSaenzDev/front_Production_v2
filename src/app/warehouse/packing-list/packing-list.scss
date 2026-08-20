@@ -576,6 +576,45 @@ $abba-amber: #d97706;
       }
     }
   }
+
+  .toolbar-end {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-export-excel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgba($abba-green, 0.35);
+    border-radius: 10px;
+    padding: 0.6rem 1.05rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    height: fit-content;
+    transition: all 0.25s ease;
+    background: $abba-green;
+    color: #fff;
+
+    i {
+      font-size: 1.1rem;
+    }
+
+    &:hover:not(:disabled) {
+      background: color.adjust($abba-green, $lightness: -6%);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba($abba-green, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
 }
 
 .btn-back {
@@ -960,6 +999,16 @@ $abba-amber: #d97706;
 
     .search-wrapper {
       width: 100%;
+    }
+
+    .toolbar-end {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .btn-export-excel {
+      width: 100%;
+      justify-content: center;
     }
   }
 

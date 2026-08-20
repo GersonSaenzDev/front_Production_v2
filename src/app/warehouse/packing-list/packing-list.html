@@ -124,6 +124,17 @@
             <h6 class="section-title mb-0">Grupos de Horas</h6>
             <small class="section-subtitle">Selecciona el grupo de horas que deseas validar</small>
           </div>
+
+          <button
+            type="button"
+            class="btn-export-excel"
+            (click)="exportToExcel()"
+            [disabled]="totalRecords === 0"
+            title="Descargar en Excel los registros del rango de fechas seleccionado"
+          >
+            <i class="ti ti-file-spreadsheet"></i>
+            <span>Descargar</span>
+          </button>
         </div>
 
         <div class="groups-grid mt-3">
@@ -182,15 +193,28 @@
             <small class="section-subtitle">{{ group.checked }}/{{ group.total }} ítems verificados en este grupo</small>
           </div>
 
-          <div class="search-wrapper">
-            <i class="ti ti-search search-icon"></i>
-            <input
-              type="text"
-              class="form-control search-input"
-              placeholder="Buscar por código de barras, producto o consecutivo..."
-              [(ngModel)]="searchTerm"
-              (input)="applyFilter()"
-            />
+          <div class="toolbar-end">
+            <div class="search-wrapper">
+              <i class="ti ti-search search-icon"></i>
+              <input
+                type="text"
+                class="form-control search-input"
+                placeholder="Buscar por código de barras, producto o consecutivo..."
+                [(ngModel)]="searchTerm"
+                (input)="applyFilter()"
+              />
+            </div>
+
+            <button
+              type="button"
+              class="btn-export-excel"
+              (click)="exportToExcel()"
+              [disabled]="filteredItems.length === 0"
+              title="Descargar en Excel los ítems filtrados de este grupo"
+            >
+              <i class="ti ti-file-spreadsheet"></i>
+              <span>Descargar</span>
+            </button>
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
+import * as XLSX from 'xlsx';
 
 import { DashboardServices } from '../../services/dashboard-services';
 import { AuthService } from '../../services/auth-services';
@@ -329,6 +330,43 @@ export class PackingList implements OnInit {
     this.selectGroup(group);
     this.searchTerm = barcode;
     this.applyFilter();
+  }
+
+  // ============================================================
+  //  EXPORTACIÓN A EXCEL
+  // ============================================================
+
+  /** Exporta a Excel el detalle filtrado del grupo de horas abierto; si no hay grupo
+   * seleccionado, exporta el total de registros entregados por el backend para el rango de fechas. */
+  public exportToExcel(): void {
+    const source = this.selectedGroup ? this.filteredItems : this.allRecords;
+
+    if (source.length === 0) {
+      this.toastr.warning('No hay datos para exportar.');
+      return;
+    }
+
+    const dataToExport = source.map((item) => ({
+      Hora: item.hour,
+      Fecha: item.date,
+      'Código de Barras': item.barcode,
+      'Código de Producto': item.productCode,
+      Producto: item.productName,
+      Consecutivo: item.consecutiveProduct,
+      Verificado: item.packingList?.checked ? 'SI' : 'NO',
+      'Verificado Por': item.packingList?.checkedBy?.name || '',
+      'Verificado En': item.packingList?.checkedAt || '',
+      Novedad: item.errorMark || '',
+      Duplicado: item.isDuplicated ? 'SI' : 'NO'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Packing List');
+
+    const suffix = this.selectedGroup ? `_Grupo_${this.selectedGroup.hour.replace(/:/g, '-')}` : '';
+    const fileName = `PackingList_${this.dateIni}_al_${this.dateEnd}${suffix}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
   }
 
   // ============================================================
