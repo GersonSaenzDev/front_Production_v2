@@ -33,6 +33,10 @@ const routes: Routes = [
   {
     path: 'freightManagement',
     loadComponent: () => import('./freight-management/freight-management').then((c) => c.FreightManagement)
+  },
+  {
+    path: 'carrierManagement',
+    loadComponent: () => import('./carrier-management/carrier-management').then((c) => c.CarrierManagement)
   }
   // {
   //   // Path completo: /production/productionNews

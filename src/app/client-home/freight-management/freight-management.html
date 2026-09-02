@@ -1,6 +1,5 @@
 <!-- src/app/client-home/freight-management/freight-management.html -->
 <div class="container-fluid py-4 freight-view-container">
-
   <!-- HEADER PRINCIPAL -->
   <div class="freight-view-header">
     <div class="header-content">
@@ -20,7 +19,8 @@
             id="freightDateIni"
             class="form-control filter-input"
             [(ngModel)]="dateIni"
-            (ngModelChange)="onDateRangeChange()">
+            (ngModelChange)="onDateRangeChange()"
+          />
         </div>
 
         <div class="filter-group">
@@ -30,7 +30,8 @@
             id="freightDateEnd"
             class="form-control filter-input"
             [(ngModel)]="dateEnd"
-            (ngModelChange)="onDateRangeChange()">
+            (ngModelChange)="onDateRangeChange()"
+          />
         </div>
 
         <button type="button" class="btn-new-dispatch" (click)="openFormModal()">
@@ -43,7 +44,8 @@
           class="btn-export"
           (click)="exportToExcel()"
           [disabled]="isLoading || totalDispatches === 0"
-          title="Descargar los despachos del rango seleccionado en Excel">
+          title="Descargar los despachos del rango seleccionado en Excel"
+        >
           <i class="ti ti-file-spreadsheet"></i>
           <span>Descargar Excel ({{ totalDispatches }})</span>
         </button>
@@ -73,7 +75,6 @@
   <!-- TARJETA DE CONTENIDO -->
   <div class="card view-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">
-
       <!-- TOOLBAR -->
       <div class="view-toolbar">
         <div class="toolbar-title">
@@ -88,7 +89,8 @@
             class="form-control search-input"
             placeholder="Buscar por despacho, fecha, estado, transportador, cliente, ciudad, EAN, producto o factura..."
             [(ngModel)]="searchTerm"
-            (input)="applyFilter()">
+            (input)="applyFilter()"
+          />
         </div>
       </div>
 
@@ -150,17 +152,11 @@
               </td>
 
               <td>
-                <span class="status-pill" [ngClass]="statusPillClass(dispatch.status)">
-                  {{ dispatch.status }}
-                </span>
+                <span class="status-pill" [ngClass]="statusPillClass(dispatch.status)">{{ dispatch.status }}</span>
               </td>
 
               <td class="action-col">
-                <button
-                  type="button"
-                  class="btn-detail"
-                  (click)="openDetail(dispatch)"
-                  title="Ver detalle completo del despacho">
+                <button type="button" class="btn-detail" (click)="openDetail(dispatch)" title="Ver detalle completo del despacho">
                   <i class="ti ti-eye"></i>
                   <span class="btn-label">Detalle</span>
                 </button>
@@ -173,18 +169,22 @@
       <!-- PAGINATION -->
       <div class="pagination-controls">
         <button type="button" class="btn-pagination" (click)="prevPage()" [disabled]="currentPage === 1">
-          <i class="ti ti-chevron-left"></i> Anterior
+          <i class="ti ti-chevron-left"></i>
+          Anterior
         </button>
 
         <span class="page-indicator">
-          Página <strong>{{ currentPage }}</strong> de <strong>{{ totalPages }}</strong>
+          Página
+          <strong>{{ currentPage }}</strong>
+          de
+          <strong>{{ totalPages }}</strong>
         </span>
 
         <button type="button" class="btn-pagination" (click)="nextPage()" [disabled]="currentPage === totalPages">
-          Siguiente <i class="ti ti-chevron-right"></i>
+          Siguiente
+          <i class="ti ti-chevron-right"></i>
         </button>
       </div>
-
     </div>
   </div>
 </div>
@@ -194,11 +194,12 @@
 <!-- ============================================================ -->
 <div class="response-modal-backdrop" *ngIf="showFormModal" (click)="closeFormModal()">
   <div class="response-modal form-modal" (click)="$event.stopPropagation()">
-
     <div class="response-modal-header">
       <div>
         <h5 class="modal-title">Registrar Despacho de Flete</h5>
-        <small class="modal-subtitle">Carga 1 o más facturas PDF para precargar las líneas; el Flete se diligencia manualmente por línea</small>
+        <small class="modal-subtitle">
+          Carga 1 o más facturas PDF para precargar las líneas; el Flete se diligencia manualmente por línea
+        </small>
       </div>
       <button type="button" class="modal-close" (click)="closeFormModal()">
         <i class="ti ti-x"></i>
@@ -206,7 +207,6 @@
     </div>
 
     <div class="response-modal-body">
-
       <div class="form-grid">
         <div class="form-field">
           <label class="field-label">N° Despacho</label>
@@ -216,32 +216,128 @@
             [ngModel]="isLoadingDispatchNumber ? 'Generando...' : form.dispatchNumber"
             readonly
             disabled
-            title="Consecutivo generado automáticamente por el sistema">
+            title="Consecutivo generado automáticamente por el sistema"
+          />
         </div>
 
         <div class="form-field">
           <label class="field-label">Fecha de despacho</label>
-          <input type="date" class="form-control" [(ngModel)]="form.dispatchDate">
+          <input type="date" class="form-control" [(ngModel)]="form.dispatchDate" />
         </div>
 
         <div class="form-field">
           <label class="field-label">Salida Bodega</label>
-          <input type="text" class="form-control" [(ngModel)]="form.warehouseExitDate" placeholder="Cod_Bodega">
+          <input type="text" class="form-control" [(ngModel)]="form.warehouseExitDate" placeholder="Cod_Bodega" />
         </div>
 
         <div class="form-field">
           <label class="field-label">Transportador</label>
-          <input type="text" class="form-control" [(ngModel)]="form.carrier" placeholder="Nombre del Transportador">
+          <select class="form-control" [ngModel]="form.carrierId" (ngModelChange)="onCarrierChange($event)" [disabled]="isLoadingCarriers">
+            <option value="">{{ isLoadingCarriers ? 'Cargando transportadoras...' : 'Seleccione la transportadora...' }}</option>
+            <option *ngFor="let carrier of carriers" [value]="carrier._id">{{ carrier.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Tipo de vehículo</label>
+          <select
+            class="form-control"
+            [(ngModel)]="form.vehicleType"
+            (ngModelChange)="applyTariffAndCapacity()"
+            [disabled]="!selectedCarrier"
+          >
+            <option value="">{{ selectedCarrier ? 'Seleccione el tipo de vehículo...' : 'Elija primero la transportadora' }}</option>
+            <option *ngFor="let type of vehicleTypeOptions" [value]="type">{{ type }}</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Destino principal (ruta)</label>
+          <input
+            *ngIf="destinationOptions.length <= 1"
+            type="text"
+            class="form-control"
+            [ngModel]="form.mainDestination"
+            readonly
+            disabled
+            [placeholder]="'Se toma de la ciudad de las líneas'"
+          />
+          <select
+            *ngIf="destinationOptions.length > 1"
+            class="form-control"
+            [(ngModel)]="form.mainDestination"
+            (ngModelChange)="applyTariffAndCapacity()"
+          >
+            <option value="">Elija la ciudad que fija la tarifa...</option>
+            <option *ngFor="let city of destinationOptions" [value]="city">{{ city }}</option>
+          </select>
+          <small class="field-hint">Se usa para buscar la tarifa (destino + tipo de vehículo) en el catálogo.</small>
         </div>
 
         <div class="form-field">
           <label class="field-label">Costo total del flete</label>
-          <input type="number" min="0" class="form-control" [(ngModel)]="form.totalFreightCost" placeholder="0">
+          <input type="number" min="0" class="form-control" [(ngModel)]="form.totalFreightCost" placeholder="0" />
+          <small class="field-hint field-hint-ok" *ngIf="form.ratedFreightValue !== null">
+            <i class="ti ti-discount-check"></i>
+            Tarifa de catálogo: {{ form.ratedFreightValue | currency:'COP':'symbol':'1.0-0' }} · editable
+          </small>
+          <small
+            class="field-hint field-hint-warn"
+            *ngIf="form.ratedFreightValue === null && selectedCarrier && form.vehicleType && form.mainDestination"
+          >
+            <i class="ti ti-alert-triangle"></i>
+            Sin tarifa para ese destino/vehículo — ingresa el valor manualmente.
+          </small>
         </div>
 
         <div class="form-field form-field-wide">
           <label class="field-label">Detalle de creación</label>
-          <textarea class="form-control" rows="2" [(ngModel)]="form.creationDetail" placeholder="Ej. Motivo del despacho, observaciones iniciales..."></textarea>
+          <textarea
+            class="form-control"
+            rows="2"
+            [(ngModel)]="form.creationDetail"
+            placeholder="Ej. Motivo del despacho, observaciones iniciales..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- APROVECHAMIENTO DEL VEHÍCULO (cubicaje) -->
+      <div class="items-section">
+        <div class="items-header">
+          <h6 class="mb-0">Aprovechamiento del vehículo</h6>
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label">Capacidad del vehículo (m³)</label>
+            <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="form.vehicleCapacityM3" placeholder="0" />
+            <small class="field-hint">Se precarga del catálogo según el tipo de vehículo; puedes ajustarla.</small>
+          </div>
+          <div class="form-field">
+            <label class="field-label">m³ cargados</label>
+            <input type="text" class="form-control" [ngModel]="loadedVolumeM3 | number:'1.0-2'" readonly disabled />
+            <small class="field-hint">Suma del volumen (m³) de todas las líneas.</small>
+          </div>
+          <div class="form-field">
+            <label class="field-label">% de aprovechamiento</label>
+            <input
+              type="text"
+              class="form-control"
+              [ngModel]="volumeUtilizationPct === null ? 'Sin capacidad' : (volumeUtilizationPct | number:'1.0-1') + ' %'"
+              readonly
+              disabled
+            />
+            <div class="utilization-bar" *ngIf="volumeUtilizationPct !== null">
+              <span
+                class="utilization-fill"
+                [style.width.%]="volumeUtilizationPct > 100 ? 100 : volumeUtilizationPct"
+                [ngClass]="{
+                  'util-low': volumeUtilizationPct < 80,
+                  'util-ok': volumeUtilizationPct >= 80 && volumeUtilizationPct <= 100,
+                  'util-over': volumeUtilizationPct > 100
+                }"
+              ></span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -250,7 +346,8 @@
         <div class="items-header">
           <h6 class="mb-0">Costos adicionales</h6>
           <button type="button" class="btn-add-item" (click)="addCostEntry(form.additionalCosts)">
-            <i class="ti ti-plus"></i> Agregar costo
+            <i class="ti ti-plus"></i>
+            Agregar costo
           </button>
         </div>
 
@@ -265,8 +362,15 @@
             </thead>
             <tbody>
               <tr *ngFor="let cost of form.additionalCosts; let i = index">
-                <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0"></td>
-                <td><input type="text" class="form-control" [(ngModel)]="cost.observation" placeholder="Descripción del costo (obligatoria)"></td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0" /></td>
+                <td>
+                  <input
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="cost.observation"
+                    placeholder="Descripción del costo (obligatoria)"
+                  />
+                </td>
                 <td class="action-col">
                   <button type="button" class="btn-remove-item" (click)="removeCostEntry(form.additionalCosts, i)" title="Quitar costo">
                     <i class="ti ti-trash"></i>
@@ -291,7 +395,8 @@
               multiple
               hidden
               [disabled]="isParsingInvoices"
-              (change)="onInvoiceFilesSelected($any($event.target).files); $any($event.target).value = null">
+              (change)="onInvoiceFilesSelected($any($event.target).files); $any($event.target).value = null"
+            />
           </label>
         </div>
 
@@ -299,7 +404,12 @@
           <div class="invoice-file-chip" *ngFor="let file of form.invoiceFiles; let i = index">
             <i class="ti ti-file-type-pdf"></i>
             <span class="invoice-file-name">{{ file.name }}</span>
-            <button type="button" class="btn-remove-item" (click)="removeInvoiceFile(i)" title="Quitar factura de la carga (no elimina las líneas ya agregadas)">
+            <button
+              type="button"
+              class="btn-remove-item"
+              (click)="removeInvoiceFile(i)"
+              title="Quitar factura de la carga (no elimina las líneas ya agregadas)"
+            >
               <i class="ti ti-x"></i>
             </button>
           </div>
@@ -310,7 +420,8 @@
         <div class="items-header">
           <h6 class="mb-0">Líneas del despacho</h6>
           <button type="button" class="btn-add-item" (click)="addItemRow()">
-            <i class="ti ti-plus"></i> Agregar línea
+            <i class="ti ti-plus"></i>
+            Agregar línea
           </button>
         </div>
 
@@ -325,27 +436,46 @@
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
                 <th>Costo Total</th>
+                <th>Volumen (m³)</th>
                 <th>Flete</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let item of form.items; let i = index">
-                <td><input type="text" class="form-control" [(ngModel)]="item.client" placeholder="Cliente"></td>
-                <td><input type="text" class="form-control" [(ngModel)]="item.destinationCity" placeholder="Ciudad"></td>
-                <td><input type="text" class="form-control" [(ngModel)]="item.ean" placeholder="EAN"></td>
-                <td><input type="text" class="form-control" [(ngModel)]="item.product" placeholder="Producto"></td>
-                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.quantity" placeholder="0"></td>
-                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitValue" placeholder="0"></td>
+                <td><input type="text" class="form-control" [(ngModel)]="item.client" placeholder="Cliente" /></td>
+                <td>
+                  <input
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="item.destinationCity"
+                    (ngModelChange)="syncMainDestination()"
+                    placeholder="Ciudad"
+                  />
+                </td>
+                <td><input type="text" class="form-control" [(ngModel)]="item.ean" placeholder="EAN" /></td>
+                <td><input type="text" class="form-control" [(ngModel)]="item.product" placeholder="Producto" /></td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.quantity" placeholder="0" /></td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="item.unitValue" placeholder="0" /></td>
                 <td class="cell-readonly">{{ itemTotalValue(item) | currency:'COP':'symbol':'1.0-0' }}</td>
-                <td><input type="number" min="0" class="form-control freight-pending-input" [(ngModel)]="item.freightCost" placeholder="Pendiente"></td>
+                <td><input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="item.volumeM3" placeholder="0" /></td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    class="form-control freight-pending-input"
+                    [(ngModel)]="item.freightCost"
+                    placeholder="Pendiente"
+                  />
+                </td>
                 <td class="action-col">
                   <button
                     type="button"
                     class="btn-remove-item"
                     (click)="removeItemRow(i)"
                     [disabled]="form.items.length === 1"
-                    title="Quitar línea">
+                    title="Quitar línea"
+                  >
                     <i class="ti ti-trash"></i>
                   </button>
                 </td>
@@ -356,11 +486,17 @@
       </div>
 
       <div class="response-actions">
-        <button type="button" class="btn-cancel" (click)="closeFormModal()" [disabled]="isSaving">
-          Cancelar
-        </button>
-        <button type="button" class="btn-confirm" (click)="submitDispatch()" [disabled]="!isFormValid || isSaving || isLoadingDispatchNumber">
-          <span *ngIf="!isSaving"><i class="ti ti-device-floppy"></i> Registrar Despacho</span>
+        <button type="button" class="btn-cancel" (click)="closeFormModal()" [disabled]="isSaving">Cancelar</button>
+        <button
+          type="button"
+          class="btn-confirm"
+          (click)="submitDispatch()"
+          [disabled]="!isFormValid || isSaving || isLoadingDispatchNumber"
+        >
+          <span *ngIf="!isSaving">
+            <i class="ti ti-device-floppy"></i>
+            Registrar Despacho
+          </span>
           <span *ngIf="isSaving">Guardando...</span>
         </button>
       </div>
@@ -373,13 +509,10 @@
 <!-- ============================================================ -->
 <div class="response-modal-backdrop" *ngIf="showDetailModal" (click)="closeDetail()">
   <div class="response-modal detail-modal" (click)="$event.stopPropagation()">
-
     <div class="response-modal-header">
       <div>
         <h5 class="modal-title">Detalle del despacho</h5>
-        <small class="modal-subtitle" *ngIf="detailDispatch">
-          {{ detailDispatch.dispatchNumber }} · {{ detailDispatch.dispatchDate }}
-        </small>
+        <small class="modal-subtitle" *ngIf="detailDispatch">{{ detailDispatch.dispatchNumber }} · {{ detailDispatch.dispatchDate }}</small>
       </div>
       <button type="button" class="modal-close" (click)="closeDetail()">
         <i class="ti ti-x"></i>
@@ -387,44 +520,89 @@
     </div>
 
     <div class="response-modal-body" *ngIf="detailDispatch">
-
       <div class="detail-grid">
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-truck"></i> Transportador</span>
+          <span class="detail-label">
+            <i class="ti ti-truck"></i>
+            Transportador
+          </span>
           <span class="detail-value">{{ detailDispatch.carrier }}</span>
         </div>
 
-        <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-circle-check"></i> Estado</span>
+        <div class="detail-item" *ngIf="detailDispatch.vehicleType">
+          <span class="detail-label">
+            <i class="ti ti-truck-loading"></i>
+            Tipo de vehículo
+          </span>
+          <span class="detail-value">{{ detailDispatch.vehicleType }}</span>
+        </div>
+
+        <div class="detail-item" *ngIf="detailDispatch.mainDestination">
+          <span class="detail-label">
+            <i class="ti ti-map-pin"></i>
+            Destino principal
+          </span>
+          <span class="detail-value">{{ detailDispatch.mainDestination }}</span>
+        </div>
+
+        <div class="detail-item" *ngIf="detailDispatch.vehicleCapacityM3">
+          <span class="detail-label">
+            <i class="ti ti-box"></i>
+            Cubicaje
+          </span>
           <span class="detail-value">
-            <span class="status-pill" [ngClass]="statusPillClass(detailDispatch.status)">
-              {{ detailDispatch.status }}
-            </span>
+            {{ detailDispatch.loadedVolumeM3 | number:'1.0-2' }} / {{ detailDispatch.vehicleCapacityM3 | number:'1.0-2' }} m³
+            <span *ngIf="detailDispatch.volumeUtilizationPct">({{ detailDispatch.volumeUtilizationPct | number:'1.0-1' }}%)</span>
           </span>
         </div>
 
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-currency-dollar"></i> Costo Total Flete</span>
+          <span class="detail-label">
+            <i class="ti ti-circle-check"></i>
+            Estado
+          </span>
+          <span class="detail-value">
+            <span class="status-pill" [ngClass]="statusPillClass(detailDispatch.status)">{{ detailDispatch.status }}</span>
+          </span>
+        </div>
+
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-currency-dollar"></i>
+            Costo Total Flete
+          </span>
           <span class="detail-value">{{ detailDispatch.totalFreightCost | currency:'COP':'symbol':'1.0-0' }}</span>
         </div>
 
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-receipt-2"></i> Costos Adicionales</span>
+          <span class="detail-label">
+            <i class="ti ti-receipt-2"></i>
+            Costos Adicionales
+          </span>
           <span class="detail-value">{{ currentAdditionalCosts(detailDispatch) | currency:'COP':'symbol':'1.0-0' }}</span>
         </div>
 
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-building-warehouse"></i> Salida Bodega</span>
+          <span class="detail-label">
+            <i class="ti ti-building-warehouse"></i>
+            Salida Bodega
+          </span>
           <span class="detail-value">{{ detailDispatch.warehouseExitDate || '—' }}</span>
         </div>
 
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-user"></i> Registrado por</span>
+          <span class="detail-label">
+            <i class="ti ti-user"></i>
+            Registrado por
+          </span>
           <span class="detail-value">{{ detailDispatch.userCreate }}</span>
         </div>
 
         <div class="detail-item">
-          <span class="detail-label"><i class="ti ti-calendar"></i> Fecha de registro</span>
+          <span class="detail-label">
+            <i class="ti ti-calendar"></i>
+            Fecha de registro
+          </span>
           <span class="detail-value">{{ detailDispatch.dateCreate }}</span>
         </div>
       </div>
@@ -435,7 +613,8 @@
           class="invoice-file-chip invoice-file-chip-clickable"
           *ngFor="let doc of detailDispatch.invoiceDocuments"
           (click)="viewInvoiceDocument(doc)"
-          title="Ver factura">
+          title="Ver factura"
+        >
           <i class="ti ti-file-type-pdf"></i>
           <span class="invoice-file-name">{{ doc.originalName }}</span>
           <small class="cell-sub" *ngIf="doc.invoiceNumber">
@@ -482,6 +661,7 @@
               <th>Cant.</th>
               <th>Vlr. Unit.</th>
               <th>Costo Total</th>
+              <th>m³</th>
               <th>Flete</th>
             </tr>
           </thead>
@@ -494,6 +674,7 @@
               <td>{{ item.quantity | number }}</td>
               <td>{{ item.unitValue | currency:'COP':'symbol':'1.0-0' }}</td>
               <td>{{ item.totalValue | currency:'COP':'symbol':'1.0-0' }}</td>
+              <td>{{ (item.volumeM3 || 0) | number:'1.0-2' }}</td>
               <td>{{ item.freightCost | currency:'COP':'symbol':'1.0-0' }}</td>
             </tr>
           </tbody>
@@ -513,7 +694,12 @@
 
           <div class="form-field form-field-wide">
             <label class="field-label">Detalle o novedad de entrega</label>
-            <textarea class="form-control" rows="2" [(ngModel)]="updateForm.detail" placeholder="Describe el motivo de la actualización (obligatorio)..."></textarea>
+            <textarea
+              class="form-control"
+              rows="2"
+              [(ngModel)]="updateForm.detail"
+              placeholder="Describe el motivo de la actualización (obligatorio)..."
+            ></textarea>
           </div>
         </div>
 
@@ -521,7 +707,8 @@
           <div class="items-header">
             <h6 class="mb-0">Nuevos costos adicionales</h6>
             <button type="button" class="btn-add-item" (click)="addCostEntry(updateForm.additionalCosts)">
-              <i class="ti ti-plus"></i> Agregar costo
+              <i class="ti ti-plus"></i>
+              Agregar costo
             </button>
           </div>
 
@@ -536,10 +723,22 @@
               </thead>
               <tbody>
                 <tr *ngFor="let cost of updateForm.additionalCosts; let i = index">
-                  <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0"></td>
-                  <td><input type="text" class="form-control" [(ngModel)]="cost.observation" placeholder="Descripción del costo (obligatoria)"></td>
+                  <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0" /></td>
+                  <td>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="cost.observation"
+                      placeholder="Descripción del costo (obligatoria)"
+                    />
+                  </td>
                   <td class="action-col">
-                    <button type="button" class="btn-remove-item" (click)="removeCostEntry(updateForm.additionalCosts, i)" title="Quitar costo">
+                    <button
+                      type="button"
+                      class="btn-remove-item"
+                      (click)="removeCostEntry(updateForm.additionalCosts, i)"
+                      title="Quitar costo"
+                    >
                       <i class="ti ti-trash"></i>
                     </button>
                   </td>
@@ -554,17 +753,19 @@
             type="button"
             class="btn-confirm"
             (click)="submitDispatchUpdate()"
-            [disabled]="isUpdatingDispatch || !updateForm.detail.trim()">
-            <span *ngIf="!isUpdatingDispatch"><i class="ti ti-device-floppy"></i> Guardar actualización</span>
+            [disabled]="isUpdatingDispatch || !updateForm.detail.trim()"
+          >
+            <span *ngIf="!isUpdatingDispatch">
+              <i class="ti ti-device-floppy"></i>
+              Guardar actualización
+            </span>
             <span *ngIf="isUpdatingDispatch">Guardando...</span>
           </button>
         </div>
       </div>
 
       <div class="response-actions">
-        <button type="button" class="btn-cancel" (click)="closeDetail()">
-          Cerrar
-        </button>
+        <button type="button" class="btn-cancel" (click)="closeDetail()">Cerrar</button>
       </div>
     </div>
   </div>

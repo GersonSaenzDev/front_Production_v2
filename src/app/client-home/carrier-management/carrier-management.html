@@ -1,0 +1,722 @@
+<!-- src/app/client-home/carrier-management/carrier-management.html -->
+<div class="container-fluid py-4 carrier-view-container">
+  <!-- HEADER PRINCIPAL -->
+  <div class="carrier-view-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-truck"></i>
+      </div>
+      <div class="header-text">
+        <h3 class="header-title mb-1">Transportadoras</h3>
+        <p class="header-subtitle mb-0">Casa Cliente INDUSEL — Catálogo de transportistas, tarifas de flete y costos adicionales</p>
+      </div>
+
+      <div class="header-actions">
+        <div class="filter-group">
+          <label for="carrierStatusFilter" class="filter-label">Estado</label>
+          <select id="carrierStatusFilter" class="form-control filter-input" [(ngModel)]="statusFilter" (ngModelChange)="applyFilter()">
+            <option value="all">Todas</option>
+            <option value="active">Activas</option>
+            <option value="inactive">Inactivas</option>
+          </select>
+        </div>
+
+        <button type="button" class="btn-new-carrier" (click)="openCreateModal()">
+          <i class="ti ti-plus"></i>
+          <span>Nueva Transportadora</span>
+        </button>
+
+        <button
+          type="button"
+          class="btn-export"
+          (click)="exportToExcel()"
+          [disabled]="isLoading || totalCarriers === 0"
+          title="Descargar el catálogo de transportadoras en Excel"
+        >
+          <i class="ti ti-file-spreadsheet"></i>
+          <span>Descargar Excel ({{ totalCarriers }})</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="summary-counters">
+    <div class="summary-card row-default">
+      <span class="summary-time">{{ totalCarriers | number }}</span>
+      <span class="summary-category">Transportadoras</span>
+      <span class="summary-count">Registradas en el catálogo</span>
+    </div>
+    <div class="summary-card row-active">
+      <span class="summary-time">{{ activeCarriers | number }}</span>
+      <span class="summary-category">Activas</span>
+      <span class="summary-count">Disponibles para despachos</span>
+    </div>
+    <div class="summary-card row-inactive">
+      <span class="summary-time">{{ inactiveCarriers | number }}</span>
+      <span class="summary-category">Inactivas</span>
+      <span class="summary-count">Apagadas (borrado lógico)</span>
+    </div>
+  </div>
+
+  <!-- TARJETA DE CONTENIDO -->
+  <div class="card view-card border-0 mt-4">
+    <div class="card-body p-4 p-md-5">
+      <!-- TOOLBAR -->
+      <div class="view-toolbar">
+        <div class="toolbar-title">
+          <h6 class="section-title mb-0">Catálogo de Transportadoras</h6>
+          <small class="section-subtitle">Tarifas por destino y tipo de vehículo, más los costos adicionales al flete</small>
+        </div>
+
+        <div class="search-wrapper">
+          <i class="ti ti-search search-icon"></i>
+          <input
+            type="text"
+            class="form-control search-input"
+            placeholder="Buscar por nombre, NIT, contacto, destino o tipo de vehículo..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilter()"
+          />
+        </div>
+      </div>
+
+      <!-- TABLA -->
+      <div class="table-wrapper mt-3">
+        <table class="carrier-table">
+          <thead>
+            <tr>
+              <th scope="col">Transportadora</th>
+              <th scope="col">Contacto</th>
+              <th scope="col">Tarifas</th>
+              <th scope="col">Costos Adic.</th>
+              <th scope="col">Estado</th>
+              <th scope="col" class="action-col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="6" class="empty-cell">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Cargando transportadoras...
+              </td>
+            </tr>
+
+            <tr *ngIf="!isLoading && paginatedCarriers.length === 0">
+              <td colspan="6" class="empty-cell">
+                <i class="ti ti-database-off me-2"></i>
+                No se encontraron transportadoras con los filtros actuales.
+              </td>
+            </tr>
+
+            <tr *ngFor="let carrier of paginatedCarriers">
+              <td class="cell-stacked">
+                <span class="cell-main-text">{{ carrier.name || '(Sin nombre)' }}</span>
+                <small class="cell-sub" *ngIf="carrier.nit">
+                  <i class="ti ti-id"></i>
+                  NIT {{ carrier.nit }}
+                </small>
+              </td>
+
+              <td class="cell-stacked">
+                <span class="cell-main-text">{{ carrier.contactName || '—' }}</span>
+                <small class="cell-sub" *ngIf="carrier.contactPhone">
+                  <i class="ti ti-phone"></i>
+                  {{ carrier.contactPhone }}
+                </small>
+              </td>
+
+              <td class="cell-stacked">
+                <span class="cat-pill row-material">
+                  {{ (carrier.rates || []).length }} tarifa{{ (carrier.rates || []).length !== 1 ? 's' : '' }}
+                </span>
+                <small class="cell-sub" *ngIf="(carrier.rates || []).length">
+                  <i class="ti ti-map-pin"></i>
+                  {{ carrierDestinationsPreview(carrier) }}
+                </small>
+              </td>
+
+              <td class="cell-stacked cell-schedule">
+                <strong class="time-value">{{ additionalCostsTotal(carrier) | currency:'COP':'symbol':'1.0-0' }}</strong>
+                <small class="cell-sub">
+                  <i class="ti ti-receipt-2"></i>
+                  {{ (carrier.additionalCosts || []).length }} concepto{{ (carrier.additionalCosts || []).length !== 1 ? 's' : '' }}
+                </small>
+              </td>
+
+              <td>
+                <span class="status-pill" [ngClass]="carrier.status ? 'status-active' : 'status-inactive'">
+                  {{ carrier.status ? 'Activa' : 'Inactiva' }}
+                </span>
+              </td>
+
+              <td class="action-col">
+                <div class="row-actions">
+                  <button type="button" class="btn-icon btn-detail" (click)="openDetail(carrier)" title="Ver detalle">
+                    <i class="ti ti-eye"></i>
+                  </button>
+                  <button type="button" class="btn-icon btn-edit" (click)="openEditModal(carrier)" title="Editar">
+                    <i class="ti ti-pencil"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [ngClass]="carrier.status ? 'btn-off' : 'btn-on'"
+                    (click)="openStatusModal(carrier)"
+                    [title]="carrier.status ? 'Desactivar (apagar)' : 'Reactivar'"
+                  >
+                    <i class="ti" [ngClass]="carrier.status ? 'ti-plug-off' : 'ti-plug'"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINACIÓN -->
+      <div class="pagination-controls">
+        <button type="button" class="btn-pagination" (click)="prevPage()" [disabled]="currentPage === 1">
+          <i class="ti ti-chevron-left"></i>
+          Anterior
+        </button>
+
+        <span class="page-indicator">
+          Página
+          <strong>{{ currentPage }}</strong>
+          de
+          <strong>{{ totalPages }}</strong>
+        </span>
+
+        <button type="button" class="btn-pagination" (click)="nextPage()" [disabled]="currentPage === totalPages">
+          Siguiente
+          <i class="ti ti-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL: CREAR / EDITAR TRANSPORTADORA                        -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showFormModal" (click)="closeFormModal()">
+  <div class="response-modal form-modal" [class.is-edit]="formMode === 'edit'" (click)="$event.stopPropagation()">
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title" *ngIf="formMode === 'create'">Nueva transportadora</h5>
+        <h5 class="modal-title" *ngIf="formMode === 'edit'">Editar: {{ editingCarrier?.name || form.name || 'transportadora' }}</h5>
+        <small class="modal-subtitle" *ngIf="formMode === 'create'">Datos de la empresa, tarifas de flete y costos adicionales</small>
+        <small class="modal-subtitle" *ngIf="formMode === 'edit'">Modificando una transportadora existente</small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeFormModal()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body">
+      <!-- BANNER DE EDICIÓN: deja claro que NO es un alta nueva -->
+      <div class="edit-banner" *ngIf="formMode === 'edit'">
+        <i class="ti ti-pencil"></i>
+        <div class="edit-banner-text">
+          <strong>Estás editando «{{ editingCarrier?.name || form.name }}»</strong>
+          <span *ngIf="editingCarrier?.userCreate">
+            Registrada por {{ editingCarrier?.userCreate }} · {{ editingCarrier?.dateCreate }}
+            <ng-container *ngIf="editingCarrier?.userUpdate">
+              — últ. cambio: {{ editingCarrier?.userUpdate }} · {{ editingCarrier?.dateUpdate }}
+            </ng-container>
+          </span>
+          <span>
+            Los campos muestran los datos actuales. Al guardar se reemplazan por completo las tarifas, los costos adicionales y las
+            capacidades por vehículo.
+          </span>
+        </div>
+        <span class="spinner-border spinner-border-sm" *ngIf="isLoadingForm" title="Cargando datos actuales..."></span>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label">Nombre / Razón social *</label>
+          <input type="text" class="form-control" [(ngModel)]="form.name" placeholder="Ej. Transportes XYZ S.A.S." />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">NIT</label>
+          <input type="text" class="form-control" [(ngModel)]="form.nit" placeholder="Ej. 900123456-7" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Contacto</label>
+          <input type="text" class="form-control" [(ngModel)]="form.contactName" placeholder="Nombre del contacto" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Teléfono</label>
+          <input type="text" class="form-control" [(ngModel)]="form.contactPhone" placeholder="Ej. 3001234567" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Correo</label>
+          <input type="email" class="form-control" [(ngModel)]="form.contactEmail" placeholder="contacto@transportadora.com" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Fecha de oferta</label>
+          <input type="date" class="form-control" [(ngModel)]="form.offerDate" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Seguro (%)</label>
+          <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="form.insurancePct" placeholder="Ej. 0.7" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Valor ciudad adicional</label>
+          <input type="number" min="0" class="form-control" [(ngModel)]="form.extraCityValue" placeholder="Ej. 100000" />
+        </div>
+
+        <div class="form-field">
+          <label class="field-label">Moneda</label>
+          <input type="text" class="form-control" [(ngModel)]="form.currency" placeholder="COP" />
+        </div>
+
+        <div class="form-field form-field-wide">
+          <label class="field-label">Notas / condiciones</label>
+          <textarea
+            class="form-control"
+            rows="2"
+            [(ngModel)]="form.notes"
+            placeholder="Condiciones de la tarifa (no incluye stand by, descargues, devoluciones, etc.)"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- TARIFAS DE FLETE -->
+      <div class="items-section">
+        <div class="items-header">
+          <h6 class="mb-0">Tarifas de flete</h6>
+          <button type="button" class="btn-add-item" (click)="addRateRow()">
+            <i class="ti ti-plus"></i>
+            Agregar tarifa
+          </button>
+        </div>
+
+        <div class="table-wrapper" *ngIf="form.rates.length > 0">
+          <table class="carrier-table items-table">
+            <thead>
+              <tr>
+                <th>Destino</th>
+                <th>Tipo de vehículo</th>
+                <th>Valor flete</th>
+                <th>Observación</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rate of form.rates; let i = index">
+                <td><input type="text" class="form-control" [(ngModel)]="rate.destination" placeholder="Ciudad / ruta" /></td>
+                <td>
+                  <select class="form-control" [(ngModel)]="rate.vehicleType">
+                    <option value="" disabled>Seleccione...</option>
+                    <option *ngFor="let type of vehicleTypes" [value]="type">{{ type }}</option>
+                  </select>
+                </td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="rate.value" placeholder="0" /></td>
+                <td><input type="text" class="form-control" [(ngModel)]="rate.observation" placeholder="Opcional" /></td>
+                <td class="action-col">
+                  <button type="button" class="btn-remove-item" (click)="removeRateRow(i)" title="Quitar tarifa">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="empty-hint" *ngIf="form.rates.length === 0">Sin tarifas. Agrega una por cada destino + tipo de vehículo.</p>
+      </div>
+
+      <!-- COSTOS ADICIONALES AL FLETE -->
+      <div class="items-section">
+        <div class="items-header">
+          <h6 class="mb-0">Costos adicionales al flete</h6>
+          <button type="button" class="btn-add-item" (click)="addCostRow()">
+            <i class="ti ti-plus"></i>
+            Agregar costo
+          </button>
+        </div>
+
+        <div class="table-wrapper" *ngIf="form.additionalCosts.length > 0">
+          <table class="carrier-table items-table">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Valor</th>
+                <th>Observación</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let cost of form.additionalCosts; let i = index">
+                <td>
+                  <input
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="cost.description"
+                    placeholder="Ej. Cargue / descargue, stand by..."
+                  />
+                </td>
+                <td><input type="number" min="0" class="form-control" [(ngModel)]="cost.value" placeholder="0" /></td>
+                <td><input type="text" class="form-control" [(ngModel)]="cost.observation" placeholder="Opcional" /></td>
+                <td class="action-col">
+                  <button type="button" class="btn-remove-item" (click)="removeCostRow(i)" title="Quitar costo">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="empty-hint" *ngIf="form.additionalCosts.length === 0">Sin costos adicionales registrados.</p>
+      </div>
+
+      <!-- CAPACIDAD DE CARGA (m³) POR TIPO DE VEHÍCULO -->
+      <div class="items-section">
+        <div class="items-header">
+          <h6 class="mb-0">Capacidades por tipo de vehículo</h6>
+          <button type="button" class="btn-add-item" (click)="addCapacityRow()">
+            <i class="ti ti-plus"></i>
+            Agregar capacidad
+          </button>
+        </div>
+
+        <div class="table-wrapper" *ngIf="form.vehicleCapacities.length > 0">
+          <table class="carrier-table items-table">
+            <thead>
+              <tr>
+                <th>Tipo de vehículo</th>
+                <th>Capacidad (m³)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let cap of form.vehicleCapacities; let i = index">
+                <td>
+                  <select class="form-control" [(ngModel)]="cap.vehicleType">
+                    <option value="" disabled>Seleccione...</option>
+                    <option *ngFor="let type of vehicleTypes" [value]="type">{{ type }}</option>
+                  </select>
+                </td>
+                <td><input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="cap.capacityM3" placeholder="0" /></td>
+                <td class="action-col">
+                  <button type="button" class="btn-remove-item" (click)="removeCapacityRow(i)" title="Quitar capacidad">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="empty-hint" *ngIf="form.vehicleCapacities.length === 0">
+          Sin capacidades. Se usan en Gestión de Fletes para calcular el aprovechamiento del vehículo.
+        </p>
+      </div>
+
+      <!-- MOTIVO (solo en edición → auditoría) -->
+      <div class="form-grid" *ngIf="formMode === 'edit'">
+        <div class="form-field form-field-wide">
+          <label class="field-label">Motivo del cambio *</label>
+          <textarea
+            class="form-control"
+            rows="2"
+            [(ngModel)]="editObservation"
+            placeholder="Queda registrado en la auditoría de la transportadora"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="response-actions">
+        <button type="button" class="btn-cancel" (click)="closeFormModal()" [disabled]="isSaving">Cancelar</button>
+        <button type="button" class="btn-confirm" (click)="submitForm()" [disabled]="!isFormValid || isSaving">
+          {{ isSaving ? 'Guardando...' : formMode === 'create' ? 'Registrar transportadora' : 'Guardar cambios' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL: DETALLE DE TRANSPORTADORA                            -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showDetailModal" (click)="closeDetail()">
+  <div class="response-modal detail-modal" (click)="$event.stopPropagation()">
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title">Detalle de la transportadora</h5>
+        <small class="modal-subtitle" *ngIf="detailCarrier">
+          {{ detailCarrier.name }}
+          <span class="status-pill ms-2" [ngClass]="detailCarrier.status ? 'status-active' : 'status-inactive'">
+            {{ detailCarrier.status ? 'Activa' : 'Inactiva' }}
+          </span>
+        </small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeDetail()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body" *ngIf="detailCarrier">
+      <div class="table-wrapper mb-3" *ngIf="isLoadingDetail">
+        <div class="empty-cell">
+          <span class="spinner-border spinner-border-sm me-2"></span>
+          Cargando detalle...
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-id"></i>
+            NIT
+          </span>
+          <span class="detail-value">{{ detailCarrier.nit || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-user"></i>
+            Contacto
+          </span>
+          <span class="detail-value">{{ detailCarrier.contactName || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-phone"></i>
+            Teléfono
+          </span>
+          <span class="detail-value">{{ detailCarrier.contactPhone || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-mail"></i>
+            Correo
+          </span>
+          <span class="detail-value">{{ detailCarrier.contactEmail || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-shield-check"></i>
+            Seguro (%)
+          </span>
+          <span class="detail-value">{{ detailCarrier.insurancePct ?? 0 }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-building-community"></i>
+            Valor ciudad adicional
+          </span>
+          <span class="detail-value">{{ (detailCarrier.extraCityValue ?? 0) | currency:'COP':'symbol':'1.0-0' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-coin"></i>
+            Moneda
+          </span>
+          <span class="detail-value">{{ detailCarrier.currency || 'COP' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-calendar"></i>
+            Fecha de oferta
+          </span>
+          <span class="detail-value">{{ detailCarrier.offerDate || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">
+            <i class="ti ti-user-check"></i>
+            Registrada por
+          </span>
+          <span class="detail-value">{{ detailCarrier.userCreate }} · {{ detailCarrier.dateCreate }}</span>
+        </div>
+        <div class="detail-item" *ngIf="detailCarrier.userUpdate">
+          <span class="detail-label">
+            <i class="ti ti-edit"></i>
+            Última actualización
+          </span>
+          <span class="detail-value">{{ detailCarrier.userUpdate }} · {{ detailCarrier.dateUpdate }}</span>
+        </div>
+      </div>
+
+      <div class="history-section mt-3" *ngIf="detailCarrier.notes">
+        <h6 class="history-title">Notas / condiciones</h6>
+        <p class="notes-text">{{ detailCarrier.notes }}</p>
+      </div>
+
+      <!-- TARIFAS: destino + tipo de vehículo + costo del flete -->
+      <div class="history-section mt-3">
+        <h6 class="history-title">Tarifas de flete ({{ (detailCarrier.rates || []).length }})</h6>
+        <div class="table-wrapper">
+          <table class="carrier-table items-table">
+            <thead>
+              <tr>
+                <th>Destino</th>
+                <th>Tipo de vehículo</th>
+                <th>Valor flete</th>
+                <th>Observación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="(detailCarrier.rates || []).length === 0">
+                <td colspan="4" class="empty-cell">Sin tarifas registradas.</td>
+              </tr>
+              <tr *ngFor="let rate of detailCarrier.rates || []">
+                <td>{{ rate.destination }}</td>
+                <td>{{ rate.vehicleType }}</td>
+                <td>{{ rate.value | currency:'COP':'symbol':'1.0-0' }}</td>
+                <td>{{ rate.observation || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CAPACIDAD DE CARGA (m³) POR TIPO DE VEHÍCULO -->
+      <div class="history-section mt-3">
+        <h6 class="history-title">Capacidades por tipo de vehículo ({{ (detailCarrier.vehicleCapacities || []).length }})</h6>
+        <div class="table-wrapper">
+          <table class="carrier-table items-table">
+            <thead>
+              <tr>
+                <th>Tipo de vehículo</th>
+                <th>Capacidad (m³)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="(detailCarrier.vehicleCapacities || []).length === 0">
+                <td colspan="2" class="empty-cell">Sin capacidades registradas.</td>
+              </tr>
+              <tr *ngFor="let cap of detailCarrier.vehicleCapacities || []">
+                <td>{{ cap.vehicleType }}</td>
+                <td>{{ cap.capacityM3 | number:'1.0-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COSTOS ADICIONALES AL FLETE (valores adicionales, si los tiene) -->
+      <div class="history-section mt-3">
+        <h6 class="history-title">Costos adicionales al flete ({{ (detailCarrier.additionalCosts || []).length }})</h6>
+        <div class="table-wrapper">
+          <table class="carrier-table items-table">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Valor</th>
+                <th>Observación</th>
+                <th>Registrado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="(detailCarrier.additionalCosts || []).length === 0">
+                <td colspan="4" class="empty-cell">Sin costos adicionales.</td>
+              </tr>
+              <tr *ngFor="let cost of detailCarrier.additionalCosts || []">
+                <td>{{ cost.description }}</td>
+                <td>{{ cost.value | currency:'COP':'symbol':'1.0-0' }}</td>
+                <td>{{ cost.observation || '—' }}</td>
+                <td>
+                  <small class="cell-sub" *ngIf="cost.modifiedBy">{{ cost.modifiedBy }} · {{ cost.modifiedAt }}</small>
+                  <span *ngIf="!cost.modifiedBy">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AUDITORÍA -->
+      <div class="history-section mt-3" *ngIf="(detailCarrier.auditTrail || []).length">
+        <h6 class="history-title">Historial de movimientos</h6>
+        <ul class="history-list">
+          <li *ngFor="let entry of detailCarrier.auditTrail || []">
+            <span class="history-text">
+              <strong>{{ entry.action }}</strong>
+              — {{ entry.observation }}
+            </span>
+            <small class="cell-sub">{{ entry.modifiedBy }} · {{ entry.modifiedAt }}</small>
+          </li>
+        </ul>
+      </div>
+
+      <div class="response-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetail()">Cerrar</button>
+        <button
+          type="button"
+          class="btn-icon-text"
+          [ngClass]="detailCarrier.status ? 'btn-off' : 'btn-on'"
+          (click)="openStatusModal(detailCarrier)"
+        >
+          <i class="ti" [ngClass]="detailCarrier.status ? 'ti-plug-off' : 'ti-plug'"></i>
+          {{ detailCarrier.status ? 'Desactivar' : 'Reactivar' }}
+        </button>
+        <button type="button" class="btn-confirm" (click)="openEditModal(detailCarrier)">
+          <i class="ti ti-pencil"></i>
+          Editar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  MODAL: ACTIVAR / DESACTIVAR ("apagar" servicio)             -->
+<!-- ============================================================ -->
+<div class="response-modal-backdrop" *ngIf="showStatusModal" (click)="closeStatusModal()">
+  <div class="response-modal" (click)="$event.stopPropagation()">
+    <div class="response-modal-header">
+      <div>
+        <h5 class="modal-title">{{ statusModalActionLabel }} transportadora</h5>
+        <small class="modal-subtitle" *ngIf="statusTarget">{{ statusTarget.name }}</small>
+      </div>
+      <button type="button" class="modal-close" (click)="closeStatusModal()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="response-modal-body">
+      <p class="confirm-text" *ngIf="statusTarget?.status">
+        La transportadora dejará de estar disponible para nuevos despachos. El registro no se elimina (borrado lógico) y puede reactivarse
+        luego.
+      </p>
+      <p class="confirm-text" *ngIf="statusTarget && !statusTarget.status">
+        La transportadora volverá a estar disponible para nuevos despachos.
+      </p>
+
+      <div class="form-field">
+        <label class="field-label">Motivo *</label>
+        <textarea
+          class="form-control"
+          rows="3"
+          [(ngModel)]="statusObservation"
+          placeholder="Queda registrado en la auditoría de la transportadora"
+        ></textarea>
+      </div>
+
+      <div class="response-actions">
+        <button type="button" class="btn-cancel" (click)="closeStatusModal()" [disabled]="isTogglingStatus">Cancelar</button>
+        <button
+          type="button"
+          class="btn-confirm"
+          [ngClass]="{ 'btn-danger-confirm': statusTarget?.status }"
+          (click)="confirmStatusChange()"
+          [disabled]="isTogglingStatus || !statusObservation.trim()"
+        >
+          <span *ngIf="!isTogglingStatus">
+            <i class="ti ti-check"></i>
+            {{ statusModalActionLabel }}
+          </span>
+          <span *ngIf="isTogglingStatus">Aplicando...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

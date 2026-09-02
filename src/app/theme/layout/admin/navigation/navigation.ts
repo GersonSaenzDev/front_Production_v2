@@ -672,6 +672,13 @@ export const NavigationItems: NavigationItem[] = [
             breadcrumbs: false
           },
           {
+            id: 'transportadoras-item',
+            title: 'Transportadoras',
+            type: 'item',
+            url: 'clientHome/carrierManagement',
+            breadcrumbs: false
+          },
+          {
             id: 'packing-list-item',
             title: 'Packing List',
             type: 'item',
@@ -715,7 +722,7 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'clientHome/shippingManagement',
             breadcrumbs: false
-          },
+          }
         ]
       },
       {

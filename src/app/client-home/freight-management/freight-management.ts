@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 
 import { CustomerHouseService } from '../../services/customer-house.service';
 import {
+  FreightCarrier,
   FreightCostEntryInput,
   FreightDispatch,
   FreightDispatchRequest,
@@ -25,6 +26,7 @@ interface FreightItemFormRow {
   product: string;
   quantity: number | null;
   unitValue: number | null;
+  volumeM3: number | null; // Volumen de la línea (m³): opcional, alimenta el cubicaje del viaje
   freightCost: number | null; // No obligatorio: puede quedar pendiente tras cargar una factura
   invoiceNumber: string;
 }
@@ -39,7 +41,12 @@ interface FreightDispatchFormState {
   dispatchNumber: string; // Previsualizado por el backend, de solo lectura
   dispatchDate: string; // yyyy-MM-dd (binding de <input type="date">)
   warehouseExitDate: string; // Texto libre (no es una fecha)
-  carrier: string;
+  carrier: string; // Nombre de la transportadora (derivado del catálogo)
+  carrierId: string; // _id de la transportadora elegida del catálogo
+  vehicleType: string; // Tipo de vehículo del viaje (según catálogo de la transportadora)
+  mainDestination: string; // Ciudad/ruta que fija la tarifa (se deriva de las ciudades de las líneas)
+  ratedFreightValue: number | null; // Valor del flete que trae la tabla de tarifas (null = sin tarifa en catálogo)
+  vehicleCapacityM3: number | null; // Capacidad de carga del vehículo (m³), precargada del catálogo y editable
   totalFreightCost: number | null;
   additionalCosts: AdditionalCostFormRow[];
   creationDetail: string;
@@ -68,13 +75,7 @@ export class FreightManagement implements OnInit {
   private readonly customerHouseService = inject(CustomerHouseService);
   private readonly toastr = inject(ToastrService);
 
-  public readonly statusOptions: FreightDispatchStatus[] = [
-    'Pendiente',
-    'Finalizado',
-    'Parcial',
-    'Siniestro Parcial',
-    'Siniestro Completo'
-  ];
+  public readonly statusOptions: FreightDispatchStatus[] = ['Pendiente', 'Finalizado'];
 
   // ============================================================
   //  FILTRO POR RANGO DE FECHAS
@@ -156,11 +157,7 @@ export class FreightManagement implements OnInit {
 
   /** Minúsculas y sin tildes/acentos, para que la búsqueda no dependa de escribirlos igual. */
   private normalizeSearchText(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
-      .toLowerCase()
-      .trim();
+    return value.normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').toLowerCase().trim();
   }
 
   /**
@@ -224,7 +221,13 @@ export class FreightManagement implements OnInit {
   public isSaving = false;
   public isLoadingDispatchNumber = false;
   public isParsingInvoices = false;
+  public isLoadingCarriers = false;
   public form: FreightDispatchFormState = this.buildEmptyForm();
+
+  /** Transportadoras activas del catálogo (con sus tarifas y capacidades por vehículo). */
+  public carriers: FreightCarrier[] = [];
+  /** Transportadora seleccionada en el formulario (fuente de tarifas / capacidades). */
+  public selectedCarrier: FreightCarrier | null = null;
 
   private buildEmptyForm(): FreightDispatchFormState {
     return {
@@ -232,6 +235,11 @@ export class FreightManagement implements OnInit {
       dispatchDate: this.formatDate(new Date()),
       warehouseExitDate: '',
       carrier: '',
+      carrierId: '',
+      vehicleType: '',
+      mainDestination: '',
+      ratedFreightValue: null,
+      vehicleCapacityM3: null,
       totalFreightCost: null,
       additionalCosts: [],
       creationDetail: '',
@@ -275,6 +283,7 @@ export class FreightManagement implements OnInit {
       product: '',
       quantity: null,
       unitValue: null,
+      volumeM3: null,
       freightCost: null,
       invoiceNumber: ''
     };
@@ -286,7 +295,9 @@ export class FreightManagement implements OnInit {
 
   public openFormModal(): void {
     this.form = this.buildEmptyForm();
+    this.selectedCarrier = null;
     this.showFormModal = true;
+    this.loadCarriers();
 
     this.isLoadingDispatchNumber = true;
     this.customerHouseService.getNextDispatchNumber().subscribe({
@@ -304,17 +315,138 @@ export class FreightManagement implements OnInit {
     });
   }
 
+  /** Carga las transportadoras activas del catálogo para el selector del formulario. */
+  private loadCarriers(): void {
+    this.isLoadingCarriers = true;
+    this.customerHouseService.listCarriers({ status: true }).subscribe({
+      next: (response) => {
+        this.carriers = response.ok && Array.isArray(response.data) ? response.data : [];
+      },
+      error: () => {
+        this.carriers = [];
+        this.toastr.warning('No se pudieron cargar las transportadoras. El transportador se diligencia manualmente.');
+      },
+      complete: () => {
+        this.isLoadingCarriers = false;
+      }
+    });
+  }
+
   public closeFormModal(): void {
     this.showFormModal = false;
   }
 
   public addItemRow(): void {
     this.form.items.push(this.buildEmptyItemRow());
+    this.syncMainDestination();
   }
 
   public removeItemRow(index: number): void {
     if (this.form.items.length === 1) return;
     this.form.items.splice(index, 1);
+    this.syncMainDestination();
+  }
+
+  // ============================================================
+  //  TRANSPORTADORA · TIPO DE VEHÍCULO · TARIFA · CUBICAJE
+  // ============================================================
+
+  /** Minúsculas, sin tildes y en MAYÚSCULAS para comparar destinos con el catálogo. */
+  private normalizeDestination(value: string): string {
+    return (value || '').normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').trim().toUpperCase();
+  }
+
+  /** Ciudades distintas (no vacías) declaradas en las líneas del despacho. */
+  public get destinationOptions(): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const item of this.form.items) {
+      const city = (item.destinationCity || '').trim();
+      const key = this.normalizeDestination(city);
+      if (city && !seen.has(key)) {
+        seen.add(key);
+        result.push(city);
+      }
+    }
+    return result;
+  }
+
+  /** Tipos de vehículo que la transportadora seleccionada cotiza (tarifas ∪ capacidades). */
+  public get vehicleTypeOptions(): string[] {
+    if (!this.selectedCarrier) return [];
+    const types = new Set<string>();
+    (this.selectedCarrier.rates || []).forEach((rate) => rate.vehicleType && types.add(rate.vehicleType));
+    (this.selectedCarrier.vehicleCapacities || []).forEach((cap) => cap.vehicleType && types.add(cap.vehicleType));
+    return [...types].sort();
+  }
+
+  /** m³ cargados: suma del volumen de todas las líneas. */
+  public get loadedVolumeM3(): number {
+    return this.form.items.reduce((sum, item) => sum + (Number(item.volumeM3) || 0), 0);
+  }
+
+  /** % de aprovechamiento del vehículo (null si no hay capacidad para comparar). */
+  public get volumeUtilizationPct(): number | null {
+    const capacity = Number(this.form.vehicleCapacityM3) || 0;
+    if (capacity <= 0) return null;
+    return (this.loadedVolumeM3 / capacity) * 100;
+  }
+
+  public onCarrierChange(carrierId: string): void {
+    this.selectedCarrier = this.carriers.find((carrier) => carrier._id === carrierId) || null;
+    this.form.carrierId = this.selectedCarrier ? this.selectedCarrier._id : '';
+    this.form.carrier = this.selectedCarrier ? this.selectedCarrier.name : '';
+    this.form.vehicleType = '';
+    this.applyTariffAndCapacity();
+  }
+
+  /**
+   * Si todas las líneas van a la misma ciudad, esa es el destino principal; si hay
+   * varias, se conserva la elección del usuario mientras siga siendo una de ellas.
+   * Cualquier cambio de destino recalcula la tarifa.
+   */
+  public syncMainDestination(): void {
+    const options = this.destinationOptions;
+    if (options.length === 1) {
+      this.form.mainDestination = options[0];
+    } else if (options.length === 0) {
+      this.form.mainDestination = '';
+    } else if (!options.some((city) => this.normalizeDestination(city) === this.normalizeDestination(this.form.mainDestination))) {
+      this.form.mainDestination = '';
+    }
+    this.applyTariffAndCapacity();
+  }
+
+  /**
+   * Con transportadora + tipo de vehículo + destino principal, busca la tarifa en
+   * el catálogo: si existe, precarga el costo total del flete (editable) y marca
+   * ratedFreightValue; si no, deja ratedFreightValue en null (bandera de "sin tarifa").
+   * También precarga la capacidad (m³) del tipo de vehículo si el catálogo la tiene.
+   */
+  public applyTariffAndCapacity(): void {
+    if (!this.selectedCarrier || !this.form.vehicleType) {
+      this.form.ratedFreightValue = null;
+      return;
+    }
+
+    const targetDestination = this.normalizeDestination(this.form.mainDestination);
+    const rate = targetDestination
+      ? (this.selectedCarrier.rates || []).find(
+          (r) => r.vehicleType === this.form.vehicleType && this.normalizeDestination(r.destination) === targetDestination
+        )
+      : undefined;
+
+    if (rate) {
+      this.form.ratedFreightValue = rate.value;
+      this.form.totalFreightCost = rate.value;
+    } else {
+      this.form.ratedFreightValue = null;
+    }
+
+    const capacity = (this.selectedCarrier.vehicleCapacities || []).find((cap) => cap.vehicleType === this.form.vehicleType);
+    if (capacity && capacity.capacityM3 > 0) {
+      this.form.vehicleCapacityM3 = capacity.capacityM3;
+    }
   }
 
   // ============================================================
@@ -348,6 +480,7 @@ export class FreightManagement implements OnInit {
             product: row.product,
             quantity: row.quantity,
             unitValue: row.unitValue,
+            volumeM3: null,
             freightCost: null,
             invoiceNumber: row.invoiceNumber
           });
@@ -367,6 +500,7 @@ export class FreightManagement implements OnInit {
       this.form.items.push(this.buildEmptyItemRow());
     }
 
+    this.syncMainDestination();
     this.isParsingInvoices = false;
   }
 
@@ -376,7 +510,8 @@ export class FreightManagement implements OnInit {
   }
 
   public get isFormValid(): boolean {
-    if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.warehouseExitDate.trim() || !this.form.carrier.trim()) return false;
+    if (!this.form.dispatchNumber.trim() || !this.form.dispatchDate || !this.form.warehouseExitDate.trim() || !this.form.carrier.trim())
+      return false;
     if (this.form.totalFreightCost === null || this.form.totalFreightCost <= 0) return false;
     if (!this.areCostEntriesValid(this.form.additionalCosts)) return false;
 
@@ -394,7 +529,9 @@ export class FreightManagement implements OnInit {
 
   public submitDispatch(): void {
     if (!this.isFormValid) {
-      this.toastr.warning('Completa todos los campos requeridos antes de registrar el despacho. Si agregaste un costo adicional, indica su descripción.');
+      this.toastr.warning(
+        'Completa todos los campos requeridos antes de registrar el despacho. Si agregaste un costo adicional, indica su descripción.'
+      );
       return;
     }
 
@@ -402,6 +539,11 @@ export class FreightManagement implements OnInit {
       dispatchDate: this.formatDateForBackend(this.form.dispatchDate),
       warehouseExitDate: this.form.warehouseExitDate.trim(),
       carrier: this.form.carrier.trim(),
+      carrierId: this.form.carrierId || undefined,
+      vehicleType: this.form.vehicleType || undefined,
+      mainDestination: this.form.mainDestination.trim() || undefined,
+      ratedFreightValue: this.form.ratedFreightValue !== null ? Number(this.form.ratedFreightValue) : undefined,
+      vehicleCapacityM3: this.form.vehicleCapacityM3 !== null ? Number(this.form.vehicleCapacityM3) : undefined,
       totalFreightCost: Number(this.form.totalFreightCost),
       additionalCosts: this.mapCostEntries(this.form.additionalCosts),
       creationDetail: this.form.creationDetail.trim(),
@@ -413,6 +555,7 @@ export class FreightManagement implements OnInit {
         quantity: Number(item.quantity),
         unitValue: Number(item.unitValue),
         totalValue: this.itemTotalValue(item),
+        volumeM3: item.volumeM3 !== null ? Number(item.volumeM3) : 0,
         freightCost: item.freightCost !== null ? Number(item.freightCost) : 0,
         invoiceNumber: item.invoiceNumber.trim()
       }))
@@ -553,11 +696,15 @@ export class FreightManagement implements OnInit {
         FECHA: dispatch.dispatchDate,
         SALIDA_BODEGA: dispatch.warehouseExitDate,
         TRANSPORTADOR: dispatch.carrier,
+        TIPO_VEHICULO: dispatch.vehicleType || '',
+        DESTINO_PRINCIPAL: dispatch.mainDestination || '',
+        TARIFA_CATALOGO: dispatch.ratedFreightValue ?? '',
+        CAPACIDAD_M3: dispatch.vehicleCapacityM3 ?? '',
+        M3_CARGADOS: dispatch.loadedVolumeM3 ?? '',
+        APROVECHAMIENTO_PCT: dispatch.volumeUtilizationPct ?? '',
         COSTO_FLETE_TOTAL: dispatch.totalFreightCost,
         COSTOS_ADICIONALES: this.currentAdditionalCosts(dispatch),
-        COSTOS_ADICIONALES_DETALLE: (dispatch.additionalCosts || [])
-          .map((cost) => `${cost.value} (${cost.observation})`)
-          .join(' | '),
+        COSTOS_ADICIONALES_DETALLE: (dispatch.additionalCosts || []).map((cost) => `${cost.value} (${cost.observation})`).join(' | '),
         CLIENTE: item.client,
         CIUDAD_DESTINO: item.destinationCity,
         EAN: item.ean,
@@ -565,6 +712,7 @@ export class FreightManagement implements OnInit {
         CANTIDAD: item.quantity,
         VALOR_UNITARIO: item.unitValue,
         VALOR_TOTAL_PRODUCTO: item.totalValue,
+        VOLUMEN_M3: item.volumeM3 ?? '',
         FLETE_LINEA: item.freightCost,
         FLETE_POR_UNIDAD: item.freightCostPerUnit,
         FACTURA_ORIGEN: item.invoiceNumber,

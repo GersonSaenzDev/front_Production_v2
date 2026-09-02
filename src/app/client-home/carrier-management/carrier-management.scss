@@ -9,14 +9,14 @@ $abba-blue-light: #e8f0fb;
 $abba-gray: #575756;
 $abba-dark: #1e1e1e;
 
-.freight-view-container {
+.carrier-view-container {
   font-family: 'Inter', system-ui, sans-serif;
 }
 
 // =======================
 //  HEADER PRINCIPAL
 // =======================
-.freight-view-header {
+.carrier-view-header {
   background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
   border-radius: 16px;
   padding: 1.75rem 2rem;
@@ -125,7 +125,7 @@ $abba-dark: #1e1e1e;
 //  BOTONES DE ACCIÓN DEL HEADER
 // =======================
 .btn-export,
-.btn-new-dispatch {
+.btn-new-carrier {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -160,7 +160,7 @@ $abba-dark: #1e1e1e;
   }
 }
 
-.btn-new-dispatch {
+.btn-new-carrier {
   background: #10b981;
   border-color: #10b981;
   color: #fff;
@@ -301,22 +301,22 @@ $abba-dark: #1e1e1e;
   }
 }
 
-.summary-card.row-material {
-  border-left-color: $abba-blue;
-  .summary-time {
-    color: $abba-blue;
-  }
-}
-.summary-card.row-mantenimiento {
-  border-left-color: #ea580c;
-  .summary-time {
-    color: #c2410c;
-  }
-}
 .summary-card.row-default {
   border-left-color: $abba-gray;
   .summary-time {
     color: $abba-gray;
+  }
+}
+.summary-card.row-active {
+  border-left-color: #10b981;
+  .summary-time {
+    color: #047857;
+  }
+}
+.summary-card.row-inactive {
+  border-left-color: #ea580c;
+  .summary-time {
+    color: #c2410c;
   }
 }
 
@@ -331,7 +331,7 @@ $abba-dark: #1e1e1e;
   background: #fff;
 }
 
-.freight-table {
+.carrier-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -420,7 +420,7 @@ $abba-dark: #1e1e1e;
   }
 }
 
-// Tabla compacta usada dentro de los modales (líneas del despacho)
+// Tabla compacta usada dentro de los modales
 .items-table {
   th,
   td {
@@ -428,22 +428,16 @@ $abba-dark: #1e1e1e;
     font-size: 0.85rem;
   }
 
-  input.form-control {
-    min-width: 110px;
+  input.form-control,
+  select.form-control {
+    min-width: 120px;
     padding: 0.4rem 0.55rem;
     font-size: 0.85rem;
-  }
-
-  // Costo total por línea: valor calculado (cantidad × valor unitario), no editable
-  td.cell-readonly {
-    color: $abba-blue-dark;
-    font-weight: 600;
-    white-space: nowrap;
   }
 }
 
 // =======================
-//  PILL DE LÍNEAS
+//  PILL DE TARIFAS
 // =======================
 .cat-pill {
   display: inline-block;
@@ -529,65 +523,110 @@ $abba-dark: #1e1e1e;
   text-transform: uppercase;
   white-space: nowrap;
 
-  &.status-pending {
-    background: #fef3c7;
-    color: #92400e;
-  }
-  &.status-closed {
+  &.status-active {
     background: #dcfce7;
     color: #166534;
   }
-  &.status-partial {
-    background: #dbeafe;
-    color: #1e40af;
-  }
-  &.status-claim-partial {
-    background: #ffedd5;
-    color: #9a3412;
-  }
-  &.status-claim-full {
+  &.status-inactive {
     background: #fee2e2;
     color: #991b1b;
   }
 }
 
 // =======================
-//  BOTÓN DE DETALLE
+//  ACCIONES DE FILA
 // =======================
 .action-col {
   white-space: nowrap;
   text-align: center;
 }
 
-.btn-detail {
+.row-actions {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.btn-icon {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  width: 34px;
+  height: 34px;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
   background: #f1f5f9;
   color: $abba-blue-dark;
 
-  i {
-    font-size: 0.95rem;
-  }
-
   &:hover:not(:disabled) {
-    background: $abba-blue-light;
-    border-color: $abba-blue;
     transform: translateY(-1px);
     box-shadow: 0 6px 14px rgba($abba-blue, 0.15);
+  }
+
+  &.btn-detail:hover {
+    background: $abba-blue-light;
+    border-color: $abba-blue;
+  }
+  &.btn-edit {
+    background: #eef2ff;
+    color: #3730a3;
+    border-color: #c7d2fe;
+  }
+  &.btn-edit:hover {
+    background: #e0e7ff;
+  }
+  &.btn-off {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+  }
+  &.btn-off:hover {
+    background: #fecaca;
+  }
+  &.btn-on {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+  &.btn-on:hover {
+    background: #bbf7d0;
+  }
+}
+
+.btn-icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &.btn-off {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+  }
+  &.btn-off:hover {
+    background: #fecaca;
+  }
+  &.btn-on {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+  &.btn-on:hover {
+    background: #bbf7d0;
   }
 }
 
 // =======================
-//  MODALES (registro + detalle)
+//  MODALES
 // =======================
 .response-modal-backdrop {
   position: fixed;
@@ -606,7 +645,7 @@ $abba-dark: #1e1e1e;
   background: #fff;
   border-radius: 16px;
   width: 100%;
-  max-width: 640px;
+  max-width: 560px;
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -617,7 +656,48 @@ $abba-dark: #1e1e1e;
 
 .detail-modal,
 .form-modal {
-  max-width: 860px;
+  max-width: 900px;
+}
+
+// El modal en modo edición usa una cabecera ámbar para diferenciarlo del alta nueva.
+.form-modal.is-edit .response-modal-header {
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+}
+
+.edit-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-left: 4px solid #f59e0b;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1.25rem;
+
+  > i {
+    color: #b45309;
+    font-size: 1.05rem;
+    margin-top: 0.1rem;
+  }
+
+  .edit-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.82rem;
+    color: #78350f;
+
+    strong {
+      font-size: 0.9rem;
+      color: #92400e;
+    }
+  }
+
+  .spinner-border {
+    color: #b45309;
+    margin-left: auto;
+  }
 }
 
 .response-modal-header {
@@ -756,11 +836,19 @@ $abba-dark: #1e1e1e;
       transform: none;
       box-shadow: none;
     }
+
+    &.btn-danger-confirm {
+      background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+
+      &:hover:not(:disabled) {
+        box-shadow: 0 10px 22px rgba(220, 38, 38, 0.32);
+      }
+    }
   }
 }
 
 // =======================
-//  FORMULARIO DE REGISTRO
+//  FORMULARIO
 // =======================
 .form-grid {
   display: grid;
@@ -787,54 +875,11 @@ $abba-dark: #1e1e1e;
     font-weight: 600;
     color: $abba-gray;
   }
-
-  .field-hint {
-    font-size: 0.72rem;
-    color: $abba-gray;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-
-    &.field-hint-ok {
-      color: #15803d;
-    }
-
-    &.field-hint-warn {
-      color: #b45309;
-    }
-  }
 }
 
-// Barra de aprovechamiento del vehículo (cubicaje cargado vs. capacidad).
-.utilization-bar {
-  margin-top: 0.35rem;
-  height: 8px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  overflow: hidden;
+.items-section {
+  margin-bottom: 1.5rem;
 
-  .utilization-fill {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.25s ease;
-
-    &.util-low {
-      background: #f59e0b;
-    }
-
-    &.util-ok {
-      background: #22c55e;
-    }
-
-    &.util-over {
-      background: #dc2626;
-    }
-  }
-}
-
-.items-section,
-.invoices-section {
   .items-header {
     display: flex;
     align-items: center;
@@ -848,151 +893,11 @@ $abba-dark: #1e1e1e;
   }
 }
 
-.invoices-section {
-  margin-bottom: 1.5rem;
-}
-
-.btn-upload-invoice {
-  &.disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-}
-
-.invoice-file-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.invoice-file-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
-  font-size: 0.8rem;
-  color: $abba-dark;
-
-  i.ti-file-type-pdf {
-    color: #dc2626;
-    font-size: 1rem;
-  }
-
-  .invoice-file-name {
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .btn-remove-item {
-    width: 24px;
-    height: 24px;
-  }
-
-  small.cell-sub {
-    color: $abba-gray;
-    margin-left: 0.25rem;
-  }
-}
-
-// Variante clicable (ver factura archivada, en el modal de detalle): es un
-// <button>, por lo que se resetean los estilos por defecto del navegador.
-.invoice-file-chip-clickable {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
-
-  i.ti-file-type-pdf {
-    align-self: flex-start;
-  }
-
-  small.cell-sub {
-    margin-left: 0;
-  }
-
-  &:hover {
-    background: $abba-blue-light;
-    border-color: $abba-blue;
-  }
-}
-
-// =======================
-//  HISTORIAL (detalles/novedades) Y ACTUALIZACIÓN DEL DESPACHO
-// =======================
-.history-section,
-.update-section {
-  .history-title {
-    color: $abba-blue-dark;
-    font-weight: 700;
-    font-size: 0.92rem;
-    margin-bottom: 0.6rem;
-  }
-}
-
-.update-section {
-  border-top: 1px dashed #e2e8f0;
-  padding-top: 1rem;
-
-  .form-grid {
-    margin-bottom: 0.75rem;
-  }
-
-  .response-actions {
-    padding-top: 0;
-  }
-}
-
-.history-list {
-  list-style: none;
+.empty-hint {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-
-  li {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 0.55rem 0.85rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .history-text {
-    color: $abba-dark;
-    font-size: 0.88rem;
-  }
-}
-
-// Input de flete pendiente de diligenciar (precargado desde una factura)
-.freight-pending-input::placeholder {
-  color: #ea580c;
-  font-weight: 600;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spin {
-  animation: spin 0.9s linear infinite;
-  display: inline-block;
+  font-size: 0.82rem;
+  color: color.adjust($abba-gray, $lightness: 15%);
+  font-style: italic;
 }
 
 .btn-add-item {
@@ -1036,6 +941,64 @@ $abba-dark: #1e1e1e;
   }
 }
 
+// =======================
+//  DETALLE: HISTORIAL / NOTAS / CONFIRMACIÓN
+// =======================
+.history-section {
+  .history-title {
+    color: $abba-blue-dark;
+    font-weight: 700;
+    font-size: 0.92rem;
+    margin-bottom: 0.6rem;
+  }
+}
+
+.notes-text {
+  margin: 0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.88rem;
+  color: $abba-dark;
+  white-space: pre-wrap;
+}
+
+.confirm-text {
+  font-size: 0.9rem;
+  color: $abba-dark;
+  margin-bottom: 1rem;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  li {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.55rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .history-text {
+    color: $abba-dark;
+    font-size: 0.88rem;
+  }
+
+  .cell-sub {
+    font-size: 0.78rem;
+    color: $abba-gray;
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -1060,7 +1023,7 @@ $abba-dark: #1e1e1e;
 //  RESPONSIVE
 // =======================
 @media (max-width: 900px) {
-  .freight-view-header {
+  .carrier-view-header {
     padding: 1.25rem 1.25rem;
 
     .header-content {
@@ -1082,7 +1045,7 @@ $abba-dark: #1e1e1e;
   }
 
   .btn-export,
-  .btn-new-dispatch {
+  .btn-new-carrier {
     width: 100%;
     justify-content: center;
   }
@@ -1117,14 +1080,5 @@ $abba-dark: #1e1e1e;
 @media (max-width: 640px) {
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 600px) {
-  .btn-detail .btn-label {
-    display: none;
-  }
-  .btn-detail {
-    padding: 0.5rem 0.6rem;
   }
 }
