@@ -1,5 +1,5 @@
 // src/main.ts
-import { enableProdMode, importProvidersFrom } from '@angular/core';
+import { enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
 import { environment } from './environments/environment';
 import { BrowserModule, bootstrapApplication } from '@angular/platform-browser';
 import { AppRoutingModule } from './app/app-routing.module';
@@ -11,6 +11,7 @@ import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 
 // 1. IMPORTAR TOASTR
 import { provideToastr } from 'ngx-toastr';
+import { provideServiceWorker } from '@angular/service-worker';
 
 if (environment.production) {
   enableProdMode();
@@ -29,6 +30,9 @@ bootstrapApplication(AppComponent, {
       positionClass: 'toast-top-right',
       preventDuplicates: true,
       progressBar: true
-    }),
+    }), provideServiceWorker('ngsw-worker.js', {
+            enabled: !isDevMode(),
+            registrationStrategy: 'registerWhenStable:30000'
+          }),
   ]
 }).catch((err) => console.error(err));
