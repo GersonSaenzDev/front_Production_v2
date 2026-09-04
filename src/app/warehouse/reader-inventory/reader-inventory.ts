@@ -1,5 +1,5 @@
 // src/app/warehouse/reader-inventory/reader-inventory.ts
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
@@ -7,21 +7,45 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { DashInventoryServices } from '../../services/dashInventory-services';
+import { AuthService } from '../../services/auth-services';
 import { Product, StorageItem } from '../../interfaces/dashInventory.interface';
 
-import { throwError } from 'rxjs';
+import { firstValueFrom, throwError } from 'rxjs';
 
+/** Estado de una lectura mientras espera ser cargada al servidor. */
+type PendingStatus = 'pending' | 'sending' | 'error';
+
+/**
+ * Lectura de modo simple retenida localmente (offline-first).
+ * Se persiste en localStorage para no perder datos si no hay wifi / se recarga la página.
+ */
+export interface PendingReading {
+  id: string;
+  barcode: string;
+  area: string;
+  operatorName: string;
+  operatorId: string;
+  createdAt: string;
+  attempts: number;
+  status: PendingStatus;
+  /** transient = se reintenta (red/5xx); permanent = requiere revisión manual (validación / no encontrado). */
+  errorKind?: 'transient' | 'permanent';
+  lastError?: string;
+  /** Producto resuelto vía getStorage; se completa al momento de sincronizar. */
+  product?: Product;
+}
 
 @Component({
   selector: 'app-inventory-reader',
   standalone: true,
-  imports: [ CommonModule, FormsModule, NgbModalModule, ],
+  imports: [CommonModule, FormsModule, NgbModalModule],
   templateUrl: './reader-inventory.html',
   styleUrls: ['./reader-inventory.scss']
 })
-export class InventoryReader implements OnInit {
+export class InventoryReader implements OnInit, OnDestroy {
   private dashService = inject(DashInventoryServices);
   private modalService = inject(NgbModal);
+  private authService = inject(AuthService);
 
   // Modo de lectura
   readingMode: 'simple' | 'regleta' = 'simple';
@@ -42,24 +66,96 @@ export class InventoryReader implements OnInit {
   // Mensaje de estado
   statusMessage: string = '';
 
-  // Campos del formulario (ahora en modal)
+  // Campos del formulario (ahora en modal): solo el Área se diligencia manualmente.
   inventoryArea: string = '';
-  personName1: string = '';
-  personName2: string = '';
+
+  // Identidad del operario tomada del token (solo lectura, no se pide en el formulario).
+  get currentUserName(): string {
+    return this.authService.userData()?.full_name?.trim() || '';
+  }
+
+  get currentUserId(): string {
+    const user = this.authService.userData();
+    return (user?.uid || user?.userApp || '').trim();
+  }
 
   // Añadir en la clase (propiedades)
   serverResponse: any = null;
   duplicateBarcode: string | null = null;
   serverSuccess: boolean | null = null;
-  
 
   // Indica si hay una carga en curso para bloquear múltiples peticiones
   loading: boolean = false;
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  //  Cola offline-first (SOLO modo simple; regleta no se toca)
+  // ─────────────────────────────────────────────────────────────────────────────
+  private readonly QUEUE_KEY = 'inventory-reader.pending-queue.v1';
+
+  /** Lecturas de modo simple retenidas hasta poder cargarlas al servidor. */
+  pendingQueue: PendingReading[] = [];
+
+  /** true mientras se está vaciando la cola (evita envíos concurrentes). */
+  flushing = false;
+
+  /** Estado de conectividad del navegador (para la UI y los reintentos). */
+  online: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+  /** Resumen del último intento de sincronización. */
+  lastSyncMessage = '';
+
+  private readonly onlineHandler = () => this.onConnectivityChange(true);
+  private readonly offlineHandler = () => this.onConnectivityChange(false);
+  private readonly focusHandler = () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine && this.pendingCount > 0) {
+      this.flushQueue();
+    }
+  };
+  private retryTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Lecturas que todavía deben enviarse (pendientes + errores transitorios). */
+  get pendingCount(): number {
+    return this.pendingQueue.filter((i) => i.status !== 'error' || i.errorKind === 'transient').length;
+  }
+
+  /** Lecturas rechazadas por el servidor que requieren revisión manual. */
+  get errorCount(): number {
+    return this.pendingQueue.filter((i) => i.status === 'error' && i.errorKind === 'permanent').length;
+  }
+
   constructor() {}
 
   ngOnInit(): void {
-    console.log('Inventory Reader Initialized');
+    this.loadQueue();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.onlineHandler);
+      window.addEventListener('offline', this.offlineHandler);
+      window.addEventListener('focus', this.focusHandler);
+
+      // Red de seguridad: el evento 'online' no siempre es fiable en la bodega.
+      this.retryTimer = setInterval(() => {
+        if (this.pendingCount > 0 && navigator.onLine && !this.flushing) {
+          this.flushQueue();
+        }
+      }, 60000);
+    }
+
+    if (this.online && this.pendingCount > 0) {
+      this.flushQueue();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', this.onlineHandler);
+      window.removeEventListener('offline', this.offlineHandler);
+      window.removeEventListener('focus', this.focusHandler);
+    }
+    if (this.retryTimer) {
+      clearInterval(this.retryTimer);
+      this.retryTimer = null;
+    }
   }
 
   onModeChange(mode: 'simple' | 'regleta') {
@@ -67,6 +163,9 @@ export class InventoryReader implements OnInit {
     this.statusMessage = `Modo cambiado a ${mode === 'simple' ? 'Lectura Simple' : 'Regleta'}`;
     if (mode === 'simple') {
       this.regletaProducts = [];
+      if (this.online && this.pendingCount > 0) {
+        this.flushQueue();
+      }
     }
   }
 
@@ -81,18 +180,27 @@ export class InventoryReader implements OnInit {
 
     // Opcional: manejar resultado si quieres
     modalRef.result.then(
-      (res) => { /* cerrado con resultado */ },
-      (reason) => { /* dismissed */ }
+      (res) => {
+        /* cerrado con resultado */
+      },
+      (reason) => {
+        /* dismissed */
+      }
     );
   }
 
   saveUserInfo(modal: any, userForm: any) {
-    if (!this.inventoryArea || !this.personName1 || !this.personName2) {
-      this.statusMessage = 'Complete Área y ambos nombres antes de guardar.';
+    if (!this.inventoryArea.trim()) {
+      this.statusMessage = 'Ingrese el Área antes de guardar.';
       return;
     }
 
-    this.statusMessage = `Usuario guardado: ${this.personName1} ${this.personName2} - Área: ${this.inventoryArea}`;
+    if (!this.currentUserName) {
+      this.statusMessage = 'No se pudo obtener el usuario del token. Vuelva a iniciar sesión.';
+      return;
+    }
+
+    this.statusMessage = `Usuario guardado: ${this.currentUserName} - Área: ${this.inventoryArea.trim()}`;
     modal.close('saved');
   }
 
@@ -116,10 +224,13 @@ export class InventoryReader implements OnInit {
     this.loading = true;
     this.statusMessage = 'Consultando producto...';
 
-    this.dashService.getStorage({ barcode })
-      .pipe(finalize(() => {
-        this.loading = false;
-      }))
+    this.dashService
+      .getStorage({ barcode })
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+        })
+      )
       .subscribe({
         next: (resp: any) => {
           if (!resp || resp.ok !== true) {
@@ -140,7 +251,7 @@ export class InventoryReader implements OnInit {
           } else {
             const mapped = data.map((d: StorageItem) => this.mapStorageItemToProduct(d));
             for (const p of mapped) {
-              const exists = this.regletaProducts.some(r => r.consecutivo === p.consecutivo || r.barcode === p.barcode);
+              const exists = this.regletaProducts.some((r) => r.consecutivo === p.consecutivo || r.barcode === p.barcode);
               if (!exists) this.regletaProducts.push(p);
             }
             if (this.regletaProducts.length > 5) {
@@ -161,11 +272,11 @@ export class InventoryReader implements OnInit {
     this.scannedCodes = [];
     this.currentProduct = null;
     this.regletaProducts = [];
-    // opcional: NO limpiar usuario aquí si quieres mantenerlo
+    // IMPORTANTE: "Limpiar" NO borra la cola de lecturas pendientes (this.pendingQueue).
+    // Esos datos solo salen de la cola cuando se cargan al servidor o se eliminan uno a uno.
+    // opcional: NO limpiar el Área aquí si quieres mantenerla
     // this.inventoryArea = '';
-    // this.personName1 = '';
-    // this.personName2 = '';
-    this.statusMessage = 'Datos limpiados';
+    this.statusMessage = 'Datos limpiados (la cola de pendientes se conserva)';
   }
 
   onKeyPress(event: KeyboardEvent) {
@@ -173,7 +284,7 @@ export class InventoryReader implements OnInit {
     if (event.key === 'Enter') {
       event.preventDefault();
       event.stopPropagation(); // Evita que el evento suba
-      
+
       // Pequeño delay para asegurar que el ngModel capturó el último carácter
       setTimeout(() => {
         this.readBarcode();
@@ -182,10 +293,10 @@ export class InventoryReader implements OnInit {
     }
 
     // OPCIONAL: Lógica de seguridad para móviles
-    // Si el usuario deja de "escribir" (la pistola deja de mandar datos) 
+    // Si el usuario deja de "escribir" (la pistola deja de mandar datos)
     // por más de 300ms, intentamos leer.
     if (this.scanTimer) clearTimeout(this.scanTimer);
-    
+
     this.scanTimer = setTimeout(() => {
       const currentCode = (this.barcodeInput || '').trim();
       // Si tiene una longitud mínima razonable (ej. 10 para tus códigos de 20+)
@@ -203,7 +314,7 @@ export class InventoryReader implements OnInit {
 
   readBarcode() {
     const code = (this.barcodeInput || '').trim();
-    
+
     if (!code) return;
 
     // Si ya estamos procesando, evitamos duplicar la petición
@@ -229,30 +340,311 @@ export class InventoryReader implements OnInit {
       this.scannedCodes.push(code);
     }
 
-    this.fetchProductInfo(code);
-    
+    if (this.readingMode === 'simple') {
+      // Modo simple: NO se envía al servidor de inmediato. Se guarda en la cola local
+      // (offline-first) y se carga cuando haya conexión.
+      this.enqueueReading(code);
+    } else {
+      // Modo regleta: comportamiento original sin cambios.
+      this.fetchProductInfo(code);
+    }
+
     // Limpieza importante
     this.barcodeInput = '';
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  //  Cola offline-first (SOLO modo simple)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /** Añade una lectura a la cola local y la persiste de inmediato (no se puede perder). */
+  private enqueueReading(code: string): void {
+    if (!this.inventoryArea.trim()) {
+      this.statusMessage = 'Configure el Área (botón "Usuario Inventario") antes de escanear.';
+      return;
+    }
+    if (!this.currentUserName) {
+      this.statusMessage = 'No se pudo obtener el usuario del token. Vuelva a iniciar sesión.';
+      return;
+    }
+
+    const area = this.inventoryArea.trim();
+    const alreadyQueued = this.pendingQueue.some((i) => i.barcode === code && i.area === area && i.status !== 'error');
+    if (alreadyQueued) {
+      this.statusMessage = `El código ${code} ya está en la cola pendiente.`;
+      this.barcodeInput = '';
+      this.refocusBarcodeInput();
+      return;
+    }
+
+    const item: PendingReading = {
+      id: this.newId(),
+      barcode: code,
+      area,
+      operatorName: this.currentUserName,
+      operatorId: this.currentUserId,
+      createdAt: new Date().toISOString(),
+      attempts: 0,
+      status: 'pending'
+    };
+    this.pendingQueue.push(item);
+    this.persistQueue();
+
+    this.statusMessage = this.online
+      ? `Lectura #${this.pendingQueue.length} guardada. Sincronizando...`
+      : `Lectura #${this.pendingQueue.length} guardada SIN conexión. Se enviará al recuperar la red.`;
+
+    // Mantener el cursor en el campo para escanear seguido (pistola / tablet / móvil).
+    this.refocusBarcodeInput();
+
+    if (this.online && !this.flushing) {
+      this.flushQueue();
+    }
+  }
+
+  /** Botón "Cargar al servidor": intenta vaciar la cola manualmente. */
+  onUploadClick(): void {
+    if (this.readingMode !== 'simple') return;
+
+    if (this.pendingCount === 0) {
+      this.statusMessage = 'No hay lecturas pendientes por cargar.';
+      return;
+    }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      this.online = false;
+      this.statusMessage = 'Sin conexión. Las lecturas quedan guardadas y se enviarán al recuperar la red.';
+      return;
+    }
+    this.flushQueue();
+  }
+
+  /** Recorre la cola enviando cada lectura pendiente / con error transitorio. */
+  async flushQueue(): Promise<void> {
+    if (this.flushing) return;
+
+    const targets = this.pendingQueue.filter((i) => i.status === 'pending' || (i.status === 'error' && i.errorKind === 'transient'));
+    if (targets.length === 0) return;
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      this.online = false;
+      this.statusMessage = 'Sin conexión. Los pendientes se enviarán automáticamente al recuperar la red.';
+      return;
+    }
+
+    this.flushing = true;
+    this.online = true;
+    let sent = 0;
+    let failed = 0;
+
+    for (const item of targets) {
+      if (item.status === 'sending') continue;
+      const ok = await this.sendQueueItem(item);
+      if (ok) {
+        sent++;
+      } else {
+        failed++;
+      }
+      this.persistQueue();
+    }
+
+    this.flushing = false;
+
+    const remaining = this.pendingCount;
+    this.lastSyncMessage =
+      failed === 0
+        ? `✔ ${sent} lectura(s) cargada(s) al servidor.`
+        : `${sent} enviada(s), ${failed} sin enviar. Quedan ${remaining} pendiente(s).`;
+    this.statusMessage = this.lastSyncMessage;
+
+    // Si se envió algo y entraron lecturas nuevas durante el proceso, reintenta una vez.
+    if (sent > 0 && this.pendingQueue.some((i) => i.status === 'pending') && typeof navigator !== 'undefined' && navigator.onLine) {
+      setTimeout(() => this.flushQueue(), 0);
+    }
+
+    this.refocusBarcodeInput();
+  }
+
+  /** Envía una lectura: resuelve el producto (getStorage) y luego lo inserta. */
+  private async sendQueueItem(item: PendingReading): Promise<boolean> {
+    item.status = 'sending';
+    item.attempts++;
+    item.lastError = undefined;
+    this.persistQueue();
+
+    try {
+      // 1. Resolver el producto si aún no se tiene (requiere red).
+      let product = item.product;
+      if (!product) {
+        const resp = await firstValueFrom(this.dashService.getStorage({ barcode: item.barcode }));
+        if (!resp || resp.ok !== true || !Array.isArray(resp.msg) || resp.msg.length === 0) {
+          item.status = 'error';
+          item.errorKind = 'permanent';
+          item.lastError = 'No se encontró el producto para este código.';
+          return false;
+        }
+        product = this.mapStorageItemToProduct(resp.msg[0]);
+        item.product = product;
+      }
+
+      // 2. Insertar en inventario (endpoint sin transformación de error).
+      const payload = this.buildInsertPayload([product], {
+        area: item.area,
+        operatorName: item.operatorName,
+        operatorId: item.operatorId
+      });
+      const insert = await firstValueFrom(this.dashService.insertInventoryQueued(payload));
+
+      if (insert && insert.ok === true) {
+        this.removeFromQueue(item.id);
+        return true;
+      }
+
+      // 2xx con ok:false (poco habitual): rechazo permanente.
+      item.status = 'error';
+      item.errorKind = 'permanent';
+      item.lastError = insert?.msg || 'El servidor rechazó el registro.';
+      return false;
+    } catch (err) {
+      return this.classifyQueueError(item, err);
+    }
+  }
+
+  /** Clasifica el fallo: duplicado (ya está), validación (revisar) o transitorio (reintentar). */
+  private classifyQueueError(item: PendingReading, err: unknown): boolean {
+    const httpErr = (err ?? {}) as {
+      status?: number;
+      error?: { msg?: string; duplicateBarcode?: string; validationError?: boolean };
+    };
+    const status = httpErr.status;
+    const body = httpErr.error;
+
+    // Duplicado: ya existe en el servidor. No es pérdida de datos -> sale de la cola.
+    if (status === 409 || body?.duplicateBarcode || /duplicad/i.test(body?.msg || '')) {
+      this.removeFromQueue(item.id);
+      this.statusMessage = `El código ${item.barcode} ya estaba registrado en el servidor (duplicado).`;
+      return true;
+    }
+
+    // Validación (código mal formado, referencia que no coincide...): no se arregla reintentando.
+    if (status === 400 || body?.validationError === true) {
+      item.status = 'error';
+      item.errorKind = 'permanent';
+      item.lastError = body?.msg || 'El servidor rechazó el código (validación).';
+      return false;
+    }
+
+    // Sin conexión / timeout / 5xx: transitorio -> se conserva y se reintenta.
+    item.status = 'error';
+    item.errorKind = 'transient';
+    item.lastError = status === 0 || status === undefined ? 'Sin conexión con el servidor.' : `Error temporal del servidor (${status}).`;
+    return false;
+  }
+
+  /** Reintento manual de una lectura marcada con error. */
+  retryItem(item: PendingReading): void {
+    item.status = 'pending';
+    item.errorKind = undefined;
+    item.lastError = undefined;
+    this.persistQueue();
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      this.flushQueue();
+    } else {
+      this.statusMessage = 'Sin conexión. Se reintentará al recuperar la red.';
+    }
+  }
+
+  /** Elimina una lectura de la cola (solo con confirmación explícita). */
+  removeItem(item: PendingReading): void {
+    const label = item.product?.productName ? `${item.product.productName} (${item.barcode})` : item.barcode;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(`¿Eliminar esta lectura de la cola?\n\n${label}\n\nEsta acción no se puede deshacer.`)
+    ) {
+      return;
+    }
+    this.removeFromQueue(item.id);
+    this.statusMessage = 'Lectura eliminada de la cola.';
+  }
+
+  private removeFromQueue(id: string): void {
+    this.pendingQueue = this.pendingQueue.filter((i) => i.id !== id);
+    this.persistQueue();
+  }
+
+  private onConnectivityChange(isOnline: boolean): void {
+    this.online = isOnline;
+    if (isOnline) {
+      this.statusMessage = 'Conexión recuperada. Sincronizando lecturas pendientes...';
+      this.flushQueue();
+    } else {
+      this.statusMessage = 'Sin conexión. Las lecturas se guardan localmente y se enviarán al recuperar la red.';
+    }
+  }
+
+  private loadQueue(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(this.QUEUE_KEY) : null;
+      const parsed = raw ? JSON.parse(raw) : [];
+      this.pendingQueue = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('No se pudo leer la cola local de inventario:', e);
+      this.pendingQueue = [];
+    }
+
+    // Un 'sending' persistido = se recargó a mitad de envío: vuelve a 'pending'.
+    let changed = false;
+    for (const item of this.pendingQueue) {
+      if (item.status === 'sending') {
+        item.status = 'pending';
+        changed = true;
+      }
+    }
+    if (changed) this.persistQueue();
+  }
+
+  private persistQueue(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.QUEUE_KEY, JSON.stringify(this.pendingQueue));
+      }
+    } catch (e) {
+      console.error('No se pudo guardar la cola local de inventario:', e);
+      this.statusMessage = '⚠ No se pudo guardar la lectura localmente (almacenamiento lleno). Sincronice cuanto antes.';
+    }
+  }
+
+  private newId(): string {
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+    } catch {
+      /* sin crypto: se usa el fallback */
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  /** Devuelve el foco al campo de código para poder escanear seguido sin tocar la pantalla. */
+  private refocusBarcodeInput(): void {
+    if (typeof document === 'undefined') return;
+    setTimeout(() => {
+      const el = document.getElementById('codigoBarras') as HTMLInputElement | null;
+      el?.focus();
+    }, 30);
+  }
+
   /**
-   * Limpia las variables del usuario (Área, Nombre1, Nombre2).
+   * Limpia el Área del inventario (los datos de la persona salen del token, no se limpian).
    * Si se recibe la referencia al formulario (NgForm), lo resetea visualmente.
    */
   clearUserFields(userForm?: NgForm) {
     this.inventoryArea = '';
-    this.personName1 = '';
-    this.personName2 = '';
-    this.statusMessage = 'Campos de usuario limpiados';
+    this.statusMessage = 'Área limpiada';
 
     // Si se pasa el NgForm desde el template, reseteará también su estado (touched/pristine)
     try {
       if (userForm) {
-        userForm.resetForm({
-          modalArea: '',
-          modalNombre1: '',
-          modalNombre2: ''
-        });
+        userForm.resetForm({ modalArea: '' });
       }
     } catch (err) {
       // no crítico si falla; sólo un intento de reset visual
@@ -263,21 +655,24 @@ export class InventoryReader implements OnInit {
   /**
    * Construye el payload que espera el backend para insertar en inventario.
    * Si hay varios productos (regleta) toma el nombre/referencia/codRef del primer producto.
+   * `staff` permite usar el área / operario capturados al momento del escaneo (cola offline);
+   * si no se pasa, usa los valores actuales del formulario (modo regleta).
    */
-  private buildInsertPayload(productsToRegister: Product[]) {
+  private buildInsertPayload(productsToRegister: Product[], staff?: { area: string; operatorName: string; operatorId: string }) {
     // Asegurar valores únicos y no vacíos
-    const barcodes = Array.from(new Set(productsToRegister.map(p => (p.barcode || '').trim()).filter(b => !!b)));
-    const consecutives = Array.from(new Set(productsToRegister.map(p => (p.consecutivo || '').trim()).filter(c => !!c)));
+    const barcodes = Array.from(new Set(productsToRegister.map((p) => (p.barcode || '').trim()).filter((b) => !!b)));
+    const consecutives = Array.from(new Set(productsToRegister.map((p) => (p.consecutivo || '').trim()).filter((c) => !!c)));
 
     const firstProduct = productsToRegister.length > 0 ? productsToRegister[0] : null;
 
     return {
       inventoryStaff: {
-        area: this.inventoryArea || '',
+        area: (staff?.area ?? this.inventoryArea).trim(),
         persons: [
           {
-            Person1: this.personName1 || '',
-            Person2: this.personName2 || ''
+            // Identidad tomada del token: nombre completo + identificador único (uid / userApp).
+            Person1: staff?.operatorName ?? this.currentUserName,
+            Person2: staff?.operatorId ?? this.currentUserId
           }
         ]
       },
@@ -297,14 +692,23 @@ export class InventoryReader implements OnInit {
    */
 
   registerInventory() {
-    if (!this.inventoryArea || !this.personName1 || !this.personName2) {
-      this.statusMessage = 'Complete Área y ambos nombres antes de registrar.';
+    // En modo simple el registro va por la cola offline (no envío directo).
+    if (this.readingMode === 'simple') {
+      this.onUploadClick();
       return;
     }
 
-    const productsToRegister: Product[] = this.readingMode === 'simple'
-      ? (this.currentProduct ? [this.currentProduct] : [])
-      : this.regletaProducts;
+    if (!this.inventoryArea.trim()) {
+      this.statusMessage = 'Ingrese el Área antes de registrar.';
+      return;
+    }
+
+    if (!this.currentUserName) {
+      this.statusMessage = 'No se pudo obtener el usuario del token. Vuelva a iniciar sesión.';
+      return;
+    }
+
+    const productsToRegister: Product[] = this.regletaProducts;
 
     if (!productsToRegister || productsToRegister.length === 0) {
       this.statusMessage = 'No hay productos para registrar.';
@@ -318,8 +722,10 @@ export class InventoryReader implements OnInit {
 
     const payload = this.buildInsertPayload(productsToRegister);
 
-    if ((!payload.inventory.barcode || payload.inventory.barcode.length === 0) &&
-        (!payload.inventory.consecutive || payload.inventory.consecutive.length === 0)) {
+    if (
+      (!payload.inventory.barcode || payload.inventory.barcode.length === 0) &&
+      (!payload.inventory.consecutive || payload.inventory.consecutive.length === 0)
+    ) {
       this.statusMessage = 'Los productos no tienen códigos válidos para registrar.';
       return;
     }
@@ -331,8 +737,13 @@ export class InventoryReader implements OnInit {
     this.duplicateBarcode = null;
     this.serverSuccess = null;
 
-    this.dashService.getInsertInventory(payload)
-      .pipe(finalize(() => { this.loading = false; }))
+    this.dashService
+      .getInsertInventory(payload)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+        })
+      )
       .subscribe({
         next: (resp: any) => {
           this.serverResponse = resp;
@@ -392,8 +803,13 @@ export class InventoryReader implements OnInit {
 
     if (navigator && typeof navigator.clipboard?.writeText === 'function') {
       navigator.clipboard.writeText(text).then(
-        () => { this.statusMessage = 'Código copiado al portapapeles.'; },
-        (err) => { this.statusMessage = 'No se pudo copiar al portapapeles.'; console.error(err); }
+        () => {
+          this.statusMessage = 'Código copiado al portapapeles.';
+        },
+        (err) => {
+          this.statusMessage = 'No se pudo copiar al portapapeles.';
+          console.error(err);
+        }
       );
     } else {
       // fallback
@@ -413,7 +829,6 @@ export class InventoryReader implements OnInit {
       }
     }
   }
-  
 
   private handleError(error: HttpErrorResponse) {
     console.error('DashInventoryServices: Error en la petición:', error);
@@ -421,19 +836,18 @@ export class InventoryReader implements OnInit {
     // 1. Revisa si el backend envió un objeto de error {ok, msg, ...}
     //    Esto es lo que ves en tu Imagen 2 (DevTools)
     if (error.error && typeof error.error === 'object' && error.error.msg) {
-        // Devuelve el objeto de error del backend
-        return throwError(() => error.error);
+      // Devuelve el objeto de error del backend
+      return throwError(() => error.error);
     }
 
     // 2. Si no, crea un objeto de error genérico que coincida con la interfaz
     //    Esto cubrirá errores de red, 500, etc.
     const genericErrorMessage = `Error ${error.status}: ${error.statusText}. Por favor, contacte a soporte.`;
-    
-    return throwError(() => ({
-        ok: false,
-        msg: genericErrorMessage,
-        validationError: false // o la propiedad que necesites
-    }));
-}
 
+    return throwError(() => ({
+      ok: false,
+      msg: genericErrorMessage,
+      validationError: false // o la propiedad que necesites
+    }));
+  }
 }

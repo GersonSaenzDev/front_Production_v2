@@ -4,15 +4,33 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AreaCountResponse, AuditNoteRequest, AuditNoteResponse, BarcodeRequest, ConfirmedCountResponse, DuplicatesResponse, GlobalCountResponse, InsertInventoryRequest, InsertInventoryResponse, NotCompliantResponse, SeeGroupsResponse, StorageResponse, TeamCountResponse, TeamItemsResponse, UpdateBarcodeRequest, UpdateBarcodeResponse, UpdateOrderResponse, ViewInventoriesResponse, ViewOrderResponse } from '../interfaces/dashInventory.interface';
+import {
+  AreaCountResponse,
+  AuditNoteRequest,
+  AuditNoteResponse,
+  BarcodeRequest,
+  ConfirmedCountResponse,
+  DuplicatesResponse,
+  GlobalCountResponse,
+  InsertInventoryRequest,
+  InsertInventoryResponse,
+  NotCompliantResponse,
+  SeeGroupsResponse,
+  StorageResponse,
+  TeamCountResponse,
+  TeamItemsResponse,
+  UpdateBarcodeRequest,
+  UpdateBarcodeResponse,
+  UpdateOrderResponse,
+  ViewInventoriesResponse,
+  ViewOrderResponse
+} from '../interfaces/dashInventory.interface';
 import { environment } from 'src/environments/environment';
-
 
 @Injectable({
   providedIn: 'root'
 })
 export class DashInventoryServices {
-
   private http = inject(HttpClient);
   private readonly BASE_URL = environment.backendUrl; // Cambia por environment.backendUrl si lo tienes
   private readonly BASE_API = environment.api;
@@ -33,9 +51,6 @@ export class DashInventoryServices {
   private readonly UPDATE_ORDER_ITEMS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/updateOrderItems`;
   private readonly UPDATE_BARCODE_READ_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/updateBarcodeReadController`;
 
-
-
-
   private handleError(error: any) {
     console.error('DashInventoryServices: Error en la petición:', error);
     let errorMessage = 'Ocurrió un error desconocido en el servicio.';
@@ -53,10 +68,7 @@ export class DashInventoryServices {
    */
   getStorageGroups(date: string): Observable<SeeGroupsResponse> {
     const body = { date };
-    return this.http.post<SeeGroupsResponse>(this.SEE_GROUPS_ENDPOINT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<SeeGroupsResponse>(this.SEE_GROUPS_ENDPOINT, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -65,10 +77,7 @@ export class DashInventoryServices {
    */
   getConfirmedCount(date: string): Observable<ConfirmedCountResponse> {
     const body = { date };
-    return this.http.post<ConfirmedCountResponse>(this.CONFIRMED_COUNT_ENDPOINT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<ConfirmedCountResponse>(this.CONFIRMED_COUNT_ENDPOINT, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -77,10 +86,7 @@ export class DashInventoryServices {
    */
   getDuplicates(date: string): Observable<DuplicatesResponse> {
     const body = { date };
-    return this.http.post<DuplicatesResponse>(this.DUPLICATES_ENDPOINT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<DuplicatesResponse>(this.DUPLICATES_ENDPOINT, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -89,10 +95,7 @@ export class DashInventoryServices {
    */
   getCountGlobal(date: string): Observable<GlobalCountResponse> {
     const body = { date };
-    return this.http.post<GlobalCountResponse>(this.GLOBALCOUNT_ENDPOINT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-    );
+    return this.http.post<GlobalCountResponse>(this.GLOBALCOUNT_ENDPOINT, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -101,10 +104,7 @@ export class DashInventoryServices {
    */
   getTeamCount(date: string): Observable<TeamCountResponse> {
     const body = { date };
-    return this.http.post<TeamCountResponse>(this.GLOBALCOUNT_TEAMCOUNT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-    );
+    return this.http.post<TeamCountResponse>(this.GLOBALCOUNT_TEAMCOUNT, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -113,61 +113,52 @@ export class DashInventoryServices {
    */
   getAreaCount(date: string): Observable<AreaCountResponse> {
     const body = { date };
-    return this.http.post<AreaCountResponse>(this.GLOBALCOUNT_AREACOUNT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-    );
+    return this.http.post<AreaCountResponse>(this.GLOBALCOUNT_AREACOUNT, body).pipe(catchError(this.handleError.bind(this)));
   }
-  
+
   /**
    * Obtiene los códigos duplicados para una fecha dada.
    * @param date Fecha en formato 'DD/MM/YYYY'
    */
   getViewInventories(date: string, limit: number = 100, page: number = 1): Observable<ViewInventoriesResponse> {
     const body = { date, limit, page };
-    return this.http.post<ViewInventoriesResponse>(this.GLOBALCOUNT_VIEWINVENTORIES, body)
-      .pipe(catchError(this.handleError.bind(this)));
+    return this.http.post<ViewInventoriesResponse>(this.GLOBALCOUNT_VIEWINVENTORIES, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
- * Obtiene items agregados por equipo (area, total, codes[])
- * body: { date, teamKey }
- */
+   * Obtiene items agregados por equipo (area, total, codes[])
+   * body: { date, teamKey }
+   */
   getTeamItems(date: string, payload: { teamKey: string }): Observable<TeamItemsResponse> {
     const body = { date, ...payload };
-    return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body)
-      .pipe(
-      catchError(this.handleError.bind(this))
-    );
+    return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   getNotCompliant(date: string, payload: { teamKey: string }): Observable<NotCompliantResponse> {
     const body = { date, ...payload };
-    return this.http.post<NotCompliantResponse>(this.GLOBALCOUNT_NOTCOMPLIANT, body)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<NotCompliantResponse>(this.GLOBALCOUNT_NOTCOMPLIANT, body).pipe(catchError(this.handleError.bind(this)));
   }
 
   getAuditNote(payload: AuditNoteRequest): Observable<AuditNoteResponse> {
-    return this.http.post<AuditNoteResponse>(this.GLOBALCOUNT_AUDITNOTE, payload)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<AuditNoteResponse>(this.GLOBALCOUNT_AUDITNOTE, payload).pipe(catchError(this.handleError.bind(this)));
   }
 
   getStorage(payload: BarcodeRequest): Observable<StorageResponse> {
-    return this.http.post<StorageResponse>(this.GLOBALCOUNT_STORAGE, payload)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<StorageResponse>(this.GLOBALCOUNT_STORAGE, payload).pipe(catchError(this.handleError.bind(this)));
   }
 
   getInsertInventory(payload: InsertInventoryRequest): Observable<InsertInventoryResponse> {
-    return this.http.post<InsertInventoryResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<InsertInventoryResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload).pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Igual que getInsertInventory pero SIN transformar el error.
+   * La cola offline del lector necesita el HttpErrorResponse crudo (status HTTP y
+   * body { ok, msg, duplicateBarcode, validationError }) para decidir si reintenta,
+   * descarta (duplicado) o marca para revisión (validación).
+   */
+  insertInventoryQueued(payload: InsertInventoryRequest): Observable<InsertInventoryResponse> {
+    return this.http.post<InsertInventoryResponse>(this.GLOBALCOUNT_INSERTINVENTORY, payload);
   }
 
   /**
@@ -177,15 +168,12 @@ export class DashInventoryServices {
   updateOrder(file: File): Observable<UpdateOrderResponse> {
     // 1. Creamos el objeto FormData
     const formData = new FormData();
-    
+
     // 2. Agregamos el archivo con el nombre 'orderPreparation' que pide el backend
     formData.append('orderPreparation', file);
 
     // 3. Realizamos la petición POST
-    return this.http.post<UpdateOrderResponse>(this.UPDATE_ORDER_ENDPOINT, formData)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<UpdateOrderResponse>(this.UPDATE_ORDER_ENDPOINT, formData).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -195,10 +183,7 @@ export class DashInventoryServices {
   viewOrder(): Observable<ViewOrderResponse> {
     // 1. Realizamos la petición GET
     // No necesitamos FormData aquí ya que es una consulta simple
-    return this.http.get<ViewOrderResponse>(this.VIEW_ORDER_ENDPOINT)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.get<ViewOrderResponse>(this.VIEW_ORDER_ENDPOINT).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -207,10 +192,7 @@ export class DashInventoryServices {
    * @returns Mensaje de confirmación: "barcode Actualizado correctamente"
    */
   updateOrderItems(payload: UpdateBarcodeRequest): Observable<UpdateBarcodeResponse> {
-    return this.http.post<UpdateBarcodeResponse>(this.UPDATE_ORDER_ITEMS_ENDPOINT, payload)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<UpdateBarcodeResponse>(this.UPDATE_ORDER_ITEMS_ENDPOINT, payload).pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
@@ -219,10 +201,6 @@ export class DashInventoryServices {
    * @returns Mensaje de confirmación: "Barcode Cambiado Correctamente"
    */
   updateBarcodeReadController(payload: UpdateBarcodeRequest): Observable<UpdateBarcodeResponse> {
-    return this.http.post<UpdateBarcodeResponse>(this.UPDATE_BARCODE_READ_ENDPOINT, payload)
-      .pipe(
-        catchError(this.handleError.bind(this))
-      );
+    return this.http.post<UpdateBarcodeResponse>(this.UPDATE_BARCODE_READ_ENDPOINT, payload).pipe(catchError(this.handleError.bind(this)));
   }
-
 }

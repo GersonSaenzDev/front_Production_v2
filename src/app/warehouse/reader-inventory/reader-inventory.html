@@ -10,21 +10,11 @@
 
       <div class="mode-selector">
         <label class="mode-option">
-          <input
-            type="radio"
-            name="modoLectura"
-            value="simple"
-            [(ngModel)]="readingMode"
-            (change)="onModeChange('simple')" />
+          <input type="radio" name="modoLectura" value="simple" [(ngModel)]="readingMode" (change)="onModeChange('simple')" />
           Lectura Simple
         </label>
         <label class="mode-option">
-          <input
-            type="radio"
-            name="modoLectura"
-            value="regleta"
-            [(ngModel)]="readingMode"
-            (change)="onModeChange('regleta')" />
+          <input type="radio" name="modoLectura" value="regleta" [(ngModel)]="readingMode" (change)="onModeChange('regleta')" />
           Regleta (4-5 códigos)
         </label>
       </div>
@@ -42,154 +32,206 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        required />
+        required
+      />
 
-      <div class="button-group" style="margin-top:12px;">
+      <div class="button-group" style="margin-top: 12px">
         <button id="btnLimpiar" class="btn-secondary" (click)="clearData()">Limpiar</button>
 
         <!-- Abre modal de ng-bootstrap -->
         <button id="btnUsuarioInventario" class="btn-primary" (click)="openUserModal(userModal)">Usuario Inventario</button>
       </div>
 
-      <!-- Resumen rápido del usuario configurado -->
-      <div class="user-summary" *ngIf="inventoryArea || personName1 || personName2" style="margin-top:12px;">
-        <strong>Usuario configurado:</strong>
-        <div *ngIf="inventoryArea"><small>Área:</small> {{ inventoryArea }}</div>
-        <div *ngIf="personName1"><small>Nombre 1:</small> {{ personName1 }}</div>
-        <div *ngIf="personName2"><small>Nombre 2:</small> {{ personName2 }}</div>
+      <!-- Estado de conexión / cola (solo modo simple) -->
+      <div *ngIf="readingMode === 'simple'" class="queue-status" style="margin-top: 10px; font-size: 0.85rem">
+        <span [class.text-success]="online" [class.text-danger]="!online">
+          {{ online ? '● En línea' : '○ Sin conexión — las lecturas se guardan localmente' }}
+        </span>
+        <span class="text-muted">· {{ pendingCount }} pendiente(s)</span>
+        <span *ngIf="errorCount > 0" class="text-warning">· {{ errorCount }} con error</span>
       </div>
 
-        <div style="margin-top:12px;">
-            <!-- Éxito -->
-            <div *ngIf="serverSuccess === true" class="alert alert-success" role="alert">
-                <strong>OK:</strong> {{ serverResponse?.msg || statusMessage }}
-            </div>
+      <!-- Resumen rápido del usuario configurado -->
+      <div class="user-summary" *ngIf="inventoryArea || currentUserName" style="margin-top: 12px">
+        <strong>Usuario configurado:</strong>
+        <div *ngIf="inventoryArea">
+          <small>Área:</small>
+          {{ inventoryArea }}
+        </div>
+        <div *ngIf="currentUserName">
+          <small>Usuario (token):</small>
+          {{ currentUserName }}
+        </div>
+        <div *ngIf="currentUserId">
+          <small>ID:</small>
+          {{ currentUserId }}
+        </div>
+      </div>
 
-            <!-- Error del backend -->
-            <div *ngIf="serverSuccess === false" class="alert alert-danger" role="alert">
-                <strong>Error:</strong> {{ serverResponse?.msg || statusMessage }}
+      <div style="margin-top: 12px">
+        <!-- Éxito -->
+        <div *ngIf="serverSuccess === true" class="alert alert-success" role="alert">
+          <strong>OK:</strong>
+          {{ serverResponse?.msg || statusMessage }}
+        </div>
 
-                <div *ngIf="duplicateBarcode" class="mt-2">
-                <small>Barcode duplicado: <code>{{ duplicateBarcode }}</code></small>
+        <!-- Error del backend -->
+        <div *ngIf="serverSuccess === false" class="alert alert-danger" role="alert">
+          <strong>Error:</strong>
+          {{ serverResponse?.msg || statusMessage }}
 
-                <!-- Botón: añadir el barcode duplicado a la lista de escaneados -->
-                <button type="button" class="btn btn-sm btn-outline-light ms-2"
-                        (click)="addDuplicateToScanned(duplicateBarcode)">
-                    Añadir a escaneados
-                </button>
+          <div *ngIf="duplicateBarcode" class="mt-2">
+            <small>
+              Barcode duplicado:
+              <code>{{ duplicateBarcode }}</code>
+            </small>
 
-                <!-- Botón copiar -->
-                <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
-                        (click)="copyToClipboard(duplicateBarcode)">
-                    Copiar
-                </button>
-                </div>
+            <!-- Botón: añadir el barcode duplicado a la lista de escaneados -->
+            <button type="button" class="btn btn-sm btn-outline-light ms-2" (click)="addDuplicateToScanned(duplicateBarcode)">
+              Añadir a escaneados
+            </button>
 
-                <!-- Si la respuesta contiene más info, muéstrala cruda (opcional) -->
-                <pre *ngIf="serverResponse?.details" class="mt-2">{{ serverResponse.details | json }}</pre>
-            </div>
+            <!-- Botón copiar -->
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-1" (click)="copyToClipboard(duplicateBarcode)">Copiar</button>
+          </div>
 
-            <!-- Mensaje genérico si no hubo llamada o mientras se procesa -->
-            <div *ngIf="serverSuccess === null && statusMessage" class="alert alert-info">
-                {{ statusMessage }}
-            </div>
-            </div>
+          <!-- Si la respuesta contiene más info, muéstrala cruda (opcional) -->
+          <pre *ngIf="serverResponse?.details" class="mt-2">{{ serverResponse.details | json }}</pre>
+        </div>
 
-      <ul class="codes-list" *ngIf="scannedCodes.length > 0" style="margin-top:12px;">
+        <!-- Mensaje genérico si no hubo llamada o mientras se procesa -->
+        <div *ngIf="serverSuccess === null && statusMessage" class="alert alert-info">{{ statusMessage }}</div>
+      </div>
+
+      <ul class="codes-list" *ngIf="scannedCodes.length > 0" style="margin-top: 12px">
         <li *ngFor="let code of scannedCodes">{{ code }}</li>
       </ul>
 
       <!-- Plantilla de modal para ng-bootstrap -->
-        <ng-template #userModal let-modal>
+      <ng-template #userModal let-modal>
         <div class="modal-header">
-            <h5 class="modal-title">Usuario Inventario</h5>
-            <!-- <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('cancel')"></button> -->
+          <h5 class="modal-title">Usuario Inventario</h5>
+          <!-- <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('cancel')"></button> -->
         </div>
 
         <form #userForm="ngForm" (ngSubmit)="saveUserInfo(modal, userForm)">
-            <div class="modal-body">
+          <div class="modal-body">
             <div class="mb-3">
-                <label for="modalArea" class="form-label">Área</label>
-                <input
+              <label for="modalArea" class="form-label">Área</label>
+              <input
                 id="modalArea"
                 name="modalArea"
                 class="form-control"
                 type="text"
                 placeholder="Ingrese área"
                 required
-                [(ngModel)]="inventoryArea" />
+                [(ngModel)]="inventoryArea"
+              />
             </div>
 
-            <div class="mb-3">
-                <label for="modalNombre1" class="form-label">Nombre 1</label>
-                <input
-                id="modalNombre1"
-                name="modalNombre1"
-                class="form-control"
-                type="text"
-                placeholder="Ingrese primer nombre"
-                required
-                [(ngModel)]="personName1" />
+            <!-- Los datos de la persona se toman del token de la sesión (no se digitan) -->
+            <div class="mb-1">
+              <label class="form-label">Operario (token)</label>
+              <input class="form-control" type="text" [value]="currentUserName || 'Sin sesión activa'" disabled />
             </div>
+            <div *ngIf="currentUserId" class="text-muted">
+              <small>ID: {{ currentUserId }}</small>
+            </div>
+          </div>
 
-            <div class="mb-3">
-                <label for="modalNombre2" class="form-label">Nombre 2</label>
-                <input
-                id="modalNombre2"
-                name="modalNombre2"
-                class="form-control"
-                type="text"
-                placeholder="Ingrese segundo nombre"
-                required
-                [(ngModel)]="personName2" />
-            </div>
-            </div>
-
-            <div class="modal-footer">
+          <div class="modal-footer">
             <!-- Nuevo: Limpiar (no cierra el modal) -->
-            <button
-                type="button"
-                class="btn btn-outline-secondary"
-                (click)="clearUserFields(userForm)">
-                Limpiar
-            </button>
+            <button type="button" class="btn btn-outline-secondary" (click)="clearUserFields(userForm)">Limpiar</button>
 
             <!-- Cancelar cierra el modal sin guardar -->
             <button type="button" class="btn btn-secondary" (click)="modal.dismiss('cancel')">Cancelar</button>
 
             <!-- Guardar valida y cierra -->
             <button type="submit" class="btn btn-primary" [disabled]="!userForm.form.valid">Guardar</button>
-            </div>
+          </div>
         </form>
-        </ng-template>
+      </ng-template>
     </section>
 
     <section class="right-panel">
-      <h2>Información del Producto</h2>
+      <h2>
+        Información del Producto
+        <span *ngIf="readingMode === 'simple'" class="badge ms-2" [class.bg-success]="online" [class.bg-secondary]="!online">
+          {{ online ? 'En línea' : 'Sin conexión' }}
+        </span>
+      </h2>
 
-      <div class="product-info" *ngIf="readingMode === 'simple'">
-        <div *ngIf="currentProduct; else noProduct">
-          <h3>{{ currentProduct.productName }}</h3>
-          <p><strong>EAN:</strong> {{ currentProduct.EAN }}</p>
-          <p><strong>Código Producto:</strong> {{ currentProduct.productCode }}</p>
-          <p><strong>Referencia:</strong> {{ currentProduct.reference }}</p>
-          <p><strong>Código de Barras:</strong> {{ currentProduct.barcode }}</p>
-          <p><strong>Consecutivo:</strong> {{ currentProduct.consecutivo }}</p>
+      <!-- MODO SIMPLE: cola de lecturas (offline-first). NO se envía en cada escaneo. -->
+      <div class="reading-queue" *ngIf="readingMode === 'simple'">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Lecturas pendientes ({{ pendingCount }})</strong>
+          <span *ngIf="errorCount > 0" class="badge bg-warning text-dark">{{ errorCount }} con error</span>
         </div>
-        <ng-template #noProduct>
-          <p class="placeholder">Escanee un código de barras para ver la información del producto</p>
-        </ng-template>
+
+        <p *ngIf="pendingQueue.length === 0" class="placeholder">
+          Escanee códigos: se guardan aquí y se cargan al servidor cuando haya conexión.
+        </p>
+
+        <ul class="list-group mb-3" *ngIf="pendingQueue.length > 0">
+          <li class="list-group-item" *ngFor="let item of pendingQueue; let i = index">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="me-2" style="min-width: 0">
+                <div class="text-truncate">
+                  <strong>{{ i + 1 }}.</strong>
+                  {{ item.barcode }}
+                </div>
+                <div *ngIf="item.product" class="small text-muted text-truncate">{{ item.product.productName }}</div>
+                <div class="small text-muted">{{ item.createdAt | date: 'short' }} · Área: {{ item.area }}</div>
+                <div *ngIf="item.lastError" class="small text-danger">{{ item.lastError }}</div>
+              </div>
+              <div class="text-nowrap">
+                <span
+                  class="badge"
+                  [class.bg-secondary]="item.status === 'pending'"
+                  [class.bg-info]="item.status === 'sending'"
+                  [class.bg-warning]="item.status === 'error' && item.errorKind === 'transient'"
+                  [class.text-dark]="item.status === 'error' && item.errorKind === 'transient'"
+                  [class.bg-danger]="item.status === 'error' && item.errorKind === 'permanent'"
+                >
+                  {{ item.status === 'pending' ? 'Pendiente' : item.status === 'sending' ? 'Enviando…' : item.errorKind === 'permanent' ?
+                  'Rechazado' : 'Reintentar' }}
+                </span>
+                <div class="mt-1" *ngIf="item.status === 'error'">
+                  <button type="button" class="btn btn-sm btn-outline-primary" (click)="retryItem(item)">Reintentar</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger ms-1" (click)="removeItem(item)">Eliminar</button>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <div *ngIf="lastSyncMessage" class="small text-muted mb-2">{{ lastSyncMessage }}</div>
       </div>
 
       <div class="regleta-view" *ngIf="readingMode === 'regleta'">
         <div class="regleta-products" *ngIf="regletaProducts.length > 0; else noRegletaProducts">
           <div class="regleta-product" *ngFor="let product of regletaProducts">
             <h4>{{ product.productName }}</h4>
-            <p><strong>EAN:</strong> {{ product.EAN }}</p>
-            <p><strong>Código Producto:</strong> {{ product.productCode }}</p>
-            <p><strong>Referencia:</strong> {{ product.reference }}</p>
-            <p><strong>Código de Barras:</strong> {{ product.barcode }}</p>
-            <p><strong>Consecutivo:</strong> {{ product.consecutivo }}</p>
+            <p>
+              <strong>EAN:</strong>
+              {{ product.EAN }}
+            </p>
+            <p>
+              <strong>Código Producto:</strong>
+              {{ product.productCode }}
+            </p>
+            <p>
+              <strong>Referencia:</strong>
+              {{ product.reference }}
+            </p>
+            <p>
+              <strong>Código de Barras:</strong>
+              {{ product.barcode }}
+            </p>
+            <p>
+              <strong>Consecutivo:</strong>
+              {{ product.consecutivo }}
+            </p>
           </div>
         </div>
         <ng-template #noRegletaProducts>
@@ -197,8 +239,19 @@
         </ng-template>
       </div>
 
-      <div style="margin-top:20px;">
-        <button class="btn-register btn btn-success" (click)="registerInventory()">
+      <div class="action-bar" style="margin-top: 20px">
+        <!-- MODO SIMPLE: carga por lote de la cola offline -->
+        <button
+          *ngIf="readingMode === 'simple'"
+          class="btn-register btn btn-success"
+          [disabled]="flushing || pendingCount === 0"
+          (click)="onUploadClick()"
+        >
+          {{ flushing ? 'Cargando…' : 'Cargar al servidor (' + pendingCount + ')' }}
+        </button>
+
+        <!-- MODO REGLETA: comportamiento original -->
+        <button *ngIf="readingMode === 'regleta'" class="btn-register btn btn-success" (click)="registerInventory()">
           Registrar al Inventario
         </button>
       </div>
