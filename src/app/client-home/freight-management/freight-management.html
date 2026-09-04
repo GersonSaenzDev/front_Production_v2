@@ -301,28 +301,34 @@
         </div>
       </div>
 
-      <!-- APROVECHAMIENTO DEL VEHÍCULO (cubicaje) -->
+      <!-- APROVECHAMIENTO DEL VEHÍCULO (cubicaje): informativo, NO es obligatorio para registrar el despacho -->
       <div class="items-section">
         <div class="items-header">
-          <h6 class="mb-0">Aprovechamiento del vehículo</h6>
+          <h6 class="mb-0">
+            Aprovechamiento del vehículo
+            <span class="optional-badge">Opcional</span>
+          </h6>
         </div>
+        <small class="field-hint mb-2 d-block">
+          Solo es informativo: puedes registrar el despacho sin diligenciar la capacidad ni el volumen de las líneas.
+        </small>
         <div class="form-grid">
           <div class="form-field">
-            <label class="field-label">Capacidad del vehículo (m³)</label>
+            <label class="field-label">Capacidad del vehículo (m³) <span class="optional-tag">(opcional)</span></label>
             <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="form.vehicleCapacityM3" placeholder="0" />
-            <small class="field-hint">Se precarga del catálogo según el tipo de vehículo; puedes ajustarla.</small>
+            <small class="field-hint">Se precarga del catálogo según el tipo de vehículo; puedes ajustarla o dejarla en blanco.</small>
           </div>
           <div class="form-field">
             <label class="field-label">m³ cargados</label>
             <input type="text" class="form-control" [ngModel]="loadedVolumeM3 | number:'1.0-2'" readonly disabled />
-            <small class="field-hint">Suma del volumen (m³) de todas las líneas.</small>
+            <small class="field-hint">Suma del volumen (m³) de todas las líneas (también opcional por línea).</small>
           </div>
           <div class="form-field">
             <label class="field-label">% de aprovechamiento</label>
             <input
               type="text"
               class="form-control"
-              [ngModel]="volumeUtilizationPct === null ? 'Sin capacidad' : (volumeUtilizationPct | number:'1.0-1') + ' %'"
+              [ngModel]="volumeUtilizationPct === null ? 'No aplica (sin capacidad)' : (volumeUtilizationPct | number:'1.0-1') + ' %'"
               readonly
               disabled
             />
@@ -436,7 +442,7 @@
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
                 <th>Costo Total</th>
-                <th>Volumen (m³)</th>
+                <th>Volumen (m³) <span class="optional-tag">(opcional)</span></th>
                 <th>Flete</th>
                 <th></th>
               </tr>

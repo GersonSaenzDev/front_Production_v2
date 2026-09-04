@@ -54,7 +54,7 @@ export class DashInventoryServices {
   private handleError(error: any) {
     console.error('DashInventoryServices: Error en la petición:', error);
     let errorMessage = 'Ocurrió un error desconocido en el servicio.';
-    if (error.error && error.er?.msg) {
+    if (error.error && error.error?.msg) {
       errorMessage = error.error.msg;
     } else if (error.message) {
       errorMessage = error.message;
@@ -146,6 +146,19 @@ export class DashInventoryServices {
 
   getStorage(payload: BarcodeRequest): Observable<StorageResponse> {
     return this.http.post<StorageResponse>(this.GLOBALCOUNT_STORAGE, payload).pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Igual que getStorage pero SIN transformar el error. La cola offline del lector
+   * necesita el HttpErrorResponse crudo (status HTTP y body {ok, msg}) para poder
+   * distinguir un rechazo real del backend (ej. barcode con longitud inválida ->
+   * error permanente, requiere revisión manual) de una falla de red (transitoria,
+   * se reintenta). Con getStorage() ese status se pierde (handleError lo envuelve en
+   * un Error genérico sin `status`), por lo que TODO fallo terminaba clasificado como
+   * "Sin conexión con el servidor" y la lectura quedaba reintentando para siempre.
+   */
+  getStorageQueued(payload: BarcodeRequest): Observable<StorageResponse> {
+    return this.http.post<StorageResponse>(this.GLOBALCOUNT_STORAGE, payload);
   }
 
   getInsertInventory(payload: InsertInventoryRequest): Observable<InsertInventoryResponse> {

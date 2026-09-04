@@ -43,6 +43,9 @@ export interface PendingReading {
   styleUrls: ['./reader-inventory.scss']
 })
 export class InventoryReader implements OnInit, OnDestroy {
+  /** Longitud exacta de un barcode válido de Indusel (ver seeSearchReferenceStorageDAO en el backend). */
+  private static readonly BARCODE_LENGTH = 27;
+
   private dashService = inject(DashInventoryServices);
   private modalService = inject(NgbModal);
   private authService = inject(AuthService);
@@ -333,6 +336,26 @@ export class InventoryReader implements OnInit, OnDestroy {
       return;
     }
 
+    // Validación de longitud: todo barcode de Indusel tiene EXACTAMENTE 27 dígitos
+    // (codRef en las posiciones 10-16, consecutivo en 18-27; ver seeSearchReferenceStorageDAO
+    // en el backend). Si la pistola/lector entregó menos o más, la lectura quedó incompleta
+    // o corrupta: se alerta y se descarta para que el usuario vuelva a escanear el producto
+    // en vez de dejarlo pasar y que falle más adelante (producto no encontrado / sync fallida).
+    if (code.length !== InventoryReader.BARCODE_LENGTH) {
+      this.serverSuccess = false;
+      this.serverResponse = null;
+      this.duplicateBarcode = null;
+      this.statusMessage = `Lectura incorrecta: el código tiene ${code.length} dígito(s) y debe tener ${InventoryReader.BARCODE_LENGTH}. Vuelva a escanear el producto.`;
+      this.barcodeInput = '';
+      this.refocusBarcodeInput();
+      return;
+    }
+
+    // Código válido: si había una alerta de lectura incorrecta previa, se limpia.
+    this.serverSuccess = null;
+    this.serverResponse = null;
+    this.duplicateBarcode = null;
+
     // Limpiar temporizadores activos
     if (this.scanTimer) clearTimeout(this.scanTimer);
 
@@ -473,9 +496,12 @@ export class InventoryReader implements OnInit, OnDestroy {
 
     try {
       // 1. Resolver el producto si aún no se tiene (requiere red).
+      // Se usa getStorageQueued (NO getStorage): necesitamos el HttpErrorResponse crudo
+      // para que classifyQueueError pueda distinguir un rechazo real del backend (ej.
+      // barcode con longitud inválida -> permanente) de una falla de red (transitoria).
       let product = item.product;
       if (!product) {
-        const resp = await firstValueFrom(this.dashService.getStorage({ barcode: item.barcode }));
+        const resp = await firstValueFrom(this.dashService.getStorageQueued({ barcode: item.barcode }));
         if (!resp || resp.ok !== true || !Array.isArray(resp.msg) || resp.msg.length === 0) {
           item.status = 'error';
           item.errorKind = 'permanent';
