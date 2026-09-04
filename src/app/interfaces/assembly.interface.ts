@@ -323,4 +323,15 @@ export interface PackingListCrossValidateResponse {
   unmatchedBarcodes?: string[];
 }
 
+/**
+ * @description Respuesta del endpoint POST /assembly/loadAssembly.
+ * Recibe un archivo CSV (un barcode por línea) en el campo `resulBarcode`,
+ * mismo formato que usaba la app Flutter "control_inventario" (VersionWEB.py).
+ */
+export interface LoadAssemblyResponse {
+  ok: boolean;
+  msg: string;
+  data?: unknown;
+}
+
 

@@ -17,7 +17,8 @@ import {
     PackingListRecord,
     PackingListCheckPayload,
     PackingListCheckResponse,
-    PackingListCrossValidateResponse
+    PackingListCrossValidateResponse,
+    LoadAssemblyResponse
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -42,6 +43,7 @@ export class DashboardServices {
   private readonly PACKING_LIST_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList`;
   private readonly PACKING_LIST_CHECK_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/check`;
   private readonly PACKING_LIST_CROSS_VALIDATE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/crossValidate`;
+  private readonly LOAD_ASSEMBLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/loadAssembly`;
 
 
   private handleError(error: any) {
@@ -289,6 +291,19 @@ export class DashboardServices {
     formData.append('validationFile', file);
 
     return this.http.post<PackingListCrossValidateResponse>(this.PACKING_LIST_CROSS_VALIDATE_ENDPOINT, formData)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Sube el lote de códigos de barras escaneados (CSV, uno por línea) al mismo
+   * endpoint que usaba la app Flutter "control_inventario" (campo `resulBarcode`).
+   * @param {File} file - Archivo CSV construido en memoria por el lector de barcode web.
+   */
+  loadAssembly(file: File): Observable<LoadAssemblyResponse> {
+    const formData = new FormData();
+    formData.append('resulBarcode', file);
+
+    return this.http.post<LoadAssemblyResponse>(this.LOAD_ASSEMBLY_ENDPOINT, formData)
       .pipe(catchError(this.handleError.bind(this)));
   }
 }

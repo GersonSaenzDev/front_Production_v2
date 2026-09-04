@@ -684,6 +684,13 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'inventories/packingList',
             breadcrumbs: false
+          },
+          {
+            id: 'barcode-reader-item',
+            title: 'Lector de Código de Barras',
+            type: 'item',
+            url: 'inventories/barcodeReader',
+            breadcrumbs: false
           }
         ]
       },

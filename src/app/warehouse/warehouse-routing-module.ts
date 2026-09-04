@@ -44,6 +44,11 @@ const routes: Routes = [
     path: 'packingList',
     loadComponent: () => import('./packing-list/packing-list').then((c) => c.PackingList)
   },
+  {
+    // Path completo: /inventories/barcodeReader
+    path: 'barcodeReader',
+    loadComponent: () => import('./barcode-reader/barcode-reader').then((c) => c.BarcodeReader)
+  },
 ];
 
 @NgModule({

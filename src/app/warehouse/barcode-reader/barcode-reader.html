@@ -1,0 +1,68 @@
+<!-- /app/warehouse/barcode-reader/barcode-reader.html -->
+<div class="barcode-reader-container">
+  <header class="header">
+    <h1>Lectura de Código de Barras - Producción</h1>
+  </header>
+
+  <div class="counters-row">
+    <div class="counter-box counter-unique">
+      <span class="counter-title">Únicos</span>
+      <span class="counter-value">{{ uniqueItems.length }}</span>
+    </div>
+    <div class="counter-box counter-repeated">
+      <span class="counter-title">Repetidos</span>
+      <span class="counter-value">{{ repeatedItems.length }}</span>
+    </div>
+  </div>
+
+  <div class="scan-input-group">
+    <label for="barcodeReaderInput">Ingresar número o escanear</label>
+    <div class="input-with-button">
+      <input
+        id="barcodeReaderInput"
+        type="text"
+        placeholder="Escanee o ingrese código"
+        [(ngModel)]="barcodeInput"
+        (keydown)="onKeyDown($event)"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button type="button" class="btn-send" (click)="onSendClick()" title="Enviar">➤</button>
+    </div>
+  </div>
+
+  <p class="status-message" [class.msg-red]="messageColor === 'red'" [class.msg-green]="messageColor === 'green'" [class.msg-orange]="messageColor === 'orange'">
+    {{ message }}
+  </p>
+
+  <button type="button" class="btn-save" [disabled]="sending" (click)="saveUniqueItemsToFile()">
+    {{ sending ? 'Guardando…' : 'Guardar datos de Producción' }}
+  </button>
+
+  <div class="pending-banner" *ngIf="pendingCount > 0">
+    <span>{{ pendingCount }} archivo(s) pendientes de envío al servidor</span>
+    <button type="button" class="btn-retry" (click)="retryPendingClick()" [disabled]="!online">Reintentar ahora</button>
+  </div>
+
+  <div class="connectivity-status" [class.is-online]="online" [class.is-offline]="!online">
+    {{ online ? '● En línea' : '○ Sin conexión — se reintentará automáticamente' }}
+  </div>
+
+  <div class="items-summary">
+    <div class="items-column">
+      <h3>Ítems Únicos ({{ uniqueItems.length }})</h3>
+      <ul class="items-list">
+        <li *ngFor="let item of uniqueItems">{{ item }}</li>
+      </ul>
+    </div>
+
+    <div class="items-column">
+      <h3>Ítems Repetidos ({{ repeatedItems.length }})</h3>
+      <ul class="items-list items-list-repeated">
+        <li *ngFor="let item of repeatedItems">{{ item }}</li>
+      </ul>
+    </div>
+  </div>
+</div>
