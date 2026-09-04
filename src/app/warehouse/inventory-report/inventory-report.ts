@@ -1,4 +1,4 @@
-// ../..//warehouse/inventory-report/inventory-report.ts
+// src/app/warehouse/inventory-report/inventory-report.ts
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,20 +21,38 @@ interface VisualInventoryGroup extends InventoryGroup {
 export class InventoryReport implements OnInit {
   private dashboardService = inject(DashboardServices);
 
-  public dateIni: string = '2026-01-02'; // Fechas iniciales de ejemplo
-  public dateEnd: string = '2026-01-07';
+  // Rango por defecto: mes actual (día 1 -> hoy).
+  public dateIni: string = this.formatDate(this.firstDayOfCurrentMonth());
+  public dateEnd: string = this.formatDate(new Date());
   public searchTerm: string = '';
   public isLoading: boolean = false;
 
   public groupedData: VisualInventoryGroup[] = [];
   public filteredGroups: VisualInventoryGroup[] = [];
-  
+
   // Totales generales
   public totalRefs: number = 0;
   public totalItems: number = 0;
 
   ngOnInit(): void {
     this.loadReport();
+  }
+
+  private firstDayOfCurrentMonth(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  private formatDate(date: Date): string {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
   }
 
   public loadReport(): void {
@@ -85,7 +103,7 @@ export class InventoryReport implements OnInit {
 
   public exportToExcel(): void {
     // Para el Excel, aplanamos los datos para que el usuario pueda usar filtros nativos de Excel fácilmente
-    const flatList = this.groupedData.flatMap(group => 
+    const flatList = this.groupedData.flatMap(group =>
       group.items.map(item => ({
         Referencia: group.referencia,
         Producto: group.producto,
@@ -93,7 +111,10 @@ export class InventoryReport implements OnInit {
         Consecutivo: item.consecutive,
         Fecha: item.fechaCaptura,
         Estado: item.estado,
-        Novedades: item.novedades
+        Novedades: item.novedades,
+        Área: item.area || '',
+        Operario: item.operario?.fullName || '',
+        Documento: item.operario?.document || ''
       }))
     );
 

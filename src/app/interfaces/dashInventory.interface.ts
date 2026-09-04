@@ -85,13 +85,23 @@ export interface AreaCountResponse {
   msg: AreaCountData;   // <-- msg es un objeto, NO un array ni un objeto con msg interno
 }
 
+/**
+ * Identidad del operario tomada del token de sesión al crear el registro
+ * (ver reader-inventory.ts / warehouseInventoryCreation en el backend).
+ * fullName = nombre completo; document = documento o userApp (identificador único).
+ */
+export interface OperatorPerson {
+  fullName: string;
+  document: string;
+}
+
 export interface InventoryItem {
   code: string;
   codRef: number;
   referencia: string;
   producto: string;
   area: string;
-  persons: string[];
+  persons: OperatorPerson[];
   team: string;
   validate: boolean;
   dateCreate: string;
@@ -131,13 +141,14 @@ export interface TeamItemsResponse {
 export interface NotCompliantItem {
   _id: string;
   area: string;
-  persons: string[];      // nombres de las personas (strings)
+  persons: OperatorPerson[]; // identidad del/los operario(s) que hicieron el conteo
   team: string;           // puede ser cadena vacía
   code: string;           // barcode.code
   codRef: number;         // inventory.codRef
   referencia: string;
   producto: string;
   validate: boolean;
+  dateCreate?: string;    // timestamp real del registro (para llavear la anotación de auditoría)
 }
 
 export interface NotCompliantData {
@@ -171,7 +182,7 @@ export interface AuditNoteResponseSimple {
 export interface AuditNoteItemResponse {
   _id: string;
   area: string;
-  persons: string[];
+  persons: OperatorPerson[];
   team: string;
   code: string;
   codRef: number;
@@ -194,7 +205,7 @@ export type AuditNoteResponse = AuditNoteResponseSimple | AuditNoteResponseWithI
 export interface NotCompliantItem {
   _id: string;
   area: string;
-  persons: string[];      // nombres de las personas (strings)
+  persons: OperatorPerson[]; // identidad del/los operario(s) que hicieron el conteo
   team: string;           // puede ser cadena vacía
   code: string;           // barcode.code
   codRef: number;         // inventory.codRef
@@ -208,12 +219,13 @@ export interface NotCompliantItem {
 export interface AuditNoteItem {
   _id: string;
   area: string;
-  persons: string[];
+  persons: OperatorPerson[];
   team: string;
   code: string;
   codRef: number;
   referencia: string;
   producto: string;
+  dateCreate?: string;
   validate: boolean;
   annotation?: string;
   note?: string;
@@ -280,6 +292,8 @@ export interface InventoryItem {
     fechaCaptura: string;
     estado: string;
     novedades: string;
+    area: string;
+    operario?: OperatorPerson;
 }
 
 export interface InventoryGroup {

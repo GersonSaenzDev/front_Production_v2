@@ -6,7 +6,7 @@ import localeEs from '@angular/common/locales/es';
 import { Component, LOCALE_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { throwError } from 'rxjs';
-import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, } from '../../interfaces/dashInventory.interface';
+import { AuditNoteItem, AuditNoteRequest,AuditNoteResponseSimple, AuditNoteResponseWithItem, NotCompliantItem, OperatorPerson, } from '../../interfaces/dashInventory.interface';
 import { DashInventoryServices } from '../../services/dashInventory-services';
 
 import { SharedModule } from '../../theme/shared/shared.module';
@@ -30,7 +30,9 @@ export class DashInventories {
 
   private dashboardService = inject(DashInventoryServices);
 
-  public selectedDate: string = this.formatDate(new Date());
+  // Rango de fechas (por defecto: mes actual, día 1 -> hoy).
+  public dateIni: string = this.formatDate(this.firstDayOfCurrentMonth());
+  public dateEnd: string = this.formatDate(new Date());
 
   // Datos crudos / responses
   public storageGroupsData: any[] = [];
@@ -100,8 +102,8 @@ export class DashInventories {
   public comparisonResult: { matchCount: number; diffCount: number } | null = null;
 
   constructor() {
-    // Cargar datos iniciales (fecha por defecto)
-    this.loadAllData(this.formatDateForBackend(this.selectedDate));
+    // Cargar datos iniciales (rango por defecto: mes actual)
+    this.loadAllData(this.formatDateForBackend(this.dateIni), this.formatDateForBackend(this.dateEnd));
   }
 
   private formatDate(date: Date): string {
@@ -116,6 +118,11 @@ export class DashInventories {
     return [year, month, day].join('-');
   }
 
+  private firstDayOfCurrentMonth(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
   public formatDateForBackend(dateString: string | Date): string {
     const d = (typeof dateString === 'string') ? new Date(dateString.replace(/-/g, '/')) : dateString;
     let day = '' + d.getDate();
@@ -128,9 +135,9 @@ export class DashInventories {
     return [day, month, year].join('/');
   }
 
-  public onDateChange(newDate: string): void {
-    const dateForBackend = this.formatDateForBackend(newDate);
-    this.loadAllData(dateForBackend);
+  /** Se dispara al cambiar Fecha Inicio o Fecha Fin: recarga el inventario global con el nuevo rango. */
+  public onDateRangeChange(): void {
+    this.loadAllData(this.formatDateForBackend(this.dateIni), this.formatDateForBackend(this.dateEnd));
   }
 
   // 1. Añade esta nueva propiedad para almacenar los resultados detallados
@@ -140,14 +147,14 @@ export class DashInventories {
     matches: any[]
   } | null = null;
 
-  public async loadAllData(dateForBackend: string): Promise<void> {
+  public async loadAllData(dateIniBackend: string, dateEndBackend: string): Promise<void> {
     this.loading = true;
     this.errorMessage = '';
     this.inventoryList = [];
     this.resetCounts(); // Limpiamos contadores antes de empezar
 
     try {
-      const firstPage = await this.dashboardService.getViewInventories(dateForBackend, 100, 1).toPromise();
+      const firstPage = await this.dashboardService.getViewInventories(dateIniBackend, dateEndBackend, 100, 1).toPromise();
 
       if (firstPage?.ok && firstPage.msg) {
         let allItems = [...firstPage.msg.items];
@@ -156,7 +163,7 @@ export class DashInventories {
         if (totalPages > 1) {
           const remainingRequests = [];
           for (let i = 2; i <= totalPages; i++) {
-            remainingRequests.push(this.dashboardService.getViewInventories(dateForBackend, 100, i).toPromise());
+            remainingRequests.push(this.dashboardService.getViewInventories(dateIniBackend, dateEndBackend, 100, i).toPromise());
           }
           const responses = await Promise.all(remainingRequests);
           responses.forEach(res => {
@@ -174,11 +181,12 @@ export class DashInventories {
         let withNotes = 0;
 
         this.inventoryList = allItems.map((it: any) => {
-          const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
-          const teamKey = `${it.area || ''}||${persons.join('|')}`;
-          const teamLabel = persons.length 
-            ? `${it.area} — ${persons.join(', ')}` 
-            : (it.area || 'Equipo sin nombre');
+          const persons: OperatorPerson[] = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
+          const teamKey = this.computeTeamKey(it);
+          const names = persons.map((p) => p?.fullName).filter(Boolean);
+          const teamLabel = names.length
+            ? `${it.area} — ${names.join(', ')}`
+            : (it.area || 'Operario sin nombre');
 
           // Lógica de contadores
           if (it.validate === true) compliant++;
@@ -243,10 +251,12 @@ export class DashInventories {
     this.filteredInventory = [...this.inventoryList];
   }
 
-  // Helpers para teamKey
+  // Helpers para teamKey: se llavea por documento (identidad del operario tomada del
+  // token), no por nombre, para no mezclar operarios distintos con el mismo nombre.
   public computeTeamKey(it: any): string {
-    const persons = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
-    return `${it.area || ''}||${persons.join('|')}`;
+    const persons: OperatorPerson[] = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
+    const docs = persons.map((p) => p?.document).filter(Boolean);
+    return `${it.area || ''}||${docs.join('|')}`;
   }
 
   // Selección equipo -> trae codes/area/total desde backend
@@ -385,7 +395,8 @@ export class DashInventories {
     this.sendAuditNoteForItem({
       code: this.annotationItem.code,
       referencia: this.annotationItem.referencia,
-      area: this.annotationItem.area
+      area: this.annotationItem.area,
+      dateCreate: this.annotationItem.dateCreate
     }, note);
   }
 
@@ -398,14 +409,15 @@ export class DashInventories {
   }
 
   /* --- Enviar nota al backend y actualizar estado local --- */
-  public sendAuditNoteForItem(item: { code: string; referencia?: string; area?: string }, noteText: string) {
-    const dateForBackend = this.formatDateForBackend(this.selectedDate); // 'DD/MM/YYYY'
+  public sendAuditNoteForItem(item: { code: string; referencia?: string; area?: string; dateCreate?: string }, noteText: string) {
+    // Se usa la fecha real del registro (dateCreate) para ubicarlo en el backend,
+    // en vez de la fecha/rango seleccionado en el tablero (que ya no identifica un solo día).
     const payload: AuditNoteRequest = {
       barcode: item.code,
       reference: item.referencia,
       area: item.area,
       note: noteText,
-      date: dateForBackend
+      ...(item.dateCreate ? { date: item.dateCreate } : {})
     };
 
     // Mostrar spinner/estado local de guardado
@@ -481,13 +493,13 @@ export class DashInventories {
     });
   }
 
-  // --- Cargar datos no conformes (fecha en formato backend) ---
-  loadNotCompliantData(date: string, page: number = 1, limit: number = 20) {
+  // --- Cargar datos no conformes (rango de fechas en formato backend) ---
+  loadNotCompliantData(dateIniBackend: string, dateEndBackend: string, page: number = 1, limit: number = 20) {
     // payload puede incluir page y limit: dependiendo de la definición del servicio,
     // si getNotCompliant tiene una firma estricta ajusta el servicio o castea el payload.
     const payload: any = { teamKey: 'all', page, limit };
 
-    this.dashboardService.getNotCompliant(date, payload).subscribe({
+    this.dashboardService.getNotCompliant(dateIniBackend, dateEndBackend, payload).subscribe({
       next: (res) => {
         if (res && res.ok && res.msg) {
           this.notCompliantTotal = res.msg.total ?? 0;
@@ -544,8 +556,12 @@ export class DashInventories {
     if (!page || page < 1) return;
     if (this.notCompliantTotalPages && page > this.notCompliantTotalPages) return;
 
-    const dateForBackend = this.formatDateForBackend(this.selectedDate); // usa tu función existente
-    this.loadNotCompliantData(dateForBackend, page, this.notCompliantPageSize);
+    this.loadNotCompliantData(
+      this.formatDateForBackend(this.dateIni),
+      this.formatDateForBackend(this.dateEnd),
+      page,
+      this.notCompliantPageSize
+    );
   }
 
   private handleError(error: any) {

@@ -79,6 +79,8 @@
                       <th>Barcode</th>
                       <th>Consecutivo</th>
                       <th>Fecha Captura</th>
+                      <th>Área</th>
+                      <th>Operario</th>
                       <th>Estado</th>
                       <th>Novedades</th>
                     </tr>
@@ -89,6 +91,8 @@
                         <td><code>{{ item.barcode }}</code></td>
                         <td>{{ item.consecutive }}</td>
                         <td>{{ item.fechaCaptura }}</td>
+                        <td>{{ item.area || '-' }}</td>
+                        <td>{{ item.operario?.fullName || '-' }}</td>
                         <td>
                           <span class="badge" [ngClass]="item.estado === 'Conforme' ? 'bg-success' : 'bg-warning text-dark'">
                             {{ item.estado }}

@@ -117,11 +117,12 @@ export class DashInventoryServices {
   }
 
   /**
-   * Obtiene los códigos duplicados para una fecha dada.
-   * @param date Fecha en formato 'DD/MM/YYYY'
+   * Obtiene el inventario para un rango de fechas.
+   * @param dateIni Fecha inicio en formato 'DD/MM/YYYY'
+   * @param dateEnd Fecha fin en formato 'DD/MM/YYYY'
    */
-  getViewInventories(date: string, limit: number = 100, page: number = 1): Observable<ViewInventoriesResponse> {
-    const body = { date, limit, page };
+  getViewInventories(dateIni: string, dateEnd: string, limit: number = 100, page: number = 1): Observable<ViewInventoriesResponse> {
+    const body = { dateIni, dateEnd, limit, page };
     return this.http.post<ViewInventoriesResponse>(this.GLOBALCOUNT_VIEWINVENTORIES, body).pipe(catchError(this.handleError.bind(this)));
   }
 
@@ -134,8 +135,8 @@ export class DashInventoryServices {
     return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body).pipe(catchError(this.handleError.bind(this)));
   }
 
-  getNotCompliant(date: string, payload: { teamKey: string }): Observable<NotCompliantResponse> {
-    const body = { date, ...payload };
+  getNotCompliant(dateIni: string, dateEnd: string, payload: { teamKey: string; page?: number; limit?: number }): Observable<NotCompliantResponse> {
+    const body = { dateIni, dateEnd, ...payload };
     return this.http.post<NotCompliantResponse>(this.GLOBALCOUNT_NOTCOMPLIANT, body).pipe(catchError(this.handleError.bind(this)));
   }
 

@@ -6,20 +6,35 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div>
-            <h4 class="mb-1">Consultar Inventario 📦 por Fecha 📅</h4>
+            <h4 class="mb-1">Consultar Inventario 📦 por Rango de Fechas 📅</h4>
             <p class="text-muted mb-0 opacity-75 text-sm">
-              Fecha Seleccionada:
-              <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+              Rango Seleccionado:
+              <strong>{{ dateIni | date:'d MMM y':'':'es' }}</strong> al
+              <strong>{{ dateEnd | date:'d MMM y':'':'es' }}</strong>
             </p>
           </div>
 
-          <div class="col-12 col-md-3"> 
-            <input 
-              type="date" 
-              class="form-control" 
-              [(ngModel)]="selectedDate" 
-              (change)="onDateChange(selectedDate)"
-            >
+          <div class="col-12 col-md-6 d-flex gap-2">
+            <div class="flex-fill">
+              <label class="form-label mb-1 text-sm">Fecha Inicio</label>
+              <input
+                type="date"
+                class="form-control"
+                [(ngModel)]="dateIni"
+                [max]="dateEnd"
+                (change)="onDateRangeChange()"
+              >
+            </div>
+            <div class="flex-fill">
+              <label class="form-label mb-1 text-sm">Fecha Fin</label>
+              <input
+                type="date"
+                class="form-control"
+                [(ngModel)]="dateEnd"
+                [min]="dateIni"
+                (change)="onDateRangeChange()"
+              >
+            </div>
           </div>
         </div>
       </div>
@@ -200,7 +215,7 @@
             </div>
             <div class="col-md-3 d-flex">
               <button class="btn btn-sm btn-outline-primary me-2" (click)="resetGlobalFilters()">Reset</button>
-              <button class="btn btn-sm btn-primary" (click)="loadAllData(formatDateForBackend(selectedDate))">Refrescar</button>
+              <button class="btn btn-sm btn-primary" (click)="loadAllData(formatDateForBackend(dateIni), formatDateForBackend(dateEnd))">Refrescar</button>
             </div>
           </div>
 
@@ -355,7 +370,7 @@
             </div>
             <div class="col-md-3 d-flex">
               <button class="btn btn-sm btn-outline-primary me-2" (click)="resetNotCompliantFilters()">Reset</button>
-              <button class="btn btn-sm btn-primary" (click)="loadNotCompliantData(formatDateForBackend(selectedDate))">Refrescar</button>
+              <button class="btn btn-sm btn-primary" (click)="loadNotCompliantData(formatDateForBackend(dateIni), formatDateForBackend(dateEnd))">Refrescar</button>
             </div>
           </div>
 
@@ -383,7 +398,7 @@
                   <td>{{ item.team || 'Sin equipo' }}</td>
                   <td>
                     <span *ngFor="let person of item.persons; let last = last">
-                      {{ person }}<span *ngIf="!last">, </span>
+                      {{ person.fullName }}<span *ngIf="!last">, </span>
                     </span>
                   </td>
                   <td class="text-center">
