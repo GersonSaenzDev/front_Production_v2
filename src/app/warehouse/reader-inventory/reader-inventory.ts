@@ -438,11 +438,19 @@ export class InventoryReader implements OnInit, OnDestroy {
       this.statusMessage = 'Sin conexión. Las lecturas quedan guardadas y se enviarán al recuperar la red.';
       return;
     }
-    this.flushQueue();
+    this.flushQueue(true);
   }
 
-  /** Recorre la cola enviando cada lectura pendiente / con error transitorio. */
-  async flushQueue(): Promise<void> {
+  /**
+   * Recorre la cola enviando cada lectura pendiente / con error transitorio.
+   * @param notifyUser Solo debe ser `true` cuando lo dispara el botón "Cargar al
+   * servidor" (acción explícita). Al terminar, avisa con una alerta cuántos productos
+   * se enviaron y, si no queda nada pendiente, limpia el listado de códigos escaneados
+   * para dejar la pantalla lista para el siguiente lote. Los flushes automáticos
+   * (reconexión, temporizador de reintento, cambio de foco) NO deben alertar: eso
+   * interrumpiría al usuario a mitad de un escaneo con la pistola.
+   */
+  async flushQueue(notifyUser: boolean = false): Promise<void> {
     if (this.flushing) return;
 
     const targets = this.pendingQueue.filter((i) => i.status === 'pending' || (i.status === 'error' && i.errorKind === 'transient'));
@@ -478,6 +486,22 @@ export class InventoryReader implements OnInit, OnDestroy {
         ? `✔ ${sent} lectura(s) cargada(s) al servidor.`
         : `${sent} enviada(s), ${failed} sin enviar. Quedan ${remaining} pendiente(s).`;
     this.statusMessage = this.lastSyncMessage;
+
+    // Cargue explícito ("Cargar al servidor"): alertar la cantidad enviada (para que el
+    // usuario la relacione con el lote que acaba de escanear) y, si no quedó nada
+    // pendiente, limpiar el listado de códigos escaneados para el siguiente lote.
+    if (notifyUser && sent > 0) {
+      if (remaining === 0) {
+        this.scannedCodes = [];
+      }
+      if (typeof window !== 'undefined') {
+        window.alert(
+          remaining === 0
+            ? `✔ Se enviaron ${sent} producto(s) al inventario correctamente.`
+            : `Se enviaron ${sent} producto(s) al inventario. ${failed} no se pudieron enviar y quedan pendientes de revisión.`
+        );
+      }
+    }
 
     // Si se envió algo y entraron lecturas nuevas durante el proceso, reintenta una vez.
     if (sent > 0 && this.pendingQueue.some((i) => i.status === 'pending') && typeof navigator !== 'undefined' && navigator.onLine) {

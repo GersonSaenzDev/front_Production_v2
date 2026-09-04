@@ -102,6 +102,17 @@ export class MenuAccessService {
     return this.LOGISTICA_EXTERNA_BODEGA_USERS.includes(code);
   }
 
+  // Cuentas de kiosco de Bodega (tablets fijas para el lector de inventario, login
+  // genérico invenbodega1..5): deben ver el collapse BODEGA y entrar al módulo
+  // 'inventories' sin importar el area/departamento que traigan del RH, porque son
+  // logins compartidos de equipo, no de una persona con área/depto asignado.
+  private readonly BODEGA_KIOSK_USERS = ['INVENBODEGA1', 'INVENBODEGA2', 'INVENBODEGA3', 'INVENBODEGA4', 'INVENBODEGA5'];
+
+  private isBodegaKioskUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.BODEGA_KIOSK_USERS.includes(code);
+  }
+
   // Acceso por DEPARTAMENTO (en MAYÚSCULAS). Tiene prioridad sobre la lógica por área.
   // - navTitles: títulos de los collapse del menú lateral que puede ver (en MAYÚSCULAS).
   // - modules: módulos a los que puede rutear (el guard usa esto).
@@ -168,6 +179,14 @@ export class MenuAccessService {
     // El menú Estadístico es exclusivo de Desarrollo/Gerencias, Analista de Presupuesto y Planeación
     if (isStadistics) {
       return false;
+    }
+
+    // Kiosco de Bodega: se trata como un "departamento virtual" que solo ve el
+    // collapse BODEGA (además del Dashboard, siempre visible), sin importar el
+    // area/departamento real que traiga del RH. Va después del filtro de Estadístico
+    // (exclusivo de Desarrollo/Gerencias/Planeación) para no heredar ese menú.
+    if (this.isBodegaKioskUser(userData.userApp)) {
+      return this.canAccessNavItemByDepartment(item, ['BODEGA']);
     }
 
     // Prioridad: acceso configurado por departamento
@@ -319,6 +338,12 @@ export class MenuAccessService {
   private checkAccess(user: UserDataMenu, module: AppModule): boolean {
     const area = user.area?.toUpperCase().trim() || '';
     const dept = user.departament?.toUpperCase().trim() || '';
+
+    // Kiosco de Bodega: solo módulos 'production' (Dashboard) e 'inventories' (Bodega),
+    // sin importar area/departamento. Se resuelve antes que cualquier otra regla.
+    if (this.isBodegaKioskUser(user.userApp)) {
+      return module === 'production' || module === 'inventories';
+    }
 
     if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS')) {
       return true;
