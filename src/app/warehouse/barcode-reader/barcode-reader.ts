@@ -36,6 +36,8 @@ interface PendingUpload {
 export class BarcodeReader implements OnInit, OnDestroy {
   private static readonly HISTORIC_KEY = 'barcode-reader.historic-produccion.v1';
   private static readonly PENDING_KEY = 'barcode-reader.pending-uploads.v1';
+  /** Borrador de ítems escaneados aún no guardados: sobrevive a un cierre/crash del navegador. */
+  private static readonly DRAFT_KEY = 'barcode-reader.draft.v1';
   private static readonly INPUT_ID = 'barcodeReaderInput';
 
   /** Todo barcode de Indusel tiene EXACTAMENTE 27 dígitos (ver reader-inventory.ts). */
@@ -79,6 +81,20 @@ export class BarcodeReader implements OnInit, OnDestroy {
   private readonly offlineHandler = () => this.onConnectivityChange(false);
   private retryTimer: ReturnType<typeof setInterval> | null = null;
 
+  /**
+   * Si la pestaña pasa a segundo plano (cambio de app, minimizar, cerrar) mientras
+   * hay ítems escaneados sin guardar, se intenta guardar/enviar automáticamente,
+   * igual que si se hubiera presionado "Guardar". `visibilitychange`/`pagehide` son
+   * las señales más confiables para esto en navegadores (a diferencia de
+   * `beforeunload`, que es poco confiable en móviles/tablets).
+   */
+  private readonly visibilityHandler = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      void this.autoSaveOnHide();
+    }
+  };
+  private readonly pageHideHandler = () => void this.autoSaveOnHide();
+
   get pendingCount(): number {
     return this.pendingUploads.length;
   }
@@ -86,16 +102,22 @@ export class BarcodeReader implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadHistoric();
     this.loadPendingQueue();
+    this.loadDraft();
 
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.onlineHandler);
       window.addEventListener('offline', this.offlineHandler);
+      window.addEventListener('pagehide', this.pageHideHandler);
 
       this.retryTimer = setInterval(() => {
         if (this.pendingCount > 0 && navigator.onLine) {
           this.retryPending();
         }
       }, 60000);
+    }
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.visibilityHandler);
     }
 
     if (this.online && this.pendingCount > 0) {
@@ -109,6 +131,10 @@ export class BarcodeReader implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', this.onlineHandler);
       window.removeEventListener('offline', this.offlineHandler);
+      window.removeEventListener('pagehide', this.pageHideHandler);
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
     if (this.retryTimer) {
       clearInterval(this.retryTimer);
@@ -205,12 +231,15 @@ export class BarcodeReader implements OnInit, OnDestroy {
         this.repeatedItems.push(trimmedItem);
       }
     } else {
-      this.uniqueItems.push(trimmedItem);
+      // Se agrega al INICIO (no al final) para que la última lectura quede siempre
+      // visible arriba de la lista, sin tener que scrollear para confirmarla.
+      this.uniqueItems.unshift(trimmedItem);
       this.message = `Ítem "${trimmedItem}" registrado correctamente.`;
       this.messageColor = 'neutral';
       this.addUniqueItemToHistoric(trimmedItem);
     }
 
+    this.persistDraft();
     this.barcodeInput = '';
     this.refocusInput();
   }
@@ -221,36 +250,100 @@ export class BarcodeReader implements OnInit, OnDestroy {
     this.persistHistoric();
   }
 
+  /**
+   * Guarda y envía el lote actual. Se usa tanto desde el botón "Guardar datos de
+   * Producción" como automáticamente al ocultarse la pestaña (ver `autoSaveOnHide`).
+   *
+   * Guard de re-entrancia: `if (this.sending) return;` es la PRIMERA línea, antes de
+   * cualquier `await`. Esto es inmune a la velocidad de los clics (a diferencia de
+   * depender solo de `[disabled]="sending"` en el botón, cuyo repintado en pantalla
+   * puede llegar tarde en una tablet si el usuario toca varias veces muy rápido):
+   * como JS ejecuta cada handler de forma síncrona hasta su primer `await`, para
+   * cuando el 2do/3er/... clic empieza a ejecutarse `sending` ya es `true`.
+   */
   async saveUniqueItemsToFile(): Promise<void> {
-    if (this.uniqueItems.length === 0) {
+    if (this.sending) return;
+
+    // Foto del lote actual: lo que se escanee DESPUÉS de este punto (p.ej. mientras
+    // se espera la respuesta del servidor) no se toca ni se pierde en este guardado.
+    const snapshotUnique = [...this.uniqueItems];
+    const snapshotRepeated = [...this.repeatedItems];
+
+    if (snapshotUnique.length === 0) {
       this.message = 'No hay ítems únicos para guardar.'.toUpperCase();
       this.messageColor = 'orange';
       return;
     }
 
-    const fileName = this.buildFileName();
-    const csvContent = this.uniqueItems.join('\n') + '\n';
-
-    this.message = `Archivo "${fileName}" guardado. Enviando al servidor...`.toUpperCase();
-    this.messageColor = 'neutral';
     this.sending = true;
+
+    // Un código presente en AMBAS listas fue escaneado más de una vez en esta misma
+    // sesión (gatillo repetido, glitch del lector, etc.): no hay certeza de que sea
+    // una unidad física distinta, así que NO se envía.
+    const duplicatedInSession = snapshotUnique.filter((item) => snapshotRepeated.includes(item));
+    const itemsToSend = snapshotUnique.filter((item) => !snapshotRepeated.includes(item));
+
+    if (duplicatedInSession.length > 0) {
+      // Se habían marcado en el histórico permanente apenas se escanearon la primera
+      // vez (para poder detectar la repetición). Como finalmente NO se envían, se
+      // revierte esa marca: si no, un escaneo legítimo futuro de ese mismo código
+      // quedaría bloqueado para siempre como "ya existe en el histórico".
+      duplicatedInSession.forEach((item) => this.historicItems.delete(item));
+      this.persistHistoric();
+    }
+
+    // Se retira del working set exactamente lo que se tomó en esta foto, dejando
+    // intacto cualquier ítem escaneado después de tomarla.
+    this.uniqueItems = this.uniqueItems.filter((item) => !snapshotUnique.includes(item));
+    this.repeatedItems = this.repeatedItems.filter((item) => !snapshotRepeated.includes(item));
+    this.persistDraft();
+
+    if (itemsToSend.length === 0) {
+      this.message =
+        `TODOS LOS ÍTEMS DE ESTE LOTE (${duplicatedInSession.length}) SE DETECTARON COMO REPETIDOS EN LA SESIÓN: NO SE ENVIÓ NINGÚN ARCHIVO.`;
+      this.messageColor = 'orange';
+      this.sending = false;
+      this.refocusInput();
+      return;
+    }
+
+    const fileName = this.buildFileName();
+    const csvContent = itemsToSend.join('\n') + '\n';
+    const excludedNote =
+      duplicatedInSession.length > 0 ? ` (${duplicatedInSession.length} REPETIDO(S) DE SESIÓN EXCLUIDO(S))` : '';
+
+    this.message = `Archivo "${fileName}" guardado${excludedNote}. Enviando al servidor...`.toUpperCase();
+    this.messageColor = 'neutral';
+
+    // Se encola ANTES de intentar enviar: si el navegador se cierra o el envío se
+    // interrumpe a mitad de camino, el lote ya quedó persistido en localStorage y se
+    // reintentará automáticamente en cuanto vuelva a haber conexión (ver ngOnInit).
+    const pendingId = this.enqueuePending(fileName, csvContent);
 
     const sent = await this.sendFile(fileName, csvContent);
 
     if (sent) {
-      this.message = `Archivo "${fileName}" guardado y enviado al servidor.`.toUpperCase();
+      this.removePendingById(pendingId);
+      this.message = `Archivo "${fileName}" guardado y enviado al servidor${excludedNote}.`.toUpperCase();
       this.messageColor = 'green';
     } else {
-      this.enqueuePending(fileName, csvContent);
       this.message =
-        `Archivo "${fileName}" guardado. Sin conexión con el servidor: se reenviará automáticamente.`.toUpperCase();
+        `Archivo "${fileName}" guardado${excludedNote}. Sin conexión con el servidor: se reenviará automáticamente.`.toUpperCase();
       this.messageColor = 'orange';
     }
 
     this.sending = false;
-    this.uniqueItems = [];
-    this.repeatedItems = [];
     this.refocusInput();
+  }
+
+  /**
+   * Intento automático de guardado al ocultarse la pestaña (cambio de app, minimizar,
+   * cerrar), para no perder ítems escaneados si el navegador se cierra de forma
+   * abrupta antes de que el operario presione "Guardar" manualmente.
+   */
+  private async autoSaveOnHide(): Promise<void> {
+    if (this.uniqueItems.length === 0 || this.sending) return;
+    await this.saveUniqueItemsToFile();
   }
 
   /** Reintento manual: botón "Reintentar envíos pendientes". */
@@ -302,13 +395,20 @@ export class BarcodeReader implements OnInit, OnDestroy {
     );
   }
 
-  private enqueuePending(fileName: string, csvContent: string): void {
+  private enqueuePending(fileName: string, csvContent: string): string {
+    const id = this.newId();
     this.pendingUploads.push({
-      id: this.newId(),
+      id,
       fileName,
       csvContent,
       createdAt: new Date().toISOString()
     });
+    this.persistPending();
+    return id;
+  }
+
+  private removePendingById(id: string): void {
+    this.pendingUploads = this.pendingUploads.filter((item) => item.id !== id);
     this.persistPending();
   }
 
@@ -358,6 +458,48 @@ export class BarcodeReader implements OnInit, OnDestroy {
       }
     } catch (err) {
       console.error('No se pudo guardar la cola de envíos pendientes:', err);
+    }
+  }
+
+  /**
+   * Restaura ítems escaneados que quedaron sin guardar si la app se cerró/crasheó
+   * antes de que el operario presionara "Guardar" (y antes de que `autoSaveOnHide`
+   * alcanzara a dispararse). Así no se pierden aunque no haya habido ningún evento
+   * de cierre "limpio" que el navegador pudiera notificar.
+   */
+  private loadDraft(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(BarcodeReader.DRAFT_KEY) : null;
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      const unique = Array.isArray(parsed?.uniqueItems) ? parsed.uniqueItems : [];
+      const repeated = Array.isArray(parsed?.repeatedItems) ? parsed.repeatedItems : [];
+      if (unique.length === 0 && repeated.length === 0) return;
+
+      this.uniqueItems = unique;
+      this.repeatedItems = repeated;
+      this.message =
+        `SE RECUPERARON ${unique.length} ÍTEM(S) SIN GUARDAR DE UNA SESIÓN ANTERIOR (CIERRE INESPERADO). REVISE Y GUARDE.`;
+      this.messageColor = 'orange';
+    } catch (err) {
+      console.error('No se pudo leer el borrador de la sesión de escaneo:', err);
+    }
+  }
+
+  private persistDraft(): void {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      if (this.uniqueItems.length === 0 && this.repeatedItems.length === 0) {
+        localStorage.removeItem(BarcodeReader.DRAFT_KEY);
+        return;
+      }
+      localStorage.setItem(
+        BarcodeReader.DRAFT_KEY,
+        JSON.stringify({ uniqueItems: this.uniqueItems, repeatedItems: this.repeatedItems })
+      );
+    } catch (err) {
+      console.error('No se pudo guardar el borrador de la sesión de escaneo:', err);
     }
   }
 
