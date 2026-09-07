@@ -46,6 +46,7 @@ export class BarcodeReader implements OnInit, OnDestroy {
   private dashboardService = inject(DashboardServices);
 
   barcodeInput = '';
+  private scanTimer: ReturnType<typeof setTimeout> | null = null;
 
   uniqueItems: string[] = [];
   repeatedItems: string[] = [];
@@ -129,47 +130,39 @@ export class BarcodeReader implements OnInit, OnDestroy {
 
   /**
    * Las pistolas de código de barras terminan la lectura enviando 'Enter'.
-   * Se procesa de forma SÍNCRONA (sin delay): el buffer ya quedó completo y
-   * correcto en `barcodeInput` porque cada dígito se acumula síncronamente
-   * en el propio keydown (ver más abajo). Un delay aquí abría una ventana en
-   * la que un lector de disparo continuo podía empezar a enviar el siguiente
-   * código antes de limpiar el buffer del anterior, mezclando ambas lecturas
-   * y produciendo códigos con longitud incorrecta o "duplicados".
+   *
+   * IMPORTANTE: aquí NO se intercepta ningún otro carácter (nada de
+   * `preventDefault()` ni de filtrar por `event.key`/`event.code`). Varios
+   * lectores Android inyectan el texto vía IME/InputConnection y esperan que el
+   * navegador procese el evento de forma completamente nativa; si el handler de
+   * `keydown` cancela el evento por su cuenta, el lector interpreta que la
+   * inyección falló, emite su tono de error ("doble bip") y el campo se queda
+   * vacío. Ese fue exactamente el efecto de un ajuste anterior que intentaba
+   * filtrar caracteres inválidos en este mismo punto.
+   *
+   * El filtrado de lecturas inválidas (símbolos del EAN-128 mal decodificados,
+   * longitud incorrecta, etc.) se sigue haciendo en `processItem`, sobre el texto
+   * ya recibido — igual que en reader-inventory.ts, que sí lee bien con pistola.
    */
   onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
       event.preventDefault();
-      this.processItem(this.barcodeInput);
+      // Pequeño margen para asegurar que ngModel capturó el último carácter antes
+      // de procesar (mismo margen que reader-inventory.ts).
+      setTimeout(() => this.processItem(this.barcodeInput), 50);
       return;
     }
 
-    // Teclas de edición/navegación, atajos y teclas especiales sin carácter propio
-    // (Backspace, Delete, flechas, Ctrl+V, 'Unidentified' que reportan algunos
-    // lectores Android que inyectan el texto vía IME, etc.): se dejan con su
-    // comportamiento nativo normal, sincronizado por ngModel como siempre. Esto es
-    // también la red de seguridad para lectores cuyo `event.key` no sea fiable: no
-    // se les bloquea, simplemente no se filtran (la validación final en
-    // `processItem` sigue rechazando cualquier lectura que no sea 27 dígitos).
-    if (event.ctrlKey || event.metaKey || event.altKey || event.key.length > 1) {
-      return;
-    }
-
-    // A partir de aquí `event.key` es un único carácter imprimible. Como todo
-    // barcode de Indusel es numérico, solo se acepta un dígito 0-9 y se descarta
-    // cualquier otro carácter: esto filtra los símbolos inválidos (Ñ, =, ', etc.)
-    // que aparecen al decodificar caracteres de control del EAN-128 (FNC1/GS) bajo
-    // ciertos layouts de teclado en lectores de PC.
-    //
-    // Se valida por `event.key` (el CARÁCTER real) y NO por `event.code` (la tecla
-    // física): varios lectores integrados/Bluetooth en Android inyectan el texto vía
-    // IME/InputConnection sin generar un `event.code` real, así que depender de
-    // `event.code` los deja completamente sin funcionar (el campo no reacciona a la
-    // pistola y el operario termina abriendo el teclado en pantalla para escribir a
-    // mano). `event.key` sí refleja el dígito real en ambos casos.
-    event.preventDefault();
-    if (/^[0-9]$/.test(event.key)) {
-      this.barcodeInput += event.key;
-    }
+    // Respaldo por si el lector no dispara Enter: si el campo deja de "escribir"
+    // por 300ms con un código de longitud razonable, se procesa igual (mismo
+    // mecanismo que reader-inventory.ts).
+    if (this.scanTimer) clearTimeout(this.scanTimer);
+    this.scanTimer = setTimeout(() => {
+      const currentCode = (this.barcodeInput || '').trim();
+      if (currentCode.length >= 10) {
+        this.processItem(currentCode);
+      }
+    }, 300);
   }
 
   onSendClick(): void {

@@ -57,16 +57,6 @@ export class InventoryReader implements OnInit, OnDestroy {
   barcodeInput: string = '';
   private scanTimer: any;
 
-  /**
-   * Por defecto el campo NO pide el teclado en pantalla al enfocarse (inputmode
-   * "none" en el template): está pensado para recibir el escaneo de una pistola
-   * lectora (USB/Bluetooth), y en Android el teclado táctil se abre solo al
-   * enfocar el input y tapa la pantalla sin aportar nada quien va a escanear.
-   * Este flag lo activa a demanda para permitir el ingreso manual cuando no hay
-   * lector disponible.
-   */
-  manualKeyboard = false;
-
   // Lista de códigos leídos
   scannedCodes: string[] = [];
 
@@ -691,20 +681,6 @@ export class InventoryReader implements OnInit, OnDestroy {
       const el = document.getElementById('codigoBarras') as HTMLInputElement | null;
       el?.focus();
     }, 30);
-  }
-
-  /**
-   * Activa/oculta el teclado en pantalla para ingreso manual. Se hace blur+focus
-   * porque cambiar `inputmode` en un input que ya está enfocado no siempre alcanza
-   * a refrescar el teclado táctil en Android; al reenfocar, el navegador lo vuelve
-   * a evaluar con el nuevo valor.
-   */
-  toggleManualKeyboard(): void {
-    this.manualKeyboard = !this.manualKeyboard;
-    if (typeof document === 'undefined') return;
-    const el = document.getElementById('codigoBarras') as HTMLInputElement | null;
-    el?.blur();
-    setTimeout(() => el?.focus(), 50);
   }
 
   /**

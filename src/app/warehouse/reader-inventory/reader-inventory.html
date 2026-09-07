@@ -20,35 +20,20 @@
       </div>
 
       <label for="codigoBarras">Código de Barras</label>
-      <div style="display: flex; gap: 0.5rem; align-items: stretch">
-        <input
-          #barcodeInputEl
-          type="text"
-          id="codigoBarras"
-          placeholder="Escanee o ingrese código de barras"
-          [attr.inputmode]="manualKeyboard ? 'numeric' : 'none'"
-          [(ngModel)]="barcodeInput"
-          (keydown)="onKeyPress($event)"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          required
-          style="flex: 1"
-        />
-        <button
-          type="button"
-          class="btn-secondary"
-          style="flex: 0 0 auto; padding: 0 1rem"
-          (click)="toggleManualKeyboard()"
-          [title]="manualKeyboard ? 'Ocultar teclado en pantalla (usar lector)' : 'Mostrar teclado en pantalla (ingreso manual)'"
-        >
-          ⌨
-        </button>
-      </div>
-      <!-- Por defecto el campo no abre el teclado táctil al enfocarse (piensa que hay
-           una pistola lectora conectada); este botón lo habilita para escribir a mano
-           si no hay lector disponible. -->
+      <input
+        #barcodeInputEl
+        type="text"
+        id="codigoBarras"
+        placeholder="Escanee o ingrese código de barras"
+        inputmode="numeric"
+        [(ngModel)]="barcodeInput"
+        (keydown)="onKeyPress($event)"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        required
+      />
 
       <div class="button-group" style="margin-top: 12px">
         <button id="btnLimpiar" class="btn-secondary" (click)="clearData()">Limpiar</button>
