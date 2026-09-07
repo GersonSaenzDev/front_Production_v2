@@ -43,21 +43,6 @@ export class BarcodeReader implements OnInit, OnDestroy {
   /** Todo barcode de Indusel tiene EXACTAMENTE 27 dígitos (ver reader-inventory.ts). */
   private static readonly BARCODE_LENGTH = 27;
 
-  /**
-   * Mapa de tecla física (event.code, independiente del layout de teclado del SO)
-   * a dígito. Los lectores de código de barras emulan un teclado asumiendo layout US;
-   * con otro layout activo (p.ej. Español) o al decodificar caracteres de control del
-   * EAN-128 (FNC1/GS, sin representación imprimible), el navegador termina insertando
-   * símbolos inválidos (Ñ, =, ', etc.) en vez del dígito real si se confía en
-   * `event.key`. Usando `event.code` se ignora el layout por completo.
-   */
-  private static readonly DIGIT_CODE_MAP: Readonly<Record<string, string>> = {
-    Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4',
-    Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8', Digit9: '9',
-    Numpad0: '0', Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4',
-    Numpad5: '5', Numpad6: '6', Numpad7: '7', Numpad8: '8', Numpad9: '9'
-  };
-
   private dashboardService = inject(DashboardServices);
 
   barcodeInput = '';
@@ -158,24 +143,32 @@ export class BarcodeReader implements OnInit, OnDestroy {
       return;
     }
 
-    // Teclas de edición/navegación y atajos (Backspace, Delete, flechas, Ctrl+V, etc.):
-    // se dejan con su comportamiento nativo normal, sincronizado por ngModel como siempre.
+    // Teclas de edición/navegación, atajos y teclas especiales sin carácter propio
+    // (Backspace, Delete, flechas, Ctrl+V, 'Unidentified' que reportan algunos
+    // lectores Android que inyectan el texto vía IME, etc.): se dejan con su
+    // comportamiento nativo normal, sincronizado por ngModel como siempre. Esto es
+    // también la red de seguridad para lectores cuyo `event.key` no sea fiable: no
+    // se les bloquea, simplemente no se filtran (la validación final en
+    // `processItem` sigue rechazando cualquier lectura que no sea 27 dígitos).
     if (event.ctrlKey || event.metaKey || event.altKey || event.key.length > 1) {
       return;
     }
 
-    // A partir de aquí la tecla representa un carácter imprimible candidato.
-    // `event.code` identifica la tecla FÍSICA, independiente del layout de teclado
-    // del sistema operativo. Los lectores de código de barras emulan un teclado
-    // asumiendo layout US; con otro layout activo (p.ej. Español) o al decodificar
-    // caracteres de control del EAN-128 (FNC1/GS, sin representación imprimible),
-    // el navegador termina insertando símbolos inválidos (Ñ, =, ', etc.) si se confía
-    // en `event.key`. Como todo barcode de Indusel es numérico, solo se acepta el
-    // dígito físico y se descarta cualquier otra tecla.
+    // A partir de aquí `event.key` es un único carácter imprimible. Como todo
+    // barcode de Indusel es numérico, solo se acepta un dígito 0-9 y se descarta
+    // cualquier otro carácter: esto filtra los símbolos inválidos (Ñ, =, ', etc.)
+    // que aparecen al decodificar caracteres de control del EAN-128 (FNC1/GS) bajo
+    // ciertos layouts de teclado en lectores de PC.
+    //
+    // Se valida por `event.key` (el CARÁCTER real) y NO por `event.code` (la tecla
+    // física): varios lectores integrados/Bluetooth en Android inyectan el texto vía
+    // IME/InputConnection sin generar un `event.code` real, así que depender de
+    // `event.code` los deja completamente sin funcionar (el campo no reacciona a la
+    // pistola y el operario termina abriendo el teclado en pantalla para escribir a
+    // mano). `event.key` sí refleja el dígito real en ambos casos.
     event.preventDefault();
-    const digit = BarcodeReader.DIGIT_CODE_MAP[event.code];
-    if (digit !== undefined) {
-      this.barcodeInput += digit;
+    if (/^[0-9]$/.test(event.key)) {
+      this.barcodeInput += event.key;
     }
   }
 
