@@ -128,6 +128,16 @@ export class InventoryReader implements OnInit, OnDestroy {
     return this.pendingQueue.filter((i) => i.status !== 'error' || i.errorKind === 'transient').length;
   }
 
+  /**
+   * Igual que `pendingQueue` pero con la lectura más reciente primero, para que el
+   * usuario vea de inmediato lo que acaba de escanear sin desplazar la pantalla
+   * (mismo criterio aplicado en barcode-reader.ts). El orden interno de `pendingQueue`
+   * NO se toca: el envío al servidor sigue siendo FIFO (primero en llegar, primero en salir).
+   */
+  get pendingQueueDisplay(): PendingReading[] {
+    return [...this.pendingQueue].reverse();
+  }
+
   /** Lecturas rechazadas por el servidor que requieren revisión manual. */
   get errorCount(): number {
     return this.pendingQueue.filter((i) => i.status === 'error' && i.errorKind === 'permanent').length;
@@ -372,7 +382,8 @@ export class InventoryReader implements OnInit, OnDestroy {
     if (this.scanTimer) clearTimeout(this.scanTimer);
 
     if (!this.scannedCodes.includes(code)) {
-      this.scannedCodes.push(code);
+      // Más reciente primero, para verlo sin desplazar la pantalla (igual que en barcode-reader.ts).
+      this.scannedCodes.unshift(code);
       this.persistSession();
     }
 
@@ -885,7 +896,7 @@ export class InventoryReader implements OnInit, OnDestroy {
       return;
     }
     if (!this.scannedCodes.includes(barcode)) {
-      this.scannedCodes.push(barcode);
+      this.scannedCodes.unshift(barcode);
       this.statusMessage = 'Barcode duplicado añadido a escaneados.';
     } else {
       this.statusMessage = 'El barcode ya está en la lista de escaneados.';
