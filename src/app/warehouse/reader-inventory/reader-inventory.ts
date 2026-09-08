@@ -46,12 +46,43 @@ export class InventoryReader implements OnInit, OnDestroy {
   /** Longitud exacta de un barcode válido de Indusel (ver seeSearchReferenceStorageDAO en el backend). */
   private static readonly BARCODE_LENGTH = 27;
 
+  /**
+   * Tamaño exacto de un palet en modo Regleta: 10 unidades de la MISMA referencia con
+   * consecutivos que forman un rango contiguo (sin huecos, sin sobrantes). Antes se
+   * manejaban grupos de 4 o 5; el de 4 ya no se empaca así, esos productos ahora se
+   * registran individualmente en modo Lectura Simple.
+   */
+  private static readonly PALLET_SIZE = 10;
+
+  /**
+   * Referencias (codRef, dígitos 10-16 del código de 27 dígitos) que se empacan en
+   * palet de 10 unidades consecutivas. El sistema detecta esto SOLO a partir del
+   * propio código escaneado — el operario no elige ningún modo: según la referencia,
+   * el código pasa por la validación de palet (antes "Regleta") o se registra de
+   * inmediato en la cola individual (antes "Lectura Simple"). Así una referencia que
+   * ya no se agrupa nunca se queda esperando un palet que jamás se va a completar.
+   *
+   * Para sumar otra referencia a la regla del palet, basta con agregar su codRef aquí
+   * (mismo formato de 7 dígitos que devuelve `extractReference()`). Mantener
+   * sincronizada con la misma lista en barcode-reader.ts.
+   */
+  private static readonly PALLET_REFERENCES = new Set<string>(['0014171']);
+  private static readonly REF_START = 9;
+  private static readonly REF_LEN = 7;
+
   private dashService = inject(DashInventoryServices);
   private modalService = inject(NgbModal);
   private authService = inject(AuthService);
 
-  // Modo de lectura
-  readingMode: 'simple' | 'regleta' = 'simple';
+  /**
+   * Última detección automática (solo informativa, para que el operario/soporte pueda
+   * confirmar en campo que el sistema está reconociendo bien la referencia). Ya NO es
+   * un modo que el operario elija: se recalcula en cada escaneo válido según
+   * PALLET_REFERENCES. "individual" = cola de envío (antes "Lectura Simple");
+   * "palet" = validación de palet de 10 (antes "Regleta").
+   */
+  lastDetectedMode: 'individual' | 'palet' | null = null;
+  lastDetectedReference: string | null = null;
 
   // Código de barras actual
   barcodeInput: string = '';
@@ -179,17 +210,6 @@ export class InventoryReader implements OnInit, OnDestroy {
     }
   }
 
-  onModeChange(mode: 'simple' | 'regleta') {
-    this.readingMode = mode;
-    this.statusMessage = `Modo cambiado a ${mode === 'simple' ? 'Lectura Simple' : 'Regleta'}`;
-    if (mode === 'simple') {
-      this.regletaProducts = [];
-      if (this.online && this.pendingCount > 0) {
-        this.flushQueue();
-      }
-    }
-  }
-
   openUserModal(content: any) {
     const modalRef = this.modalService.open(content, { centered: true, backdrop: 'static', size: 'md' });
 
@@ -265,27 +285,65 @@ export class InventoryReader implements OnInit, OnDestroy {
             return;
           }
 
-          if (this.readingMode === 'simple') {
-            const item: StorageItem = data[0];
-            this.currentProduct = this.mapStorageItemToProduct(item);
-            this.statusMessage = `Producto encontrado: ${this.currentProduct.productName}`;
-          } else {
-            const mapped = data.map((d: StorageItem) => this.mapStorageItemToProduct(d));
-            for (const p of mapped) {
-              const exists = this.regletaProducts.some((r) => r.consecutivo === p.consecutivo || r.barcode === p.barcode);
-              if (!exists) this.regletaProducts.push(p);
-            }
-            if (this.regletaProducts.length > 5) {
-              this.regletaProducts = this.regletaProducts.slice(-5);
-            }
-            this.statusMessage = `Regleta actualizada (${this.regletaProducts.length}/5)`;
-          }
+          // fetchProductInfo() solo se invoca para referencias de palet (ver readBarcode()):
+          // las individuales se registran directo en la cola, sin consultar el backend aquí.
+          const product = this.mapStorageItemToProduct(data[0]);
+          this.tryAddToPallet(product);
         },
         error: (err) => {
           console.error('Error al consultar getStorage:', err);
           this.statusMessage = err?.message ? `Error: ${err.message}` : 'Error al consultar el backend.';
         }
       });
+  }
+
+  /**
+   * Intenta agregar un producto al palet en curso (modo Regleta). Reglas estrictas:
+   * - Las PALLET_SIZE (10) unidades deben ser de la MISMA referencia (productCode). Se puede
+   *   leer en cualquier orden, pero un código de otra referencia se rechaza sin tocar el palet.
+   * - Los consecutivos deben terminar formando un rango contiguo de EXACTAMENTE 10 números
+   *   (sin huecos, sin repetidos, sin sobrantes): un código que ensancharía el rango actual
+   *   a más de 10 posiciones se rechaza de inmediato, para detectar el error de lectura ahí
+   *   mismo en vez de dejar "completar" 10 unidades sueltas que no correspondan a un mismo palet.
+   * - Con el palet ya completo (10/10) no se aceptan más lecturas hasta enviarlo o limpiarlo.
+   */
+  private tryAddToPallet(product: Product): void {
+    if (this.regletaProducts.length >= InventoryReader.PALLET_SIZE) {
+      this.statusMessage = `El palet ya tiene los ${InventoryReader.PALLET_SIZE} códigos completos. Envíelo o presione "Limpiar" antes de escanear el siguiente.`;
+      return;
+    }
+
+    const alreadyScanned = this.regletaProducts.some((r) => r.barcode === product.barcode || r.consecutivo === product.consecutivo);
+    if (alreadyScanned) {
+      this.statusMessage = 'Este código ya fue escaneado en el palet actual.';
+      return;
+    }
+
+    if (this.regletaProducts.length > 0 && this.regletaProducts[0].productCode !== product.productCode) {
+      this.statusMessage = `Referencia distinta: el palet en curso es "${this.regletaProducts[0].productCode}" y este código es "${product.productCode}". Las ${InventoryReader.PALLET_SIZE} unidades deben ser de la misma referencia.`;
+      return;
+    }
+
+    const newNum = parseInt(product.consecutivo, 10);
+    if (isNaN(newNum)) {
+      this.statusMessage = 'No se pudo interpretar el consecutivo de este código. Vuelva a escanearlo.';
+      return;
+    }
+
+    const existingNums = this.regletaProducts.map((r) => parseInt(r.consecutivo, 10)).filter((n) => !isNaN(n));
+    const allNums = [...existingNums, newNum];
+    const span = Math.max(...allNums) - Math.min(...allNums) + 1;
+    if (span > InventoryReader.PALLET_SIZE) {
+      this.statusMessage = `Este consecutivo (${product.consecutivo}) no es consecutivo con el palet en curso (rango actual ${Math.min(...existingNums)}–${Math.max(...existingNums)}). Verifique que sea del mismo palet.`;
+      return;
+    }
+
+    this.regletaProducts.push(product);
+
+    this.statusMessage =
+      this.regletaProducts.length === InventoryReader.PALLET_SIZE
+        ? `✔ Palet completo (${InventoryReader.PALLET_SIZE}/${InventoryReader.PALLET_SIZE}) — referencia ${product.productCode}. Ya puede enviarlo al inventario.`
+        : `Palet en progreso: ${this.regletaProducts.length}/${InventoryReader.PALLET_SIZE} — referencia ${product.productCode}.`;
   }
 
   clearData() {
@@ -381,23 +439,36 @@ export class InventoryReader implements OnInit, OnDestroy {
     // Limpiar temporizadores activos
     if (this.scanTimer) clearTimeout(this.scanTimer);
 
-    if (!this.scannedCodes.includes(code)) {
-      // Más reciente primero, para verlo sin desplazar la pantalla (igual que en barcode-reader.ts).
-      this.scannedCodes.unshift(code);
-      this.persistSession();
-    }
+    // Detección automática (sin pedirle nada al operario): la referencia embebida en el
+    // propio código dice si esa unidad va en palet de 10 (antes "Regleta") o se registra
+    // de inmediato en la cola individual (antes "Lectura Simple"). Ver PALLET_REFERENCES.
+    const reference = this.extractReference(code);
+    const isPalletReference = InventoryReader.PALLET_REFERENCES.has(reference);
+    this.lastDetectedMode = isPalletReference ? 'palet' : 'individual';
+    this.lastDetectedReference = reference;
 
-    if (this.readingMode === 'simple') {
-      // Modo simple: NO se envía al servidor de inmediato. Se guarda en la cola local
-      // (offline-first) y se carga cuando haya conexión.
-      this.enqueueReading(code);
-    } else {
-      // Modo regleta: comportamiento original sin cambios.
+    if (isPalletReference) {
+      // Palet: la validación de referencia única + consecutivos contiguos ocurre en
+      // tryAddToPallet(), una vez resuelto el producto.
       this.fetchProductInfo(code);
+    } else {
+      // Individual: NO se envía al servidor de inmediato. Se guarda en la cola local
+      // (offline-first) y se carga cuando haya conexión — mismo mecanismo de siempre,
+      // ahora decidido por la referencia y no por un modo elegido a mano.
+      if (!this.scannedCodes.includes(code)) {
+        // Más reciente primero, para verlo sin desplazar la pantalla (igual que en barcode-reader.ts).
+        this.scannedCodes.unshift(code);
+        this.persistSession();
+      }
+      this.enqueueReading(code);
     }
 
     // Limpieza importante
     this.barcodeInput = '';
+  }
+
+  private extractReference(code: string): string {
+    return code.substring(InventoryReader.REF_START, InventoryReader.REF_START + InventoryReader.REF_LEN);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -451,8 +522,6 @@ export class InventoryReader implements OnInit, OnDestroy {
 
   /** Botón "Cargar al servidor": intenta vaciar la cola manualmente. */
   onUploadClick(): void {
-    if (this.readingMode !== 'simple') return;
-
     if (this.pendingCount === 0) {
       this.statusMessage = 'No hay lecturas pendientes por cargar.';
       return;
@@ -803,13 +872,8 @@ export class InventoryReader implements OnInit, OnDestroy {
    * Envía al backend los productos seleccionados junto con los datos de usuario (área / nombres).
    */
 
+  /** Botón "Registrar Palet al Inventario" (validación de palet de 10 — antes "Regleta"). */
   registerInventory() {
-    // En modo simple el registro va por la cola offline (no envío directo).
-    if (this.readingMode === 'simple') {
-      this.onUploadClick();
-      return;
-    }
-
     if (!this.inventoryArea.trim()) {
       this.statusMessage = 'Ingrese el Área antes de registrar.';
       return;
@@ -824,6 +888,14 @@ export class InventoryReader implements OnInit, OnDestroy {
 
     if (!productsToRegister || productsToRegister.length === 0) {
       this.statusMessage = 'No hay productos para registrar.';
+      return;
+    }
+
+    // Envío bloqueado hasta completar EXACTAMENTE el palet (nunca 9, nunca 11): la validación
+    // de referencia única y consecutivos contiguos ya ocurrió al escanear (tryAddToPallet), así
+    // que llegar aquí con longitud distinta a PALLET_SIZE solo puede significar palet incompleto.
+    if (productsToRegister.length !== InventoryReader.PALLET_SIZE) {
+      this.statusMessage = `El palet debe tener exactamente ${InventoryReader.PALLET_SIZE} unidades antes de enviar (lleva ${productsToRegister.length}/${InventoryReader.PALLET_SIZE}). Complete la lectura o presione "Limpiar" para descartar este palet.`;
       return;
     }
 

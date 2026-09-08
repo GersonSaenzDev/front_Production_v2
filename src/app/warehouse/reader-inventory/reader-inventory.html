@@ -4,8 +4,8 @@
     <h1>Lectura de Código de Barras Bodega Indusel</h1>
   </header>
 
-  <!-- Control del lote actual: cuánto se ha escaneado vs. cuánto ya confirmó el servidor. -->
-  <div class="session-counters" *ngIf="readingMode === 'simple'">
+  <!-- Control del lote actual (cola individual): cuánto se ha escaneado vs. cuánto ya confirmó el servidor. -->
+  <div class="session-counters">
     <div class="session-counter-box counter-scanned">
       <span class="counter-title">Escaneados</span>
       <span class="counter-value">{{ scannedCodes.length }}</span>
@@ -19,17 +19,6 @@
   <main class="main-content">
     <section class="left-panel">
       <h2>Entrada de Códigos</h2>
-
-      <div class="mode-selector">
-        <label class="mode-option">
-          <input type="radio" name="modoLectura" value="simple" [(ngModel)]="readingMode" (change)="onModeChange('simple')" />
-          Lectura Simple
-        </label>
-        <label class="mode-option">
-          <input type="radio" name="modoLectura" value="regleta" [(ngModel)]="readingMode" (change)="onModeChange('regleta')" />
-          Regleta (4-5 códigos)
-        </label>
-      </div>
 
       <label for="codigoBarras">Código de Barras</label>
       <input
@@ -54,8 +43,15 @@
         <button id="btnUsuarioInventario" class="btn-primary" (click)="openUserModal(userModal)">Usuario Inventario</button>
       </div>
 
-      <!-- Estado de conexión / cola (solo modo simple) -->
-      <div *ngIf="readingMode === 'simple'" class="queue-status" style="margin-top: 10px; font-size: 0.85rem">
+      <!-- Detección automática por referencia: el operario no elige nada, esto es solo
+           para confirmar en campo que el sistema está leyendo bien la referencia. -->
+      <div *ngIf="lastDetectedMode" class="detected-mode" style="margin-top: 10px; font-size: 0.85rem">
+        Última lectura: referencia {{ lastDetectedReference }} ·
+        <strong>{{ lastDetectedMode === 'palet' ? 'Palet (10 unidades)' : 'Individual' }}</strong>
+      </div>
+
+      <!-- Estado de conexión / cola individual -->
+      <div class="queue-status" style="margin-top: 10px; font-size: 0.85rem">
         <span [class.text-success]="online" [class.text-danger]="!online">
           {{ online ? '● En línea' : '○ Sin conexión — las lecturas se guardan localmente' }}
         </span>
@@ -168,13 +164,13 @@
     <section class="right-panel">
       <h2>
         Información del Producto
-        <span *ngIf="readingMode === 'simple'" class="badge ms-2" [class.bg-success]="online" [class.bg-secondary]="!online">
+        <span class="badge ms-2" [class.bg-success]="online" [class.bg-secondary]="!online">
           {{ online ? 'En línea' : 'Sin conexión' }}
         </span>
       </h2>
 
-      <!-- MODO SIMPLE: cola de lecturas (offline-first). NO se envía en cada escaneo. -->
-      <div class="reading-queue" *ngIf="readingMode === 'simple'">
+      <!-- Cola individual (offline-first): referencias que NO están en PALLET_REFERENCES. -->
+      <div class="reading-queue">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Lecturas pendientes ({{ pendingCount }})</strong>
           <span *ngIf="errorCount > 0" class="badge bg-warning text-dark">{{ errorCount }} con error</span>
@@ -227,7 +223,17 @@
         </div>
       </div>
 
-      <div class="regleta-view" *ngIf="readingMode === 'regleta'">
+      <!-- Palet en progreso (10 unidades consecutivas, misma referencia): solo referencias
+           que estén en PALLET_REFERENCES pasan por aquí; el resto va a la cola individual. -->
+      <div class="regleta-view">
+        <div class="pallet-progress" [class.pallet-complete]="regletaProducts.length === 10">
+          <strong>Palet: {{ regletaProducts.length }} / 10</strong>
+          <span *ngIf="regletaProducts.length > 0 && regletaProducts.length < 10">
+            · referencia {{ regletaProducts[0].productCode }} · faltan {{ 10 - regletaProducts.length }}
+          </span>
+          <span *ngIf="regletaProducts.length === 10">· ✔ completo, listo para enviar</span>
+        </div>
+
         <div class="regleta-products" *ngIf="regletaProducts.length > 0; else noRegletaProducts">
           <div class="regleta-product" *ngFor="let product of regletaProducts">
             <h4>{{ product.productName }}</h4>
@@ -254,25 +260,34 @@
           </div>
         </div>
         <ng-template #noRegletaProducts>
-          <p class="placeholder">Escanee códigos de barras para crear una regleta de productos</p>
+          <p class="placeholder">Escanee los 10 códigos del palet (en cualquier orden; deben ser consecutivos y de la misma referencia)</p>
         </ng-template>
       </div>
 
-      <div class="action-bar" style="margin-top: 20px">
-        <!-- MODO SIMPLE: carga por lote de la cola offline -->
-        <button
-          *ngIf="readingMode === 'simple'"
-          class="btn-register btn btn-success"
-          [disabled]="flushing || pendingCount === 0"
-          (click)="onUploadClick()"
-        >
-          {{ flushing ? 'Cargando…' : 'Cargar al servidor (' + pendingCount + ')' }}
-        </button>
+      <!-- Los dos flujos son independientes y siempre están visibles: se puede tener una
+           cola individual pendiente Y un palet en progreso al mismo tiempo (el operario
+           puede alternar referencias sin perder ninguno de los dos). -->
+      <div class="action-bar">
+        <!-- Cola individual: carga por lote lo que no esté en PALLET_REFERENCES. -->
+        <div class="action-item">
+          <span class="action-label">Cola individual</span>
+          <button class="btn-register btn btn-success" [disabled]="flushing || pendingCount === 0" (click)="onUploadClick()">
+            {{ flushing ? 'Cargando…' : 'Cargar al servidor (' + pendingCount + ')' }}
+          </button>
+        </div>
 
-        <!-- MODO REGLETA: comportamiento original -->
-        <button *ngIf="readingMode === 'regleta'" class="btn-register btn btn-success" (click)="registerInventory()">
-          Registrar al Inventario
-        </button>
+        <!-- Palet: azul mientras está incompleto, verde y habilitado solo al llegar a 10/10. -->
+        <div class="action-item">
+          <span class="action-label">Palet (referencias agrupadas)</span>
+          <button
+            class="btn-register btn-pallet"
+            [class.btn-success]="regletaProducts.length === 10"
+            [disabled]="regletaProducts.length !== 10 || loading"
+            (click)="registerInventory()"
+          >
+            {{ regletaProducts.length === 10 ? 'Registrar Palet al Inventario' : 'Palet: ' + regletaProducts.length + '/10' }}
+          </button>
+        </div>
       </div>
     </section>
   </main>

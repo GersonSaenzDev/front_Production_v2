@@ -259,6 +259,24 @@ button:hover {
   font-weight: 500;
 }
 
+/* Progreso del palet (Regleta = 10 unidades consecutivas de la misma referencia):
+   naranja mientras falta, verde cuando está completo y listo para enviar. */
+.pallet-progress {
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  color: #ef6c00;
+  font-size: 0.95rem;
+}
+
+.pallet-progress.pallet-complete {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+  color: #2e7d32;
+}
+
 .regleta-products {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -278,12 +296,29 @@ button:hover {
   color: #4b6cb7;
 }
 
-/* Barra de acción (botón "Cargar al servidor" / "Registrar al Inventario"): siempre
-   visible, con separación clara respecto a lo que venga después (footer de la app),
-   para que nunca se vea "pegado"/solapado ni pierda su etiqueta en pantallas angostas. */
+/* Barra de acción: cola individual + palet, siempre visibles a la vez. `gap` explícito
+   es CLAVE — sin él los dos botones (ambos full-width, sin margen propio) quedan
+   pegados uno contra el otro y se ven como un solo botón confuso (visto en tablet 8"). */
 .action-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
   margin-top: 1.25rem;
   margin-bottom: 1.5rem;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.action-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #607d8b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .btn-register {
@@ -303,6 +338,26 @@ button:hover {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* Botón de palet: azul mientras está incompleto (a propósito distinto del verde de
+   "enviar"), cambia a verde solo cuando llega a 10/10 y realmente se puede registrar
+   — refuerza con color, no solo con el texto, que todavía no está listo. */
+.btn-pallet {
+  background-color: #4b6cb7;
+  border-color: #4b6cb7;
+  box-shadow: 0 6px 16px rgba(75, 108, 183, 0.35);
+}
+
+.btn-pallet:hover:not(:disabled) {
+  background-color: #3a5499;
+  border-color: #3a5499;
+}
+
+.btn-pallet.btn-success {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
 }
 
 /* ============================================================

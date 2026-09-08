@@ -43,6 +43,33 @@ export class BarcodeReader implements OnInit, OnDestroy {
   /** Todo barcode de Indusel tiene EXACTAMENTE 27 dígitos (ver reader-inventory.ts). */
   private static readonly BARCODE_LENGTH = 27;
 
+  /**
+   * Un palet real está formado por 10 unidades consecutivas de la MISMA referencia
+   * (antes se validaban grupos de 4 o 5 — el tamaño de una sola caja física — pero
+   * el palet completo son 2 cajas). Posiciones dentro del código de 27 dígitos, igual
+   * que en el backend (ver seeSearchReferenceStorageDAO / reader-inventory.ts):
+   * dígitos 10-16 = referencia (codRef), dígitos 18-27 = consecutivo.
+   */
+  private static readonly PALLET_SIZE = 10;
+  private static readonly REF_START = 9;
+  private static readonly REF_LEN = 7;
+  private static readonly SERIAL_START = 17;
+  private static readonly SERIAL_LEN = 10;
+
+  /**
+   * Referencias (codRef, dígitos 10-16) que SÍ se empacan en palet de 10 unidades
+   * consecutivas. Cualquier otra referencia se registra de inmediato, de forma
+   * individual — el operario NUNCA elige nada: el propio código escaneado dice, por
+   * su referencia, si debe esperar a completar un palet o no. Así una referencia que
+   * ya no se agrupa (como la de 4 que ahora se envía individual) nunca se queda
+   * atascada esperando un palet de 10 que jamás se va a completar.
+   *
+   * Para sumar otra referencia a la regla del palet, basta con agregar su codRef aquí
+   * (mismo formato de 7 dígitos que devuelve `extractReference()`). Mantener
+   * sincronizada con la misma lista en reader-inventory.ts.
+   */
+  private static readonly PALLET_REFERENCES = new Set<string>(['0014171']);
+
   private dashboardService = inject(DashboardServices);
 
   barcodeInput = '';
@@ -50,6 +77,14 @@ export class BarcodeReader implements OnInit, OnDestroy {
 
   uniqueItems: string[] = [];
   repeatedItems: string[] = [];
+
+  /**
+   * Códigos ya leídos del palet en curso, aún NO registrados en `uniqueItems`. Solo se
+   * "confirman" (pasan a Únicos, quedan disponibles para "Guardar") cuando se completan
+   * las PALLET_SIZE unidades — así nunca se envía un palet incompleto, y se pueden
+   * completar varios palets antes de presionar "Guardar" (se van acumulando en Únicos).
+   */
+  currentPallet: string[] = [];
 
   message = '';
   messageColor: MessageColor = 'neutral';
@@ -200,13 +235,23 @@ export class BarcodeReader implements OnInit, OnDestroy {
       return;
     }
 
+    // Cancela el respaldo de 300ms armado por el último dígito de ESTE código (igual que
+    // reader-inventory.ts en readBarcode()). Si no se cancela aquí, ese timer puede seguir
+    // vivo y disparar 250ms más tarde en plena mitad del SIGUIENTE código que se esté
+    // tecleando, procesándolo dos veces (una vez de más, aquí de forma anticipada y otra
+    // por su propio Enter) y generando una relectura fantasma — no una repetición real.
+    if (this.scanTimer) {
+      clearTimeout(this.scanTimer);
+      this.scanTimer = null;
+    }
+
     let isRepeated = false;
 
     if (this.historicItems.has(trimmedItem)) {
       isRepeated = true;
       this.message = `REGISTRO EXISTENTE EN EL HISTORICO: "${trimmedItem}"`.toUpperCase();
       this.messageColor = 'red';
-    } else if (this.uniqueItems.includes(trimmedItem)) {
+    } else if (this.uniqueItems.includes(trimmedItem) || this.currentPallet.includes(trimmedItem)) {
       isRepeated = true;
       this.message = `EL ÍTEM "${trimmedItem}" YA FUE ESCANEADO EN ESTA SESIÓN.`.toUpperCase();
       this.messageColor = 'red';
@@ -216,18 +261,89 @@ export class BarcodeReader implements OnInit, OnDestroy {
       if (!this.repeatedItems.includes(trimmedItem)) {
         this.repeatedItems.push(trimmedItem);
       }
+    } else if (BarcodeReader.PALLET_REFERENCES.has(this.extractReference(trimmedItem))) {
+      // Esta referencia SÍ va en palet: no se registra de inmediato, debe completar
+      // las 10 unidades consecutivas antes de estar disponible para "Guardar".
+      this.tryAddToPallet(trimmedItem);
     } else {
-      // Se agrega al INICIO (no al final) para que la última lectura quede siempre
-      // visible arriba de la lista, sin tener que scrollear para confirmarla.
+      // Referencia individual (no está en PALLET_REFERENCES): se registra de inmediato,
+      // sin esperar a nada — así nunca se queda "atascada" esperando un palet que esa
+      // referencia ya no forma.
       this.uniqueItems.unshift(trimmedItem);
+      this.addUniqueItemToHistoric(trimmedItem);
       this.message = `Ítem "${trimmedItem}" registrado correctamente.`;
       this.messageColor = 'neutral';
-      this.addUniqueItemToHistoric(trimmedItem);
     }
 
     this.persistDraft();
     this.barcodeInput = '';
     this.refocusInput();
+  }
+
+  private extractReference(code: string): string {
+    return code.substring(BarcodeReader.REF_START, BarcodeReader.REF_START + BarcodeReader.REF_LEN);
+  }
+
+  private extractSerial(code: string): number {
+    return parseInt(code.substring(BarcodeReader.SERIAL_START, BarcodeReader.SERIAL_START + BarcodeReader.SERIAL_LEN), 10);
+  }
+
+  /**
+   * Agrega un código al palet en curso. Mismo criterio estricto que reader-inventory.ts
+   * (modo Regleta): las PALLET_SIZE (10) unidades deben ser de la MISMA referencia
+   * (dígitos 10-16) y sus consecutivos (dígitos 18-27) deben terminar formando un rango
+   * contiguo de EXACTAMENTE 10 números — sin huecos, sin repetidos, sin sobrantes. Se
+   * puede leer en cualquier orden; un código que no encaja se rechaza de inmediato sin
+   * tocar el palet en curso, para detectar el error de lectura ahí mismo.
+   *
+   * Al completarse el palet, sus 10 códigos pasan a `uniqueItems` (quedan disponibles
+   * para "Guardar") — así se pueden completar varios palets antes de enviar, sin que
+   * ninguno se envíe incompleto.
+   */
+  private tryAddToPallet(code: string): void {
+    const newRef = this.extractReference(code);
+    const newSerial = this.extractSerial(code);
+
+    if (isNaN(newSerial)) {
+      this.message = `NO SE PUDO INTERPRETAR EL CONSECUTIVO DEL CÓDIGO "${code}". VUELVA A ESCANEARLO.`;
+      this.messageColor = 'red';
+      return;
+    }
+
+    if (this.currentPallet.length > 0) {
+      const currentRef = this.extractReference(this.currentPallet[0]);
+      if (currentRef !== newRef) {
+        this.message =
+          `REFERENCIA DISTINTA: EL PALET EN CURSO ES "${currentRef}" Y ESTE CÓDIGO ES "${newRef}". LAS ${BarcodeReader.PALLET_SIZE} UNIDADES DEBEN SER DE LA MISMA REFERENCIA.`;
+        this.messageColor = 'red';
+        return;
+      }
+
+      const existingSerials = this.currentPallet.map((c) => this.extractSerial(c));
+      const span = Math.max(...existingSerials, newSerial) - Math.min(...existingSerials, newSerial) + 1;
+      if (span > BarcodeReader.PALLET_SIZE) {
+        this.message =
+          `ESTE CONSECUTIVO NO ES CONSECUTIVO CON EL PALET EN CURSO (RANGO ACTUAL ${Math.min(...existingSerials)}–${Math.max(...existingSerials)}). VERIFIQUE QUE SEA DEL MISMO PALET.`;
+        this.messageColor = 'red';
+        return;
+      }
+    }
+
+    this.currentPallet.push(code);
+
+    if (this.currentPallet.length === BarcodeReader.PALLET_SIZE) {
+      // Más reciente primero, igual que el resto de la lista de Únicos.
+      for (const c of [...this.currentPallet].reverse()) {
+        this.uniqueItems.unshift(c);
+        this.addUniqueItemToHistoric(c);
+      }
+      this.message = `✔ PALET COMPLETO (${BarcodeReader.PALLET_SIZE}/${BarcodeReader.PALLET_SIZE}) — REFERENCIA ${newRef}. AGREGADO AL LOTE.`;
+      this.messageColor = 'green';
+      this.currentPallet = [];
+    } else {
+      this.message = `PALET EN PROGRESO: ${this.currentPallet.length}/${BarcodeReader.PALLET_SIZE} — REFERENCIA ${newRef}.`;
+      this.messageColor = 'neutral';
+    }
   }
 
   private addUniqueItemToHistoric(item: string): void {
@@ -263,20 +379,18 @@ export class BarcodeReader implements OnInit, OnDestroy {
 
     this.sending = true;
 
-    // Un código presente en AMBAS listas fue escaneado más de una vez en esta misma
-    // sesión (gatillo repetido, glitch del lector, etc.): no hay certeza de que sea
-    // una unidad física distinta, así que NO se envía.
-    const duplicatedInSession = snapshotUnique.filter((item) => snapshotRepeated.includes(item));
-    const itemsToSend = snapshotUnique.filter((item) => !snapshotRepeated.includes(item));
-
-    if (duplicatedInSession.length > 0) {
-      // Se habían marcado en el histórico permanente apenas se escanearon la primera
-      // vez (para poder detectar la repetición). Como finalmente NO se envían, se
-      // revierte esa marca: si no, un escaneo legítimo futuro de ese mismo código
-      // quedaría bloqueado para siempre como "ya existe en el histórico".
-      duplicatedInSession.forEach((item) => this.historicItems.delete(item));
-      this.persistHistoric();
-    }
+    // Un código presente en AMBAS listas se leyó más de una vez en esta sesión, pero su
+    // PRIMERA lectura (la que quedó en Únicos) ya pasó la validación del palet y
+    // corresponde a una unidad física real: SÍ se envía. "Repetidos" es solo un aviso
+    // para el operario (relectura del mismo código, gatillo repetido, glitch del
+    // lector, etc.) — NUNCA debe hacer que se pierda el registro original; eso fue lo
+    // que causaba que unidades realmente escaneadas no llegaran al ERP.
+    //
+    // Esto no puede generar un duplicado real en el servidor: un código que YA se envió
+    // en un "Guardar" anterior queda marcado en `historicItems` y `processItem` jamás
+    // vuelve a dejarlo entrar a `uniqueItems`, sin importar cuántas veces se relea.
+    const repeatedInSession = snapshotUnique.filter((item) => snapshotRepeated.includes(item));
+    const itemsToSend = snapshotUnique;
 
     // Se retira del working set exactamente lo que se tomó en esta foto, dejando
     // intacto cualquier ítem escaneado después de tomarla.
@@ -284,21 +398,12 @@ export class BarcodeReader implements OnInit, OnDestroy {
     this.repeatedItems = this.repeatedItems.filter((item) => !snapshotRepeated.includes(item));
     this.persistDraft();
 
-    if (itemsToSend.length === 0) {
-      this.message =
-        `TODOS LOS ÍTEMS DE ESTE LOTE (${duplicatedInSession.length}) SE DETECTARON COMO REPETIDOS EN LA SESIÓN: NO SE ENVIÓ NINGÚN ARCHIVO.`;
-      this.messageColor = 'orange';
-      this.sending = false;
-      this.refocusInput();
-      return;
-    }
-
     const fileName = this.buildFileName();
     const csvContent = itemsToSend.join('\n') + '\n';
-    const excludedNote =
-      duplicatedInSession.length > 0 ? ` (${duplicatedInSession.length} REPETIDO(S) DE SESIÓN EXCLUIDO(S))` : '';
+    const repeatedNote =
+      repeatedInSession.length > 0 ? ` (${repeatedInSession.length} CON RELECTURA EN LA SESIÓN, SE ENVÍAN IGUAL)` : '';
 
-    this.message = `Archivo "${fileName}" guardado${excludedNote}. Enviando al servidor...`.toUpperCase();
+    this.message = `Archivo "${fileName}" guardado${repeatedNote}. Enviando al servidor...`.toUpperCase();
     this.messageColor = 'neutral';
 
     // Se encola ANTES de intentar enviar: si el navegador se cierra o el envío se
@@ -310,11 +415,11 @@ export class BarcodeReader implements OnInit, OnDestroy {
 
     if (sent) {
       this.removePendingById(pendingId);
-      this.message = `Archivo "${fileName}" guardado y enviado al servidor${excludedNote}.`.toUpperCase();
+      this.message = `Archivo "${fileName}" guardado y enviado al servidor${repeatedNote}.`.toUpperCase();
       this.messageColor = 'green';
     } else {
       this.message =
-        `Archivo "${fileName}" guardado${excludedNote}. Sin conexión con el servidor: se reenviará automáticamente.`.toUpperCase();
+        `Archivo "${fileName}" guardado${repeatedNote}. Sin conexión con el servidor: se reenviará automáticamente.`.toUpperCase();
       this.messageColor = 'orange';
     }
 
@@ -461,12 +566,15 @@ export class BarcodeReader implements OnInit, OnDestroy {
       const parsed = JSON.parse(raw);
       const unique = Array.isArray(parsed?.uniqueItems) ? parsed.uniqueItems : [];
       const repeated = Array.isArray(parsed?.repeatedItems) ? parsed.repeatedItems : [];
-      if (unique.length === 0 && repeated.length === 0) return;
+      const pallet = Array.isArray(parsed?.currentPallet) ? parsed.currentPallet : [];
+      if (unique.length === 0 && repeated.length === 0 && pallet.length === 0) return;
 
       this.uniqueItems = unique;
       this.repeatedItems = repeated;
+      this.currentPallet = pallet;
+      const palletNote = pallet.length > 0 ? ` Y UN PALET EN PROGRESO (${pallet.length}/${BarcodeReader.PALLET_SIZE})` : '';
       this.message =
-        `SE RECUPERARON ${unique.length} ÍTEM(S) SIN GUARDAR DE UNA SESIÓN ANTERIOR (CIERRE INESPERADO). REVISE Y GUARDE.`;
+        `SE RECUPERARON ${unique.length} ÍTEM(S) SIN GUARDAR DE UNA SESIÓN ANTERIOR (CIERRE INESPERADO)${palletNote}. REVISE Y GUARDE.`;
       this.messageColor = 'orange';
     } catch (err) {
       console.error('No se pudo leer el borrador de la sesión de escaneo:', err);
@@ -476,13 +584,13 @@ export class BarcodeReader implements OnInit, OnDestroy {
   private persistDraft(): void {
     try {
       if (typeof localStorage === 'undefined') return;
-      if (this.uniqueItems.length === 0 && this.repeatedItems.length === 0) {
+      if (this.uniqueItems.length === 0 && this.repeatedItems.length === 0 && this.currentPallet.length === 0) {
         localStorage.removeItem(BarcodeReader.DRAFT_KEY);
         return;
       }
       localStorage.setItem(
         BarcodeReader.DRAFT_KEY,
-        JSON.stringify({ uniqueItems: this.uniqueItems, repeatedItems: this.repeatedItems })
+        JSON.stringify({ uniqueItems: this.uniqueItems, repeatedItems: this.repeatedItems, currentPallet: this.currentPallet })
       );
     } catch (err) {
       console.error('No se pudo guardar el borrador de la sesión de escaneo:', err);

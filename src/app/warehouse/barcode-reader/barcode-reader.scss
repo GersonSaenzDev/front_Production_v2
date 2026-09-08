@@ -56,6 +56,19 @@
   color: #c62828;
 }
 
+/* Progreso del palet en curso (10 unidades consecutivas de la misma referencia). */
+.pallet-progress {
+  max-width: 600px;
+  width: calc(100% - 2rem);
+  margin: 0.75rem auto 0;
+  padding: 0.6rem 1rem;
+  background: #fff3e0;
+  border: 1px solid #ef6c00;
+  border-radius: 8px;
+  color: #ef6c00;
+  font-size: 0.9rem;
+}
+
 .scan-input-group {
   max-width: 600px;
   width: 100%;

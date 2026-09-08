@@ -15,6 +15,13 @@
     </div>
   </div>
 
+  <!-- Palet en curso: 10 unidades consecutivas de la MISMA referencia. Nunca se puede
+       enviar incompleto; al completarse pasa a "Únicos" y se puede seguir con el siguiente. -->
+  <div class="pallet-progress" *ngIf="currentPallet.length > 0">
+    <strong>Palet en progreso: {{ currentPallet.length }} / 10</strong>
+    <span>· referencia {{ currentPallet[0].substring(9, 16) }} · faltan {{ 10 - currentPallet.length }}</span>
+  </div>
+
   <div class="scan-input-group">
     <label for="barcodeReaderInput">Ingresar número o escanear</label>
     <div class="input-with-button">
