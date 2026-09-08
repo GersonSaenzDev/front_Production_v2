@@ -60,6 +60,9 @@ export class InventoryReader implements OnInit, OnDestroy {
   // Lista de códigos leídos
   scannedCodes: string[] = [];
 
+  /** Cuántos de los códigos escaneados (del lote actual) ya se confirmaron en el servidor. */
+  sentCount: number = 0;
+
   // Producto actual (modo simple)
   currentProduct: Product | null = null;
 
@@ -94,6 +97,8 @@ export class InventoryReader implements OnInit, OnDestroy {
   //  Cola offline-first (SOLO modo simple; regleta no se toca)
   // ─────────────────────────────────────────────────────────────────────────────
   private readonly QUEUE_KEY = 'inventory-reader.pending-queue.v1';
+  /** Contadores del lote actual (escaneados / enviados), para sobrevivir un recargo accidental de la página. */
+  private readonly SESSION_KEY = 'inventory-reader.session-counters.v1';
 
   /** Lecturas de modo simple retenidas hasta poder cargarlas al servidor. */
   pendingQueue: PendingReading[] = [];
@@ -106,6 +111,8 @@ export class InventoryReader implements OnInit, OnDestroy {
 
   /** Resumen del último intento de sincronización. */
   lastSyncMessage = '';
+  /** Tipo del último resumen, para darle color a `lastSyncMessage` (éxito total vs. con pendientes/errores). */
+  lastSyncKind: 'success' | 'warning' | null = null;
 
   private readonly onlineHandler = () => this.onConnectivityChange(true);
   private readonly offlineHandler = () => this.onConnectivityChange(false);
@@ -130,6 +137,7 @@ export class InventoryReader implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadQueue();
+    this.loadSession();
 
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.onlineHandler);
@@ -273,10 +281,14 @@ export class InventoryReader implements OnInit, OnDestroy {
   clearData() {
     this.barcodeInput = '';
     this.scannedCodes = [];
+    this.sentCount = 0;
     this.currentProduct = null;
     this.regletaProducts = [];
     // IMPORTANTE: "Limpiar" NO borra la cola de lecturas pendientes (this.pendingQueue).
     // Esos datos solo salen de la cola cuando se cargan al servidor o se eliminan uno a uno.
+    // Sí reinicia el contador de "Escaneados / Enviados" del lote: es la forma explícita
+    // que tiene el usuario de decir "empiezo a contar un lote nuevo".
+    this.persistSession();
     // opcional: NO limpiar el Área aquí si quieres mantenerla
     // this.inventoryArea = '';
     this.statusMessage = 'Datos limpiados (la cola de pendientes se conserva)';
@@ -361,6 +373,7 @@ export class InventoryReader implements OnInit, OnDestroy {
 
     if (!this.scannedCodes.includes(code)) {
       this.scannedCodes.push(code);
+      this.persistSession();
     }
 
     if (this.readingMode === 'simple') {
@@ -472,11 +485,15 @@ export class InventoryReader implements OnInit, OnDestroy {
       const ok = await this.sendQueueItem(item);
       if (ok) {
         sent++;
+        // Contador del lote (sobrevive a que el envío haya sido automático, uno por
+        // escaneo, y no solo al hacer clic en "Cargar al servidor").
+        this.sentCount++;
       } else {
         failed++;
       }
       this.persistQueue();
     }
+    this.persistSession();
 
     this.flushing = false;
 
@@ -485,21 +502,31 @@ export class InventoryReader implements OnInit, OnDestroy {
       failed === 0
         ? `✔ ${sent} lectura(s) cargada(s) al servidor.`
         : `${sent} enviada(s), ${failed} sin enviar. Quedan ${remaining} pendiente(s).`;
+    this.lastSyncKind = failed === 0 ? 'success' : 'warning';
     this.statusMessage = this.lastSyncMessage;
 
-    // Cargue explícito ("Cargar al servidor"): alertar la cantidad enviada (para que el
-    // usuario la relacione con el lote que acaba de escanear) y, si no quedó nada
-    // pendiente, limpiar el listado de códigos escaneados para el siguiente lote.
-    if (notifyUser && sent > 0) {
-      if (remaining === 0) {
+    // Cargue explícito ("Cargar al servidor"): notificar el total del LOTE (escaneados vs.
+    // confirmados en el servidor), no solo lo que envió esta pasada puntual — la mayoría de
+    // las lecturas ya se auto-enviaron una a una al momento de escanear. Si no quedó nada
+    // pendiente, se considera cerrado el lote y se reinicia el contador para el siguiente.
+    if (notifyUser) {
+      const scannedTotal = this.scannedCodes.length;
+      const sentTotal = this.sentCount;
+      let alertMsg: string;
+
+      if (sentTotal === 0) {
+        alertMsg = `No se pudo enviar ningún registro (${failed} con error). Revise la conexión e intente de nuevo.`;
+      } else if (remaining === 0) {
+        alertMsg = `✔ Se enviaron ${sentTotal} de ${scannedTotal} registro(s) escaneados al inventario.`;
         this.scannedCodes = [];
+        this.sentCount = 0;
+        this.persistSession();
+      } else {
+        alertMsg = `Se han enviado ${sentTotal} de ${scannedTotal} registro(s) escaneados. ${failed} no se pudieron enviar y quedan pendientes de revisión.`;
       }
+
       if (typeof window !== 'undefined') {
-        window.alert(
-          remaining === 0
-            ? `✔ Se enviaron ${sent} producto(s) al inventario correctamente.`
-            : `Se enviaron ${sent} producto(s) al inventario. ${failed} no se pudieron enviar y quedan pendientes de revisión.`
-        );
+        window.alert(alertMsg);
       }
     }
 
@@ -660,6 +687,30 @@ export class InventoryReader implements OnInit, OnDestroy {
     } catch (e) {
       console.error('No se pudo guardar la cola local de inventario:', e);
       this.statusMessage = '⚠ No se pudo guardar la lectura localmente (almacenamiento lleno). Sincronice cuanto antes.';
+    }
+  }
+
+  /** Persiste el contador del lote actual (escaneados / enviados) para no perderlo si se recarga la página. */
+  private persistSession(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.SESSION_KEY, JSON.stringify({ scannedCodes: this.scannedCodes, sentCount: this.sentCount }));
+      }
+    } catch (e) {
+      console.error('No se pudo guardar el contador de sesión de inventario:', e);
+    }
+  }
+
+  private loadSession(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(this.SESSION_KEY) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      this.scannedCodes = Array.isArray(parsed?.scannedCodes) ? parsed.scannedCodes : [];
+      this.sentCount = typeof parsed?.sentCount === 'number' ? parsed.sentCount : 0;
+    } catch (e) {
+      console.error('No se pudo leer el contador de sesión de inventario:', e);
+      this.scannedCodes = [];
+      this.sentCount = 0;
     }
   }
 

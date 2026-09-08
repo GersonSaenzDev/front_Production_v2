@@ -4,6 +4,18 @@
     <h1>Lectura de Código de Barras Bodega Indusel</h1>
   </header>
 
+  <!-- Control del lote actual: cuánto se ha escaneado vs. cuánto ya confirmó el servidor. -->
+  <div class="session-counters" *ngIf="readingMode === 'simple'">
+    <div class="session-counter-box counter-scanned">
+      <span class="counter-title">Escaneados</span>
+      <span class="counter-value">{{ scannedCodes.length }}</span>
+    </div>
+    <div class="session-counter-box counter-sent">
+      <span class="counter-title">Enviados al servidor</span>
+      <span class="counter-value">{{ sentCount }}</span>
+    </div>
+  </div>
+
   <main class="main-content">
     <section class="left-panel">
       <h2>Entrada de Códigos</h2>
@@ -205,7 +217,14 @@
           </li>
         </ul>
 
-        <div *ngIf="lastSyncMessage" class="small text-muted mb-2">{{ lastSyncMessage }}</div>
+        <div
+          *ngIf="lastSyncMessage"
+          class="sync-banner mb-2"
+          [class.sync-success]="lastSyncKind === 'success'"
+          [class.sync-warning]="lastSyncKind === 'warning'"
+        >
+          {{ lastSyncMessage }}
+        </div>
       </div>
 
       <div class="regleta-view" *ngIf="readingMode === 'regleta'">
