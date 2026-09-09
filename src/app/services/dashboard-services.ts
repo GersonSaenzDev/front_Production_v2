@@ -85,7 +85,9 @@ export class DashboardServices {
         }
         const chartData: ChartData = response.msg.reduce(
           (acc: ChartData, product) => {
-            acc.categories.push(`${product.productName.trim()}`);
+            // El backend ahora envía `reference`: es el nombre visible y la llave para
+            // cruzar contra la planeación del día. Caemos a `productName` por seguridad.
+            acc.categories.push((product.reference || product.productName || '').trim());
             acc.produced.push(product.Producidos);
             acc.valid.push(product.Validos);
             return acc;
@@ -182,7 +184,13 @@ export class DashboardServices {
           if (!response.msg) {
             return { ok: response.ok, msg: [] as TopProductsItem[] };
           }
-          return response;
+          // El backend ahora envía `reference`: la garantizamos siempre presente
+          // (cae a `productName`) para que sea el nombre visible del producto.
+          const msg = response.msg.map(item => ({
+            ...item,
+            reference: (item.reference || item.productName || '').trim()
+          }));
+          return { ok: response.ok, msg };
         })
       );
   }

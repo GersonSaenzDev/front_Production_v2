@@ -17,6 +17,9 @@ export interface CardAssemblyResponse {
 export interface ProductData {
   productCode: string;
   productName: string;
+  // El backend ahora envía `reference`: es el nombre visible del producto y la llave
+  // con la que se cruza contra la planeación del día.
+  reference: string;
   Producidos: number; // La P y la V son mayúsculas, como en tu JSON
   Validos: number;
 }
@@ -57,6 +60,8 @@ export interface Card {
 export interface TopProductsItem {
     productCode: string;
     productName: string;
+    // El backend ahora envía `reference`: es el nombre visible del producto.
+    reference: string;
     Producidos: number; // Total de unidades producidas (con y sin error)
     Validos: number;    // Total de unidades sin error
 }

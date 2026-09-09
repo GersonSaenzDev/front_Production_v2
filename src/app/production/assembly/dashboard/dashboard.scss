@@ -1,5 +1,15 @@
 @use 'sass:color';
 
+// El layout base (`.pc-container`) se desplaza hacia abajo con `position: relative; top: 80px`
+// mientras que el footer (`.pc-footer`, con `margin-top: auto` en el layout admin) no compensa
+// ese desplazamiento, por lo que el footer se solapa ~80px sobre el final del contenido.
+// Este colchón inferior garantiza que la última fila de "Producción Detallada por Hora"
+// (y de cualquier tabla al final del dashboard) quede visible por encima del footer.
+:host {
+  display: block;
+  padding-bottom: 6.5rem;
+}
+
 .nav-tabs {
   border-bottom: none !important;
 }
