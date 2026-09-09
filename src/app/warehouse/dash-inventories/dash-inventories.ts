@@ -89,6 +89,12 @@ export class DashInventories {
   public inventoryList: Array<any> = [];
   public filteredInventory: Array<any> = [];
 
+  // Totales del filtro actual de la tabla global: sirven para decirle al
+  // colaborador cuántas lecturas hizo al filtrar por área o por equipo.
+  public filteredCount: number = 0;
+  public filteredValidatedTrueCount: number = 0;
+  public filteredValidatedFalseCount: number = 0;
+
   // Paginación
   public p: number = 1;
   public itemsPerPage: number = 10;
@@ -213,7 +219,8 @@ export class DashInventories {
         this.teamOptions = Array.from(teamMap.values());
         this.areaOptions = Array.from(areaSet).sort(); // Poblamos el selector de áreas
         this.filteredInventory = [...this.inventoryList];
-        
+        this.updateFilteredSummary();
+
       }
     } catch (error) {
       this.errorMessage = "Error al obtener la lista completa de equipos.";
@@ -237,6 +244,7 @@ export class DashInventories {
       const matchesTeam = this.filterTeam ? this.computeTeamKey(it) === this.filterTeam : true;
       return matchesQ && matchesArea && matchesTeam;
     });
+    this.updateFilteredSummary();
   }
 
   public onGlobalFilterChange() {
@@ -249,6 +257,30 @@ export class DashInventories {
     this.filterArea = '';
     this.filterTeam = '';
     this.filteredInventory = [...this.inventoryList];
+    this.updateFilteredSummary();
+  }
+
+  /**
+   * Recalcula los totales del filtro actual de la tabla global (total de lecturas,
+   * conformes y no conformes) para poder informarle al colaborador cuántas lecturas
+   * hizo al filtrar por área o por equipo.
+   */
+  private updateFilteredSummary(): void {
+    this.filteredCount = this.filteredInventory.length;
+    this.filteredValidatedTrueCount = this.filteredInventory.filter((it) => it.validate === true).length;
+    this.filteredValidatedFalseCount = this.filteredInventory.filter((it) => it.validate === false).length;
+  }
+
+  /** Texto legible que describe el filtro activo en la tabla global. */
+  public get activeFilterLabel(): string {
+    const parts: string[] = [];
+    if (this.filterArea) parts.push(`Área: ${this.filterArea}`);
+    if (this.filterTeam) {
+      const team = this.teamOptions.find((t) => t.key === this.filterTeam);
+      parts.push(`Equipo: ${team?.label ?? this.filterTeam}`);
+    }
+    if (this.filterText) parts.push(`Búsqueda: "${this.filterText}"`);
+    return parts.length ? parts.join(' · ') : 'Sin filtros (todos los registros)';
   }
 
   // Helpers para teamKey: se llavea por documento (identidad del operario tomada del
@@ -363,6 +395,9 @@ export class DashInventories {
     this.globalCount = 0;
     this.teamCount = 0;
     this.areaCount = 0;
+    this.filteredCount = 0;
+    this.filteredValidatedTrueCount = 0;
+    this.filteredValidatedFalseCount = 0;
   }
 
   /* --- Abrir modal y precargar anotación existente --- */
