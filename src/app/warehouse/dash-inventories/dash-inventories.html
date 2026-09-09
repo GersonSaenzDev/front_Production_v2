@@ -164,11 +164,11 @@
       <div class="card-body">
         <div class="d-flex align-items-center">
           <div class="avatar avatar-lg icon-dark m-r-5">
-            <i class="text-white ti ti-lock f-24"></i>
+            <i class="text-white ti ti-alert-triangle f-24"></i>
           </div>
           <div class="ms-2">
-            <h4 class="text-white f-w-600 mb-1">0</h4>
-            <p class="mb-0 opacity-50 text-sm">??</p>
+            <h4 class="text-white f-w-600 mb-1">{{ invalidBarcodeCount || '0' }}</h4>
+            <p class="mb-0 opacity-50 text-sm">Lecturas con código inválido</p>
           </div>
         </div>
       </div>
@@ -229,6 +229,9 @@
               <span class="badge bg-primary fs-6">{{ filteredCount }}</span>
               <span class="badge bg-warning text-dark">Conformes: {{ filteredValidatedTrueCount }}</span>
               <span class="badge bg-danger">No conformes: {{ filteredValidatedFalseCount }}</span>
+              <span class="badge bg-dark" *ngIf="filteredInvalidBarcodeCount > 0" title="Códigos que no son un serial EAN-128 de Indusel (deben iniciar con 0107706060 + 6 dígitos de referencia).">
+                Código inválido: {{ filteredInvalidBarcodeCount }}
+              </span>
             </div>
           </div>
 
@@ -245,8 +248,16 @@
                 </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let it of filteredInventory">
-                        <td>{{ it.code }}</td>
+                    <tr *ngFor="let it of filteredInventory" [class.bad-read-row]="it.badRead">
+                        <td>
+                            {{ it.code }}
+                            <span
+                                *ngIf="it.badRead"
+                                class="badge bg-danger ms-1"
+                                title="El código no es un serial EAN-128 de Indusel: debe iniciar con 0107706060 seguido de los 6 dígitos de la referencia. Posible mala lectura de la pistola.">
+                                <i class="ti ti-alert-triangle"></i> Código inválido
+                            </span>
+                        </td>
                         <td>{{ it.codRef }}</td>
                         <td>{{ it.referencia }}</td>
                         <td>{{ it.area }}</td>

@@ -57,18 +57,32 @@ export class BarcodeReader implements OnInit, OnDestroy {
   private static readonly SERIAL_LEN = 10;
 
   /**
-   * Referencias (codRef, dígitos 10-16) que SÍ se empacan en palet de 10 unidades
-   * consecutivas. Cualquier otra referencia se registra de inmediato, de forma
-   * individual — el operario NUNCA elige nada: el propio código escaneado dice, por
-   * su referencia, si debe esperar a completar un palet o no. Así una referencia que
-   * ya no se agrupa (como la de 4 que ahora se envía individual) nunca se queda
-   * atascada esperando un palet de 10 que jamás se va a completar.
+   * Referencias que se empacan como REGLETA / palet de 10 unidades con consecutivos
+   * contiguos. NO es una sola referencia: varias líneas se despachan así. Cualquier otra
+   * se registra de inmediato, de forma individual — el operario NUNCA elige nada: el
+   * propio código escaneado dice, por su referencia, si debe esperar a completar un palet
+   * o no. Así una referencia que no va en regleta nunca se queda atascada esperando un
+   * palet de 10 que jamás se va a completar.
    *
-   * Para sumar otra referencia a la regla del palet, basta con agregar su codRef aquí
-   * (mismo formato de 7 dígitos que devuelve `extractReference()`). Mantener
-   * sincronizada con la misma lista en reader-inventory.ts.
+   * Formato de la llave = lo que devuelve `extractReference()`: los 7 dígitos de las
+   * posiciones 10-16 del código de 27 (últimos 7 del GTIN-14 = `0` + los 6 dígitos de la
+   * referencia). Para sumar otra, agrega aquí su valor de 7 dígitos y mantén esta lista
+   * sincronizada con reader-inventory.ts. Referencias confirmadas contra etiqueta física:
+   *   0014171  (referencia previa)
+   *   0312093  MAJESTIC SE 200-1 MOTEADO       -> GTIN (01) 07706060312093
+   *   0033028  SE 200-1 (gas, POT 4,06 kW)     -> GTIN (01) 07706060033028
+   *   0034025  SE 200-1 GN 17-25 mbar          -> GTIN (01) 07706060034025
+   *   0011170  SE 200-1 ABBA MOTEADO (GLP)     -> GTIN (01) 07706060011170
+   *   0012092  SE 200-1 AZUL MOTEADO           -> GTIN (01) 07706060012092
    */
-  private static readonly PALLET_REFERENCES = new Set<string>(['0014171']);
+  private static readonly PALLET_REFERENCES = new Set<string>([
+    '0014171',
+    '0312093',
+    '0033028',
+    '0034025',
+    '0011170',
+    '0012092'
+  ]);
 
   private dashboardService = inject(DashboardServices);
 

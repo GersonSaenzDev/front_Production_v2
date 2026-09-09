@@ -68,6 +68,14 @@ export class PackingList implements OnInit {
   public onlyDuplicated = false;
   public filteredItems: PackingListRecord[] = [];
 
+  // ============================================================
+  //  BÚSQUEDA GLOBAL (sobre TODOS los grupos de horas del rango)
+  // ============================================================
+
+  /** Texto del buscador de la vista de grupos: cruza todos los grupos sin abrirlos uno a uno. */
+  public globalSearchTerm = '';
+  public globalResults: PackingListRecord[] = [];
+
   /** ids en proceso de guardado, para bloquear su checkbox mientras responde el backend */
   public savingIds = new Set<string>();
 
@@ -81,6 +89,11 @@ export class PackingList implements OnInit {
 
   get totalPending(): number {
     return this.totalRecords - this.totalChecked;
+  }
+
+  /** `true` cuando el buscador global de la vista de grupos tiene texto. */
+  get isGlobalSearching(): boolean {
+    return this.globalSearchTerm.trim().length > 0;
   }
 
   ngOnInit(): void {
@@ -106,6 +119,9 @@ export class PackingList implements OnInit {
           const stillExists = this.hourGroups.find((group) => group.hour === this.selectedGroup!.hour);
           this.selectGroup(stillExists || null);
         }
+
+        // Si hay una búsqueda global activa, la re-ejecutamos contra los registros recién cargados.
+        if (this.isGlobalSearching) this.applyGlobalSearch();
       },
       error: (err) => {
         this.allRecords = [];
@@ -238,11 +254,46 @@ export class PackingList implements OnInit {
       if (this.onlyDuplicated && !item.isDuplicated) return false;
 
       if (tokens.length === 0) return true;
-      const haystack = this.normalizeSearchText(
-        [item.barcode, item.productCode, item.productName, item.consecutiveProduct].filter(Boolean).join(' ')
-      );
+      return tokens.every((token) => this.buildSearchHaystack(item).includes(token));
+    });
+  }
+
+  /** Texto normalizado donde se busca cada token: barcode, referencia, código, EAN, nombre y consecutivo. */
+  private buildSearchHaystack(item: PackingListRecord): string {
+    return this.normalizeSearchText(
+      [item.barcode, item.reference, item.productCode, item.EAN, item.productName, item.consecutiveProduct].filter(Boolean).join(' ')
+    );
+  }
+
+  /** Búsqueda inteligente sobre TODOS los grupos de horas del rango (barcode, referencia,
+   * código de producto, EAN, nombre o consecutivo), sin necesidad de abrir cada grupo. */
+  public applyGlobalSearch(): void {
+    const tokens = this.normalizeSearchText(this.globalSearchTerm).split(/\s+/).filter(Boolean);
+
+    if (tokens.length === 0) {
+      this.globalResults = [];
+      return;
+    }
+
+    this.globalResults = this.allRecords.filter((item) => {
+      const haystack = this.buildSearchHaystack(item);
       return tokens.every((token) => haystack.includes(token));
     });
+  }
+
+  public clearGlobalSearch(): void {
+    this.globalSearchTerm = '';
+    this.globalResults = [];
+  }
+
+  /** Desde un resultado global, abre su grupo de horas con el barcode ya cargado en el buscador del detalle. */
+  public openGroupFromResult(item: PackingListRecord): void {
+    const group = this.hourGroups.find((hourGroup) => hourGroup.hour === (item.hour || 'Sin hora'));
+    if (!group) return;
+
+    this.selectGroup(group);
+    this.searchTerm = item.barcode;
+    this.applyFilter();
   }
 
   // ============================================================
@@ -281,15 +332,28 @@ export class PackingList implements OnInit {
       },
       complete: () => {
         this.savingIds.delete(item._id);
-        if (this.selectedGroup) {
-          const groupItems = this.selectedGroup.items;
-          this.selectedGroup.checked = groupItems.filter((groupItem) => groupItem.packingList?.checked).length;
-          this.selectedGroup.pending = this.selectedGroup.total - this.selectedGroup.checked;
-          this.selectedGroup.validators = this.computeValidators(groupItems);
-          this.referenceSummaries = this.buildReferenceSummaries(groupItems);
-        }
+        this.refreshAfterToggle(item);
       }
     });
+  }
+
+  /** Tras un check/uncheck, recalcula los contadores del grupo abierto (vista detalle) y de la
+   * card del grupo al que pertenece el item (vista de grupos / resultados de búsqueda global). */
+  private refreshAfterToggle(item: PackingListRecord): void {
+    if (this.selectedGroup) {
+      const groupItems = this.selectedGroup.items;
+      this.selectedGroup.checked = groupItems.filter((groupItem) => groupItem.packingList?.checked).length;
+      this.selectedGroup.pending = this.selectedGroup.total - this.selectedGroup.checked;
+      this.selectedGroup.validators = this.computeValidators(groupItems);
+      this.referenceSummaries = this.buildReferenceSummaries(groupItems);
+    }
+
+    const card = this.hourGroups.find((group) => group.hour === (item.hour || 'Sin hora'));
+    if (card && card !== this.selectedGroup) {
+      card.checked = card.items.filter((groupItem) => groupItem.packingList?.checked).length;
+      card.pending = card.total - card.checked;
+      card.validators = this.computeValidators(card.items);
+    }
   }
 
   // ============================================================
@@ -356,10 +420,10 @@ export class PackingList implements OnInit {
   //  EXPORTACIÓN A EXCEL
   // ============================================================
 
-  /** Exporta a Excel el detalle filtrado del grupo de horas abierto; si no hay grupo
-   * seleccionado, exporta el total de registros entregados por el backend para el rango de fechas. */
+  /** Exporta a Excel el detalle filtrado del grupo de horas abierto; si hay una búsqueda global
+   * activa, exporta sus resultados; si no, el total de registros del rango de fechas. */
   public exportToExcel(): void {
-    const source = this.selectedGroup ? this.filteredItems : this.allRecords;
+    const source = this.selectedGroup ? this.filteredItems : this.isGlobalSearching ? this.globalResults : this.allRecords;
 
     if (source.length === 0) {
       this.toastr.warning('No hay datos para exportar.');
@@ -370,6 +434,8 @@ export class PackingList implements OnInit {
       Hora: item.hour,
       Fecha: item.date,
       'Código de Barras': item.barcode,
+      Referencia: item.reference || '',
+      EAN: item.EAN || '',
       'Código de Producto': item.productCode,
       Producto: item.productName,
       Consecutivo: item.consecutiveProduct,
@@ -384,7 +450,7 @@ export class PackingList implements OnInit {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Packing List');
 
-    const suffix = this.selectedGroup ? `_Grupo_${this.selectedGroup.hour.replace(/:/g, '-')}` : '';
+    const suffix = this.selectedGroup ? `_Grupo_${this.selectedGroup.hour.replace(/:/g, '-')}` : this.isGlobalSearching ? '_Busqueda' : '';
     const fileName = `PackingList_${this.dateIni}_al_${this.dateEnd}${suffix}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   }

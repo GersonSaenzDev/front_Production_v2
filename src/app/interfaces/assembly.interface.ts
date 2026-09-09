@@ -58,26 +58,26 @@ export interface Card {
 }
 
 export interface TopProductsItem {
-    productCode: string;
-    productName: string;
-    // El backend ahora envía `reference`: es el nombre visible del producto.
-    reference: string;
-    Producidos: number; // Total de unidades producidas (con y sin error)
-    Validos: number;    // Total de unidades sin error
+  productCode: string;
+  productName: string;
+  // El backend ahora envía `reference`: es el nombre visible del producto.
+  reference: string;
+  Producidos: number; // Total de unidades producidas (con y sin error)
+  Validos: number; // Total de unidades sin error
 }
 
 // Interfaz para cada item de referencia del producto
 export interface ReferenceItem {
-    EAN: string;
-    productCode: string;
-    productName: string;
-    reference: string;
+  EAN: string;
+  productCode: string;
+  productName: string;
+  reference: string;
 }
 
 // Interfaz para la respuesta completa del backend
 export interface ReferenceSearchResponse {
-    ok: boolean;
-    msg: ReferenceItem[]; // El array de resultados
+  ok: boolean;
+  msg: ReferenceItem[]; // El array de resultados
 }
 
 /**
@@ -273,6 +273,10 @@ export interface PackingListStatus {
 export interface PackingListRecord {
   _id: string;
   barcode: string;
+  /** GTIN/EAN del producto (sin el AI 01 ni el serial); llega plano desde el backend. */
+  EAN?: string;
+  /** Nombre/referencia visible del producto (ej. "AT 101-5N N"); llega plano desde el backend. */
+  reference?: string;
   productCode: string;
   productName: string;
   consecutiveProduct: string;
@@ -338,5 +342,3 @@ export interface LoadAssemblyResponse {
   msg: string;
   data?: unknown;
 }
-
-

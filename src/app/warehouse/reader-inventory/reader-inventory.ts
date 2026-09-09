@@ -47,6 +47,16 @@ export class InventoryReader implements OnInit, OnDestroy {
   private static readonly BARCODE_LENGTH = 27;
 
   /**
+   * Prefijo GS1 fijo de todo EAN-128 de Indusel: AI (01) + GTIN con indicador `0` y
+   * prefijo de compañía `7706060`. Un serial válido SIEMPRE arranca EXACTAMENTE con estos
+   * 10 dígitos y a continuación trae los 6 dígitos de la referencia (posiciones 11-16).
+   * Si una lectura trae 27 dígitos pero NO empieza así, es un código de otra empresa o lo
+   * decodificó mal la pistola (p. ej. `0121316060…` en vez de `0107706060…`): se alerta
+   * como mala lectura y se descarta. Mantener sincronizado con barcode-reader.ts.
+   */
+  private static readonly BARCODE_PREFIX = '0107706060';
+
+  /**
    * Tamaño exacto de un palet en modo Regleta: 10 unidades de la MISMA referencia con
    * consecutivos que forman un rango contiguo (sin huecos, sin sobrantes). Antes se
    * manejaban grupos de 4 o 5; el de 4 ya no se empaca así, esos productos ahora se
@@ -55,18 +65,32 @@ export class InventoryReader implements OnInit, OnDestroy {
   private static readonly PALLET_SIZE = 10;
 
   /**
-   * Referencias (codRef, dígitos 10-16 del código de 27 dígitos) que se empacan en
-   * palet de 10 unidades consecutivas. El sistema detecta esto SOLO a partir del
-   * propio código escaneado — el operario no elige ningún modo: según la referencia,
-   * el código pasa por la validación de palet (antes "Regleta") o se registra de
-   * inmediato en la cola individual (antes "Lectura Simple"). Así una referencia que
-   * ya no se agrupa nunca se queda esperando un palet que jamás se va a completar.
+   * Referencias que se empacan como REGLETA / palet de 10 unidades con consecutivos
+   * contiguos. NO es una sola referencia: varias líneas se despachan así. El sistema lo
+   * detecta SOLO a partir del código escaneado — el operario no elige ningún modo: según
+   * la referencia, el código pasa por la validación de palet (antes "Regleta") o se
+   * registra de inmediato en la cola individual (antes "Lectura Simple"). Así una
+   * referencia que no va en regleta nunca se queda esperando un palet que jamás se completa.
    *
-   * Para sumar otra referencia a la regla del palet, basta con agregar su codRef aquí
-   * (mismo formato de 7 dígitos que devuelve `extractReference()`). Mantener
-   * sincronizada con la misma lista en barcode-reader.ts.
+   * Formato de la llave = lo que devuelve `extractReference()`: los 7 dígitos que van en
+   * las posiciones 10-16 del código de 27 (últimos 7 del GTIN-14 = `0` + los 6 dígitos de
+   * la referencia). Para sumar otra, agrega aquí su valor de 7 dígitos y mantén esta lista
+   * sincronizada con barcode-reader.ts. Referencias confirmadas contra etiqueta física:
+   *   0014171  (referencia previa)
+   *   0312093  MAJESTIC SE 200-1 MOTEADO       -> GTIN (01) 07706060312093
+   *   0033028  SE 200-1 (gas, POT 4,06 kW)     -> GTIN (01) 07706060033028
+   *   0034025  SE 200-1 GN 17-25 mbar          -> GTIN (01) 07706060034025
+   *   0011170  SE 200-1 ABBA MOTEADO (GLP)     -> GTIN (01) 07706060011170
+   *   0012092  SE 200-1 AZUL MOTEADO           -> GTIN (01) 07706060012092
    */
-  private static readonly PALLET_REFERENCES = new Set<string>(['0014171']);
+  private static readonly PALLET_REFERENCES = new Set<string>([
+    '0014171',
+    '0312093',
+    '0033028',
+    '0034025',
+    '0011170',
+    '0012092'
+  ]);
   private static readonly REF_START = 9;
   private static readonly REF_LEN = 7;
 
@@ -426,6 +450,22 @@ export class InventoryReader implements OnInit, OnDestroy {
       this.serverResponse = null;
       this.duplicateBarcode = null;
       this.statusMessage = `Lectura incorrecta: el código tiene ${code.length} dígito(s) y debe tener ${InventoryReader.BARCODE_LENGTH}. Vuelva a escanear el producto.`;
+      this.barcodeInput = '';
+      this.refocusBarcodeInput();
+      return;
+    }
+
+    // Validación de prefijo EAN-128: aunque tenga los 27 dígitos, todo serial de Indusel
+    // empieza EXACTAMENTE por BARCODE_PREFIX (AI 01 + GTIN 0·7706060) seguido de los 6
+    // dígitos de la referencia. Un código de 27 dígitos que arranca distinto (p. ej.
+    // `0121316060…`) es de otra empresa o lo decodificó mal la pistola: se alerta y se
+    // descarta para que el operario vuelva a escanear, en vez de dejarlo pasar y que falle
+    // luego (producto no encontrado / referencia que no cruza).
+    if (!code.startsWith(InventoryReader.BARCODE_PREFIX)) {
+      this.serverSuccess = false;
+      this.serverResponse = null;
+      this.duplicateBarcode = null;
+      this.statusMessage = `Lectura incorrecta: el código no es un serial de Indusel (debe iniciar con ${InventoryReader.BARCODE_PREFIX} seguido de los 6 dígitos de la referencia). Vuelva a escanear el producto.`;
       this.barcodeInput = '';
       this.refocusBarcodeInput();
       return;

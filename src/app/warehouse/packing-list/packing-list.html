@@ -125,19 +125,135 @@
             <small class="section-subtitle">Selecciona el grupo de horas que deseas validar</small>
           </div>
 
-          <button
-            type="button"
-            class="btn-export-excel"
-            (click)="exportToExcel()"
-            [disabled]="totalRecords === 0"
-            title="Descargar en Excel los registros del rango de fechas seleccionado"
-          >
-            <i class="ti ti-file-spreadsheet"></i>
-            <span>Descargar</span>
-          </button>
+          <div class="toolbar-end">
+            <div class="search-wrapper">
+              <i class="ti ti-search search-icon"></i>
+              <input
+                type="text"
+                class="form-control search-input"
+                placeholder="Buscar en TODOS los grupos: barcode, referencia, código o EAN..."
+                [(ngModel)]="globalSearchTerm"
+                (input)="applyGlobalSearch()"
+              />
+              <button type="button" class="search-clear" *ngIf="isGlobalSearching" (click)="clearGlobalSearch()" title="Limpiar búsqueda">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              class="btn-export-excel"
+              (click)="exportToExcel()"
+              [disabled]="isGlobalSearching ? globalResults.length === 0 : totalRecords === 0"
+              [title]="
+                isGlobalSearching
+                  ? 'Descargar en Excel los resultados de la búsqueda'
+                  : 'Descargar en Excel los registros del rango de fechas seleccionado'
+              "
+            >
+              <i class="ti ti-file-spreadsheet"></i>
+              <span>Descargar</span>
+            </button>
+          </div>
         </div>
 
-        <div class="groups-grid mt-3">
+        <!-- ========================================================== -->
+        <!--  RESULTADOS DE BÚSQUEDA GLOBAL (cruza todos los grupos)     -->
+        <!-- ========================================================== -->
+        <ng-container *ngIf="isGlobalSearching">
+          <div class="global-search-summary mt-3">
+            <i class="ti ti-search"></i>
+            <span>
+              <strong>{{ globalResults.length }}</strong>
+              resultado{{ globalResults.length !== 1 ? 's' : '' }} para “{{ globalSearchTerm }}” en {{ hourGroups.length }} grupo{{
+              hourGroups.length !== 1 ? 's' : '' }} de horas
+            </span>
+          </div>
+
+          <div class="table-wrapper mt-3">
+            <table class="packing-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="check-col">Verificado</th>
+                  <th scope="col">Código de Barras</th>
+                  <th scope="col">Producto</th>
+                  <th scope="col">Referencia</th>
+                  <th scope="col">EAN</th>
+                  <th scope="col">Consecutivo</th>
+                  <th scope="col">Grupo</th>
+                  <th scope="col">Novedades</th>
+                  <th scope="col">Verificación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngIf="globalResults.length === 0">
+                  <td colspan="9" class="empty-cell">
+                    <i class="ti ti-database-off me-2"></i>
+                    Ningún ítem coincide con la búsqueda en el rango de fechas seleccionado.
+                  </td>
+                </tr>
+
+                <tr *ngFor="let item of globalResults" [class.row-checked]="item.packingList?.checked">
+                  <td class="check-col">
+                    <input
+                      type="checkbox"
+                      class="packing-checkbox"
+                      [checked]="item.packingList?.checked"
+                      [disabled]="isSaving(item)"
+                      (change)="toggleCheck(item)"
+                    />
+                  </td>
+
+                  <td class="cell-stacked">
+                    <span class="cell-main-text">{{ item.barcode }}</span>
+                  </td>
+
+                  <td class="cell-stacked">
+                    <span class="cell-main-text">{{ item.productName }}</span>
+                    <small class="cell-sub">
+                      <i class="ti ti-barcode"></i>
+                      {{ item.productCode }}
+                    </small>
+                  </td>
+
+                  <td>{{ item.reference || '—' }}</td>
+                  <td>{{ item.EAN || '—' }}</td>
+                  <td>{{ item.consecutiveProduct }}</td>
+
+                  <td>
+                    <button
+                      type="button"
+                      class="hour-link"
+                      (click)="openGroupFromResult(item)"
+                      title="Abrir el grupo de horas de este ítem"
+                    >
+                      <i class="ti ti-clock"></i>
+                      {{ item.hour }}
+                      <i class="ti ti-arrow-right"></i>
+                    </button>
+                  </td>
+
+                  <td>
+                    <span class="status-pill status-claim-full" *ngIf="item.errorMark" [title]="item.errorMark">{{ item.errorMark }}</span>
+                    <span class="status-pill status-partial" *ngIf="item.isDuplicated">Duplicado</span>
+                  </td>
+
+                  <td class="cell-stacked">
+                    <span class="status-pill" [ngClass]="item.packingList?.checked ? 'status-closed' : 'status-pending'">
+                      {{ item.packingList?.checked ? 'Verificado' : 'Pendiente' }}
+                    </span>
+                    <small class="cell-sub" *ngIf="item.packingList?.checked && item.packingList?.checkedBy?.name">
+                      <i class="ti ti-user"></i>
+                      {{ item.packingList?.checkedBy?.name }}
+                    </small>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+
+        <div class="groups-grid mt-3" *ngIf="!isGlobalSearching">
           <div *ngIf="isLoading" class="empty-cell full-width">
             <span class="spinner-border spinner-border-sm me-2"></span>
             Cargando grupos de horas...

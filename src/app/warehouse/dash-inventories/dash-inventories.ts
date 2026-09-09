@@ -30,6 +30,31 @@ export class DashInventories {
 
   private dashboardService = inject(DashInventoryServices);
 
+  /**
+   * Prefijo GS1 fijo de todo EAN-128 de Indusel: AI (01) + GTIN con indicador `0` y
+   * prefijo de compañía `7706060`. Un serial válido tiene 27 dígitos y arranca EXACTAMENTE
+   * con estos 10, seguidos de los 6 dígitos de la referencia. Mismo criterio que
+   * reader-inventory.ts / barcode-reader.ts; aquí NO bloquea nada: solo sirve para MARCAR
+   * en el tablero lecturas que la pistola guardó mal (p. ej. `0121316060…`).
+   */
+  private static readonly BARCODE_PREFIX = '0107706060';
+  /** Longitud exacta de un barcode válido de Indusel (ver reader-inventory.ts / backend). */
+  private static readonly BARCODE_LENGTH = 27;
+
+  /**
+   * `true` si `code` es un serial EAN-128 de Indusel bien formado: 27 dígitos, solo
+   * numéricos y con el prefijo BARCODE_PREFIX. Cualquier otra cosa es una mala lectura
+   * de pistola que quedó registrada en el inventario.
+   */
+  public isValidInduselBarcode(code: unknown): boolean {
+    const value = String(code ?? '').trim();
+    return (
+      value.length === DashInventories.BARCODE_LENGTH &&
+      /^\d+$/.test(value) &&
+      value.startsWith(DashInventories.BARCODE_PREFIX)
+    );
+  }
+
   // Rango de fechas (por defecto: mes actual, día 1 -> hoy).
   public dateIni: string = this.formatDate(this.firstDayOfCurrentMonth());
   public dateEnd: string = this.formatDate(new Date());
@@ -94,6 +119,11 @@ export class DashInventories {
   public filteredCount: number = 0;
   public filteredValidatedTrueCount: number = 0;
   public filteredValidatedFalseCount: number = 0;
+
+  // Lecturas cuyo `code` NO es un serial EAN-128 de Indusel (mala lectura de pistola
+  // que igual quedó guardada). Solo informativo: se muestra en tarjeta y se marca la fila.
+  public invalidBarcodeCount: number = 0;
+  public filteredInvalidBarcodeCount: number = 0;
 
   // Paginación
   public p: number = 1;
@@ -185,6 +215,7 @@ export class DashInventories {
         let compliant = 0;
         let nonCompliant = 0;
         let withNotes = 0;
+        let invalidBarcodes = 0;
 
         this.inventoryList = allItems.map((it: any) => {
           const persons: OperatorPerson[] = Array.isArray(it.persons) ? it.persons.filter(Boolean) : [];
@@ -194,23 +225,28 @@ export class DashInventories {
             ? `${it.area} — ${names.join(', ')}`
             : (it.area || 'Operario sin nombre');
 
+          // Validación EAN-128: marca la lectura si el code no es un serial de Indusel.
+          const badRead = !this.isValidInduselBarcode(it.code);
+
           // Lógica de contadores
           if (it.validate === true) compliant++;
           if (it.validate === false) nonCompliant++;
           if (it.area) areaSet.add(it.area);
           if (it.annotation || it.note) withNotes++;
+          if (badRead) invalidBarcodes++;
 
           if (!teamMap.has(teamKey)) {
             teamMap.set(teamKey, { key: teamKey, label: teamLabel, area: it.area });
           }
 
-          return { ...it, teamKey, teamLabel };
+          return { ...it, teamKey, teamLabel, badRead };
         });
 
         // Asignación de valores a las variables de la UI
         this.globalCount = this.inventoryList.length;
         this.validatedTrueCount = compliant;
         this.validatedFalseCount = nonCompliant;
+        this.invalidBarcodeCount = invalidBarcodes;
         this.teamCount = teamMap.size;
         this.areaCount = areaSet.size;
         this.revisionesCount = nonCompliant; // Ejemplo: considerar revisiones a los no conformes
@@ -269,6 +305,7 @@ export class DashInventories {
     this.filteredCount = this.filteredInventory.length;
     this.filteredValidatedTrueCount = this.filteredInventory.filter((it) => it.validate === true).length;
     this.filteredValidatedFalseCount = this.filteredInventory.filter((it) => it.validate === false).length;
+    this.filteredInvalidBarcodeCount = this.filteredInventory.filter((it) => it.badRead).length;
   }
 
   /** Texto legible que describe el filtro activo en la tabla global. */
@@ -398,6 +435,8 @@ export class DashInventories {
     this.filteredCount = 0;
     this.filteredValidatedTrueCount = 0;
     this.filteredValidatedFalseCount = 0;
+    this.invalidBarcodeCount = 0;
+    this.filteredInvalidBarcodeCount = 0;
   }
 
   /* --- Abrir modal y precargar anotación existente --- */
