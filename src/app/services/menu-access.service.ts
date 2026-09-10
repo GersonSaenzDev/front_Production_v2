@@ -95,11 +95,39 @@ export class MenuAccessService {
 
   // Excepción puntual: usuarios de LOGISTICA EXTERNA (normalmente solo ven CASA CLIENTE)
   // que además deben ver el collapse BODEGA. Identificados por userApp (username de login).
-  private readonly LOGISTICA_EXTERNA_BODEGA_USERS = ['DSPULGARIN', 'DEVERDUGO', 'ACPEÑA'];
+  private readonly LOGISTICA_EXTERNA_BODEGA_USERS = ['DSPULGARIN', 'DEVERDUGO'];
 
   private isLogisticaExternaBodegaUser(userApp?: string): boolean {
     const code = userApp?.toUpperCase().trim() || '';
     return this.LOGISTICA_EXTERNA_BODEGA_USERS.includes(code);
+  }
+
+  // Usuarios de OTRAS áreas (ej. Jefatura de Producción) que, además de su menú
+  // normal, deben ver el collapse BODEGA para consultar las entregas de producto a
+  // bodega (Dashboard Inventarios, novedades, etc.). Permiso ADITIVO: no reemplaza
+  // el menú propio del área/depto, solo suma el grupo Logística → Bodega. Se
+  // identifican por userApp (username de login), sin importar area/departamento.
+  private readonly BODEGA_VIEWER_USERS = ['ACPEÑA'];
+
+  private isBodegaViewerUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.BODEGA_VIEWER_USERS.includes(code);
+  }
+
+  // Items del menú que componen el collapse "Bodega" (grupo Logística + collapse
+  // Bodega + sus items), usado por el permiso aditivo BODEGA_VIEWER_USERS. No
+  // incluye los collapses "Casa Cliente" ni "Almacén" del mismo grupo.
+  private isBodegaNavItem(item: any): boolean {
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group') return title === 'LOGÍSTICA';
+    if (item.type === 'collapse') return title === 'BODEGA';
+    const url = item.url || '';
+    return (
+      url.startsWith('inventories/') ||
+      url === 'production/wineryNews' ||
+      url === 'clientHome/freightManagement' ||
+      url === 'clientHome/carrierManagement'
+    );
   }
 
   // Cuentas de kiosco de Bodega (tablets fijas para el lector de inventario, login
@@ -187,6 +215,14 @@ export class MenuAccessService {
     // (exclusivo de Desarrollo/Gerencias/Planeación) para no heredar ese menú.
     if (this.isBodegaKioskUser(userData.userApp)) {
       return this.canAccessNavItemByDepartment(item, ['BODEGA']);
+    }
+
+    // Permiso aditivo: usuarios que además de su menú normal deben ver el collapse
+    // BODEGA (ej. Jefatura de Producción). Va antes del filtro por departamento para
+    // que los items de Bodega pasen; el resto de items sigue la lógica normal del
+    // área/depto más abajo.
+    if (this.isBodegaViewerUser(userData.userApp) && this.isBodegaNavItem(item)) {
+      return true;
     }
 
     // Prioridad: acceso configurado por departamento
@@ -343,6 +379,14 @@ export class MenuAccessService {
     // sin importar area/departamento. Se resuelve antes que cualquier otra regla.
     if (this.isBodegaKioskUser(user.userApp)) {
       return module === 'production' || module === 'inventories';
+    }
+
+    // Permiso aditivo para ver el collapse BODEGA desde otra área (ej. Jefatura de
+    // Producción): habilita el ruteo a /inventories y /clientHome (los items de
+    // Fletes viven dentro del collapse Bodega). El resto de módulos sigue la lógica
+    // normal más abajo.
+    if (this.isBodegaViewerUser(user.userApp) && (module === 'inventories' || module === 'clientHome')) {
+      return true;
     }
 
     if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS')) {
