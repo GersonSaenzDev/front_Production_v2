@@ -12,8 +12,16 @@
     </div>
     <div class="session-counter-box counter-sent">
       <span class="counter-title">Enviados al servidor</span>
-      <span class="counter-value">{{ sentCount }}</span>
+      <span class="counter-value">{{ confirmedScannedCount }}</span>
     </div>
+  </div>
+
+  <!-- Recuperación: lecturas que se registraron en pantalla pero el servidor nunca confirmó
+       (típicamente por escanear con el Área vacía tras una recarga). Reenvía solo esas;
+       el backend descarta como duplicado lo que ya exista. -->
+  <div class="resync-banner" *ngIf="unconfirmedCount > 0">
+    <span>⚠ {{ unconfirmedCount }} lectura(s) escaneada(s) SIN confirmar en el servidor.</span>
+    <button type="button" class="btn-resync" (click)="resyncUnconfirmed()">Reenviar sin confirmar</button>
   </div>
 
   <main class="main-content">

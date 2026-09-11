@@ -59,7 +59,13 @@ export class CustomerHouseService {
     console.error('CustomerHouseService: Error en la petición:', error);
     let errorMessage = 'Ocurrió un error desconocido en el servicio.';
 
-    if (error.error && error.error.msg) {
+    if (error.status === 413) {
+      // El servidor/proxy rechaza el body antes de llegar a la lógica de la app (por eso no trae { ok, msg }).
+      // Típico al adjuntar muchas facturas PDF: supera el límite de tamaño de subida configurado en el backend.
+      errorMessage =
+        'El tamaño total de los archivos adjuntos supera el límite permitido por el servidor. ' +
+        'Reduce la cantidad o el tamaño de las facturas PDF cargadas, o solicita a sistemas que aumente el límite de carga del backend.';
+    } else if (error.error && error.error.msg) {
       errorMessage = error.error.msg;
     } else if (error.message) {
       errorMessage = error.message;

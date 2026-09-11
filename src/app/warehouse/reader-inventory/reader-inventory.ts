@@ -83,14 +83,7 @@ export class InventoryReader implements OnInit, OnDestroy {
    *   0011170  SE 200-1 ABBA MOTEADO (GLP)     -> GTIN (01) 07706060011170
    *   0012092  SE 200-1 AZUL MOTEADO           -> GTIN (01) 07706060012092
    */
-  private static readonly PALLET_REFERENCES = new Set<string>([
-    '0014171',
-    '0312093',
-    '0033028',
-    '0034025',
-    '0011170',
-    '0012092'
-  ]);
+  private static readonly PALLET_REFERENCES = new Set<string>(['0014171', '0312093', '0033028', '0034025', '0011170', '0012092']);
   private static readonly REF_START = 9;
   private static readonly REF_LEN = 7;
 
@@ -148,15 +141,37 @@ export class InventoryReader implements OnInit, OnDestroy {
   // Indica si hay una carga en curso para bloquear múltiples peticiones
   loading: boolean = false;
 
+  /** Evita repetir el alert bloqueante de "sin Área" en cada lectura (solo la 1ª vez). */
+  private missingAreaAlerted = false;
+
   // ─────────────────────────────────────────────────────────────────────────────
   //  Cola offline-first (SOLO modo simple; regleta no se toca)
   // ─────────────────────────────────────────────────────────────────────────────
   private readonly QUEUE_KEY = 'inventory-reader.pending-queue.v1';
   /** Contadores del lote actual (escaneados / enviados), para sobrevivir un recargo accidental de la página. */
   private readonly SESSION_KEY = 'inventory-reader.session-counters.v1';
+  /**
+   * Área de inventario en curso. Se persiste APARTE de la cola para que una recarga de
+   * la página (sueño/despertar de la tablet, actualización de la PWA, refresh accidental)
+   * NO borre el Área. Si el Área queda vacía, `enqueueReading()` aborta cada lectura y el
+   * operario sigue escaneando "al vacío": así se perdían lecturas y el contador marcaba
+   * "Escaneados" muy por encima de "Enviados al servidor".
+   */
+  private readonly AREA_KEY = 'inventory-reader.area.v1';
+  /**
+   * Registro POR-CÓDIGO de lo que el servidor ya confirmó (insertado o rechazado por
+   * duplicado). Antes solo existía el número `sentCount`, así que era imposible saber
+   * QUÉ lectura llegó y cuál no. Con este Set "Enviados" es exacto y se puede reenviar
+   * SOLO lo que quedó sin confirmar (ver `resyncUnconfirmed()`). Crece indefinidamente,
+   * igual que `historicItems` en barcode-reader.ts.
+   */
+  private readonly SENT_KEY = 'inventory-reader.sent-barcodes.v1';
 
   /** Lecturas de modo simple retenidas hasta poder cargarlas al servidor. */
   pendingQueue: PendingReading[] = [];
+
+  /** Códigos ya confirmados por el servidor (ver SENT_KEY). */
+  private sentBarcodes = new Set<string>();
 
   /** true mientras se está vaciando la cola (evita envíos concurrentes). */
   flushing = false;
@@ -198,9 +213,34 @@ export class InventoryReader implements OnInit, OnDestroy {
     return this.pendingQueue.filter((i) => i.status === 'error' && i.errorKind === 'permanent').length;
   }
 
+  /**
+   * Códigos escaneados en este lote que el servidor NO confirmó y que tampoco están en
+   * la cola. Normalmente 0. Un número > 0 = lecturas que se registraron en pantalla
+   * pero nunca llegaron al inventario (típicamente por escanear con el Área vacía tras
+   * una recarga). Se recuperan con `resyncUnconfirmed()`.
+   */
+  get unconfirmedCodes(): string[] {
+    return this.scannedCodes.filter((c) => !this.sentBarcodes.has(c) && !this.pendingQueue.some((i) => i.barcode === c));
+  }
+
+  get unconfirmedCount(): number {
+    return this.unconfirmedCodes.length;
+  }
+
+  /**
+   * De lo escaneado en este lote, cuánto está realmente confirmado por el servidor.
+   * Reemplaza al viejo contador `sentCount` en la UI: este NO cuenta de más por
+   * reintentos ni reenvíos, y baja a la realidad si una lectura no llegó al inventario.
+   */
+  get confirmedScannedCount(): number {
+    return this.scannedCodes.filter((c) => this.sentBarcodes.has(c)).length;
+  }
+
   constructor() {}
 
   ngOnInit(): void {
+    this.loadArea();
+    this.loadSentBarcodes();
     this.loadQueue();
     this.loadSession();
 
@@ -265,7 +305,14 @@ export class InventoryReader implements OnInit, OnDestroy {
       return;
     }
 
-    this.statusMessage = `Usuario guardado: ${this.currentUserName} - Área: ${this.inventoryArea.trim()}`;
+    // Normaliza y PERSISTE el Área: este es "el último que el usuario ingresó" y es el
+    // que se reutiliza tras recargar la página (ver loadArea()). Se puede volver a
+    // cambiar en cualquier momento reabriendo este mismo modal.
+    this.inventoryArea = this.inventoryArea.trim();
+    this.persistArea();
+    this.missingAreaAlerted = false;
+
+    this.statusMessage = `Usuario guardado: ${this.currentUserName} - Área: ${this.inventoryArea}`;
     modal.close('saved');
   }
 
@@ -493,14 +540,18 @@ export class InventoryReader implements OnInit, OnDestroy {
       this.fetchProductInfo(code);
     } else {
       // Individual: NO se envía al servidor de inmediato. Se guarda en la cola local
-      // (offline-first) y se carga cuando haya conexión — mismo mecanismo de siempre,
-      // ahora decidido por la referencia y no por un modo elegido a mano.
-      if (!this.scannedCodes.includes(code)) {
+      // (offline-first) y se sube cuando haya conexión.
+      //
+      // El código solo se cuenta como "Escaneado" si REALMENTE entró a la cola. Si
+      // enqueueReading() aborta (típicamente porque el Área quedó vacía tras recargar
+      // la página), la lectura NO se registra: así el contador deja de mentir — antes
+      // marcaba p. ej. "373 escaneados / 156 enviados" con 217 lecturas perdidas.
+      const queued = this.enqueueReading(code);
+      if (queued && !this.scannedCodes.includes(code)) {
         // Más reciente primero, para verlo sin desplazar la pantalla (igual que en barcode-reader.ts).
         this.scannedCodes.unshift(code);
         this.persistSession();
       }
-      this.enqueueReading(code);
     }
 
     // Limpieza importante
@@ -515,15 +566,29 @@ export class InventoryReader implements OnInit, OnDestroy {
   //  Cola offline-first (SOLO modo simple)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /** Añade una lectura a la cola local y la persiste de inmediato (no se puede perder). */
-  private enqueueReading(code: string): void {
+  /**
+   * Añade una lectura a la cola local y la persiste de inmediato (no se puede perder).
+   * Devuelve `true` solo si la lectura quedó realmente en la cola (o ya estaba): el
+   * llamador usa eso para NO contar como "Escaneado" algo que en realidad se descartó.
+   */
+  private enqueueReading(code: string): boolean {
     if (!this.inventoryArea.trim()) {
-      this.statusMessage = 'Configure el Área (botón "Usuario Inventario") antes de escanear.';
-      return;
+      // Sin Área NO se puede encolar. Se avisa de forma imposible de ignorar (caja roja
+      // + un alert la primera vez) para que el operario no siga escaneando "al vacío":
+      // ese era el origen de "373 escaneados / 156 enviados" con lecturas perdidas.
+      this.serverSuccess = false;
+      this.serverResponse = null;
+      this.duplicateBarcode = null;
+      this.statusMessage =
+        '⚠ NO HAY ÁREA CONFIGURADA: la lectura NO se guardó. Abra "Usuario Inventario", ingrese el Área y vuelva a escanear.';
+      this.notifyMissingAreaOnce();
+      this.barcodeInput = '';
+      this.refocusBarcodeInput();
+      return false;
     }
     if (!this.currentUserName) {
       this.statusMessage = 'No se pudo obtener el usuario del token. Vuelva a iniciar sesión.';
-      return;
+      return false;
     }
 
     const area = this.inventoryArea.trim();
@@ -532,7 +597,7 @@ export class InventoryReader implements OnInit, OnDestroy {
       this.statusMessage = `El código ${code} ya está en la cola pendiente.`;
       this.barcodeInput = '';
       this.refocusBarcodeInput();
-      return;
+      return true;
     }
 
     const item: PendingReading = {
@@ -558,6 +623,8 @@ export class InventoryReader implements OnInit, OnDestroy {
     if (this.online && !this.flushing) {
       this.flushQueue();
     }
+
+    return true;
   }
 
   /** Botón "Cargar al servidor": intenta vaciar la cola manualmente. */
@@ -569,6 +636,70 @@ export class InventoryReader implements OnInit, OnDestroy {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.online = false;
       this.statusMessage = 'Sin conexión. Las lecturas quedan guardadas y se enviarán al recuperar la red.';
+      return;
+    }
+    this.flushQueue(true);
+  }
+
+  /**
+   * Botón "Reenviar lecturas sin confirmar". Reencola cada código de `scannedCodes` que
+   * el servidor NO confirmó (ver `unconfirmedCodes`) y que no esté ya en la cola, y
+   * dispara el envío. Los códigos que ya existan en el inventario los descarta el backend
+   * como duplicados (ver `classifyQueueError`), así que es seguro re-ejecutarlo.
+   *
+   * Sirve para recuperar lecturas perdidas por escanear con el Área vacía. En una tablet
+   * sin registro previo (`sentBarcodes` vacío) reenvía TODO lo escaneado y deja que el
+   * backend deduplique; a partir de ahí `sentBarcodes` queda poblado y el conteo es exacto.
+   */
+  resyncUnconfirmed(): void {
+    const missing = this.unconfirmedCodes;
+    if (missing.length === 0) {
+      this.statusMessage = 'No hay lecturas sin confirmar: todo lo escaneado ya está en el servidor o en la cola.';
+      return;
+    }
+    if (!this.inventoryArea.trim()) {
+      this.serverSuccess = false;
+      this.serverResponse = null;
+      this.duplicateBarcode = null;
+      this.statusMessage = '⚠ Configure primero el Área (botón "Usuario Inventario"): debe ser la misma de estas lecturas.';
+      this.notifyMissingAreaOnce();
+      return;
+    }
+    if (!this.currentUserName) {
+      this.statusMessage = 'No se pudo obtener el usuario del token. Vuelva a iniciar sesión.';
+      return;
+    }
+
+    const area = this.inventoryArea.trim();
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        `Se reenviarán ${missing.length} lectura(s) escaneada(s) que el servidor no ha confirmado.\n\n` +
+          `Área: ${area}\n\n` +
+          `Los códigos que ya estén en el inventario se descartan como duplicados. ¿Continuar?`
+      )
+    ) {
+      return;
+    }
+
+    for (const code of missing) {
+      this.pendingQueue.push({
+        id: this.newId(),
+        barcode: code,
+        area,
+        operatorName: this.currentUserName,
+        operatorId: this.currentUserId,
+        createdAt: new Date().toISOString(),
+        attempts: 0,
+        status: 'pending'
+      });
+    }
+    this.persistQueue();
+    this.statusMessage = `${missing.length} lectura(s) sin confirmar reencolada(s). Enviando al servidor...`;
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      this.online = false;
+      this.statusMessage = 'Sin conexión: las lecturas quedaron en la cola y se enviarán al recuperar la red.';
       return;
     }
     this.flushQueue(true);
@@ -630,19 +761,21 @@ export class InventoryReader implements OnInit, OnDestroy {
     // las lecturas ya se auto-enviaron una a una al momento de escanear. Si no quedó nada
     // pendiente, se considera cerrado el lote y se reinicia el contador para el siguiente.
     if (notifyUser) {
+      // Verdad POR-CÓDIGO (no el acumulador `sentCount`, que suma reintentos y reenvíos):
+      // de lo escaneado en el lote, cuánto está hoy confirmado en el servidor.
       const scannedTotal = this.scannedCodes.length;
-      const sentTotal = this.sentCount;
+      const confirmedTotal = this.scannedCodes.filter((c) => this.sentBarcodes.has(c)).length;
       let alertMsg: string;
 
-      if (sentTotal === 0) {
+      if (sent === 0 && failed > 0) {
         alertMsg = `No se pudo enviar ningún registro (${failed} con error). Revise la conexión e intente de nuevo.`;
       } else if (remaining === 0) {
-        alertMsg = `✔ Se enviaron ${sentTotal} de ${scannedTotal} registro(s) escaneados al inventario.`;
+        alertMsg = `✔ ${confirmedTotal} de ${scannedTotal} lectura(s) escaneada(s) confirmadas en el inventario.`;
         this.scannedCodes = [];
         this.sentCount = 0;
         this.persistSession();
       } else {
-        alertMsg = `Se han enviado ${sentTotal} de ${scannedTotal} registro(s) escaneados. ${failed} no se pudieron enviar y quedan pendientes de revisión.`;
+        alertMsg = `${confirmedTotal} de ${scannedTotal} lectura(s) confirmada(s). ${failed} no se pudieron enviar y quedan pendientes de revisión.`;
       }
 
       if (typeof window !== 'undefined') {
@@ -692,6 +825,7 @@ export class InventoryReader implements OnInit, OnDestroy {
       const insert = await firstValueFrom(this.dashService.insertInventoryQueued(payload));
 
       if (insert && insert.ok === true) {
+        this.markBarcodeSent(item.barcode);
         this.removeFromQueue(item.id);
         return true;
       }
@@ -717,6 +851,7 @@ export class InventoryReader implements OnInit, OnDestroy {
 
     // Duplicado: ya existe en el servidor. No es pérdida de datos -> sale de la cola.
     if (status === 409 || body?.duplicateBarcode || /duplicad/i.test(body?.msg || '')) {
+      this.markBarcodeSent(item.barcode);
       this.removeFromQueue(item.id);
       this.statusMessage = `El código ${item.barcode} ya estaba registrado en el servidor (duplicado).`;
       return true;
@@ -834,6 +969,73 @@ export class InventoryReader implements OnInit, OnDestroy {
     }
   }
 
+  /** Reutiliza el Área de la sesión anterior tras recargar la página (ver AREA_KEY). */
+  private loadArea(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(this.AREA_KEY) : null;
+      if (raw && raw.trim()) {
+        this.inventoryArea = raw.trim();
+        this.statusMessage = `Área recuperada: ${this.inventoryArea}. Puede cambiarla en "Usuario Inventario".`;
+      }
+    } catch (e) {
+      console.error('No se pudo leer el Área guardada:', e);
+    }
+  }
+
+  /** Carga el registro por-código de lo ya confirmado por el servidor (ver SENT_KEY). */
+  private loadSentBarcodes(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(this.SENT_KEY) : null;
+      const parsed = raw ? JSON.parse(raw) : [];
+      this.sentBarcodes = new Set(Array.isArray(parsed) ? parsed : []);
+    } catch (e) {
+      console.error('No se pudo leer los códigos confirmados de inventario:', e);
+      this.sentBarcodes = new Set();
+    }
+  }
+
+  /** Marca un código como confirmado por el servidor y lo persiste de inmediato. */
+  private markBarcodeSent(barcode: string): void {
+    if (!barcode || this.sentBarcodes.has(barcode)) return;
+    this.sentBarcodes.add(barcode);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.SENT_KEY, JSON.stringify([...this.sentBarcodes]));
+      }
+    } catch (e) {
+      console.error('No se pudo guardar los códigos confirmados de inventario:', e);
+    }
+  }
+
+  /** Guarda el Área en curso (o la borra del almacenamiento si quedó vacía). */
+  private persistArea(): void {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const value = this.inventoryArea.trim();
+      if (value) {
+        localStorage.setItem(this.AREA_KEY, value);
+      } else {
+        localStorage.removeItem(this.AREA_KEY);
+      }
+    } catch (e) {
+      console.error('No se pudo guardar el Área:', e);
+    }
+  }
+
+  /**
+   * Alerta bloqueante la PRIMERA vez que se intenta escanear sin Área configurada. No
+   * se repite en cada lectura para no atrapar al operario en un bucle de `alert()` si
+   * sigue disparando la pistola; la caja roja de estado sí se actualiza en cada intento.
+   */
+  private notifyMissingAreaOnce(): void {
+    if (this.missingAreaAlerted || typeof window === 'undefined') return;
+    this.missingAreaAlerted = true;
+    window.alert(
+      'NO HAY ÁREA CONFIGURADA.\n\n' +
+        'Las lecturas NO se están guardando. Presione "Usuario Inventario", ingrese el Área y continúe escaneando.'
+    );
+  }
+
   private newId(): string {
     try {
       if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -860,6 +1062,8 @@ export class InventoryReader implements OnInit, OnDestroy {
    */
   clearUserFields(userForm?: NgForm) {
     this.inventoryArea = '';
+    this.persistArea();
+    this.missingAreaAlerted = false;
     this.statusMessage = 'Área limpiada';
 
     // Si se pasa el NgForm desde el template, reseteará también su estado (touched/pristine)
