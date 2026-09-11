@@ -16,6 +16,7 @@ import {
 } from '../../interfaces/production-news.interface';
 import { MaintenanceTechnician } from '../../interfaces/rh-staff.interface';
 import { AuthService } from '../../services/auth-services';
+import { MaintenanceDraft, MaintenanceDraftService } from '../../services/maintenance-draft-service';
 import { MaintenanceServices } from '../../services/maintenance-services';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
@@ -33,6 +34,7 @@ export class MaintenanceNews implements OnInit {
   private rhStaffService = inject(RhStaffServices);
   private newsServices = inject(NewsServices);
   private authService = inject(AuthService);
+  private draftService = inject(MaintenanceDraftService);
   private toastr = inject(ToastrService);
 
   readonly maintenanceTypes: MaintenanceType[] = ['PREVENTIVO', 'CORRECTIVO', 'PREDICTIVO'];
@@ -58,13 +60,18 @@ export class MaintenanceNews implements OnInit {
   form!: FormGroup;
   isSubmitting = false;
 
+  /** true cuando el formulario se prellenó desde una novedad (productionNews). */
+  loadedFromNews = false;
+  /** Id de la novedad de origen, para enviarlo como sourceNewsId al crear. */
+  private sourceNewsId: string | null = null;
+
   ngOnInit(): void {
     const user = this.authService.userData();
 
     this.form = this.fb.group({
       consecutiveSection: [''],
       machineArea: ['', Validators.required],
-      machineDepartment: [''],
+      machineDepartment: ['', Validators.required],
       machineCode: ['', Validators.required],
       machineName: [''],
       costCenter: [''],
@@ -80,24 +87,73 @@ export class MaintenanceNews implements OnInit {
       assignedTo: [''],
     });
 
-    this.loadGroupedAreas();
     this.loadTechnicians();
     this.setupMachineSearch();
     this.setupTechnicianSearch();
 
     this.form.get('machineArea')?.valueChanges.subscribe((area) => this.handleAreaChange(area));
+
+    // Si venimos de "Generar solicitud" sobre una novedad, aplicamos el prellenado una vez
+    // carguen las áreas agrupadas (se necesita el catálogo para setear área/departamento).
+    const draft = this.draftService.consumeDraft();
+    this.loadGroupedAreas(() => {
+      if (draft) this.applyDraft(draft);
+    });
+  }
+
+  // ============================================================
+  //  PRELLENADO DESDE UNA NOVEDAD (productionNews)
+  // ============================================================
+
+  private applyDraft(draft: MaintenanceDraft): void {
+    this.sourceNewsId = draft.sourceNewsId;
+    this.loadedFromNews = true;
+
+    this.form.patchValue({
+      description: draft.description || '',
+      requestedBy: draft.requestedBy?.trim() || this.form.value.requestedBy,
+      reportedAt: draft.reportedAt ? this.fromBackendDateTime(draft.reportedAt) : '',
+    });
+
+    if (!draft.machineArea) return;
+
+    const group = this.groupedAreas.find((g) => g.area === draft.machineArea);
+    this.availableDepartments = group ? group.subAreas : [];
+
+    this.form.get('machineArea')?.setValue(draft.machineArea, { emitEvent: false });
+    this.form.get('machineDepartment')?.setValue(draft.machineDepartment || '', { emitEvent: false });
+    this.form.get('machineCode')?.setValue(draft.machineCode || '', { emitEvent: false });
+    this.form.get('machineName')?.setValue(draft.machineName || 'Definir Nombre', { emitEvent: false });
+
+    // Intenta resolver el nombre "oficial" de la máquina contra el catálogo del área;
+    // si no hay match, se queda con el nombre que trajo la novedad (texto libre).
+    this.loadMachinesByArea(draft.machineArea, () => {
+      const match = this.machinesByArea.find((m) => m.machineCode === draft.machineCode);
+      if (match) {
+        this.form.get('machineName')?.setValue(this.resolveMachineName(match), { emitEvent: false });
+      }
+    });
+  }
+
+  /** Oculta el aviso de prellenado sin tocar los datos ya cargados en el formulario. */
+  dismissDraftNotice(): void {
+    this.loadedFromNews = false;
   }
 
   // ============================================================
   //  ÁREAS + DEPARTAMENTOS (servicio agrupado)
   // ============================================================
 
-  private loadGroupedAreas(): void {
+  private loadGroupedAreas(onLoaded?: () => void): void {
     this.newsServices.getProductionAreasGrouped().subscribe({
       next: (res) => {
         if (res.ok) this.groupedAreas = res.msg;
       },
-      error: (err) => console.error('Error cargando áreas agrupadas:', err),
+      error: (err) => {
+        console.error('Error cargando áreas agrupadas:', err);
+        onLoaded?.();
+      },
+      complete: () => onLoaded?.(),
     });
   }
 
@@ -118,7 +174,7 @@ export class MaintenanceNews implements OnInit {
   //  BUSCADOR PREDICTIVO DE MÁQUINAS (igual que shared-news)
   // ============================================================
 
-  private loadMachinesByArea(area: string): void {
+  private loadMachinesByArea(area: string, onLoaded?: () => void): void {
     if (!area) {
       this.machinesByArea = [];
       return;
@@ -129,6 +185,7 @@ export class MaintenanceNews implements OnInit {
         console.error('Error cargando máquinas por área:', err);
         this.machinesByArea = [];
       },
+      complete: () => onLoaded?.(),
     });
   }
 
@@ -240,13 +297,6 @@ export class MaintenanceNews implements OnInit {
     return !!control && control.invalid && (control.dirty || control.touched);
   }
 
-  /** Área compuesta "Área / Departamento" como la espera el backend. */
-  private composeArea(area: string, department: string): string {
-    const a = (area || '').trim();
-    const d = (department || '').trim();
-    return d ? `${a} / ${d}` : a;
-  }
-
   onSubmit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -264,8 +314,8 @@ export class MaintenanceNews implements OnInit {
     // Solo enviamos los opcionales con contenido.
     if (v.consecutiveSection?.trim()) payload.consecutiveSection = v.consecutiveSection.trim();
     if (v.machineName?.trim()) payload.machineName = v.machineName.trim();
-    const requestArea = this.composeArea(v.machineArea, v.machineDepartment);
-    if (requestArea) payload.area = requestArea;
+    if (v.machineArea?.trim()) payload.area = v.machineArea.trim();
+    if (v.machineDepartment?.trim()) payload.department = v.machineDepartment.trim();
     if (v.costCenter?.trim()) payload.costCenter = v.costCenter.trim();
     if (v.serviceType?.trim()) payload.serviceType = v.serviceType.trim();
     if (v.failureDescription?.trim()) payload.failureDescription = v.failureDescription.trim();
@@ -275,6 +325,7 @@ export class MaintenanceNews implements OnInit {
     if (v.receivedAt) payload.receivedAt = this.toBackendDateTime(v.receivedAt);
     if (v.scheduledDate) payload.scheduledDate = this.toBackendDate(v.scheduledDate);
     if (v.assignedTo?.trim()) payload.assignedTo = v.assignedTo.trim();
+    if (this.sourceNewsId) payload.sourceNewsId = this.sourceNewsId;
 
     this.isSubmitting = true;
     this.maintenanceService.createMaintenance(payload).subscribe({
@@ -324,6 +375,8 @@ export class MaintenanceNews implements OnInit {
     this.showMachineDropdown = false;
     this.predictiveTechnicianList = [];
     this.showTechnicianDropdown = false;
+    this.loadedFromNews = false;
+    this.sourceNewsId = null;
   }
 
   /** Convierte un datetime-local (yyyy-MM-ddTHH:mm) a 'dd/MM/yyyy, HH:mm:ss'. */
@@ -332,6 +385,16 @@ export class MaintenanceNews implements OnInit {
     const [year, month, day] = datePart.split('-');
     const time = timePart ? `${timePart}:00`.slice(0, 8) : '00:00:00';
     return `${day}/${month}/${year}, ${time}`;
+  }
+
+  /** Convierte una fecha backend 'dd/MM/yyyy, HH:mm:ss' a datetime-local (yyyy-MM-ddTHH:mm). */
+  private fromBackendDateTime(value: string): string {
+    const [datePart, timePart] = value.split(',').map((p) => p.trim());
+    if (!datePart) return '';
+    const [day, month, year] = datePart.split('/');
+    if (!day || !month || !year) return '';
+    const time = (timePart || '00:00').slice(0, 5);
+    return `${year}-${month}-${day}T${time}`;
   }
 
   /** Convierte un date (yyyy-MM-dd) a 'dd/MM/yyyy'. */

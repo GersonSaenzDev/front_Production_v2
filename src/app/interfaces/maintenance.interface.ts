@@ -55,6 +55,7 @@ export interface MaintenanceRequest {
   machineCode: string;
   machineName: string;
   area: string;
+  department: string;
   costCenter: string;
   maintenanceType: MaintenanceType;
   serviceType: string;
@@ -68,6 +69,8 @@ export interface MaintenanceRequest {
   scheduledDate: string;
   completedDate: string | null;
   assignedTo: string;
+  /** Id de la novedad (productionNews) de la que se generó esta solicitud, si aplica. */
+  sourceNewsId: string | null;
   interventions: Intervention[];
   supervisorApproval: Approval | null;
   requesterApproval: Approval | null;
@@ -102,6 +105,7 @@ export interface CreateMaintenanceRequest {
   consecutiveSection?: string;
   machineName?: string;
   area?: string;
+  department?: string;
   costCenter?: string;
   serviceType?: string;
   failureDescription?: string;
@@ -111,6 +115,8 @@ export interface CreateMaintenanceRequest {
   receivedAt?: string;
   scheduledDate?: string;
   assignedTo?: string;
+  /** Id de la novedad (productionNews) origen, cuando la solicitud se genera desde una novedad. */
+  sourceNewsId?: string;
   interventions?: InterventionInput[];
 }
 
@@ -118,6 +124,7 @@ export interface UpdateMaintenanceRequest {
   consecutiveSection?: string;
   machineName?: string;
   area?: string;
+  department?: string;
   costCenter?: string;
   maintenanceType?: MaintenanceType;
   serviceType?: string;

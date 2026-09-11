@@ -1,4 +1,104 @@
 <div class="container-fluid py-3">
+  <!-- ================= NOVEDADES ENTRANTES DE OTRAS ÁREAS ================= -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Novedades entrantes de otras áreas</h5>
+      <small>Reportes de mantenimiento cargados por producción, pendientes de convertir en solicitud.</small>
+    </div>
+
+    <div class="card-body">
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-md-3">
+          <label class="form-label mb-1">Fecha</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="pendingNewsDate" />
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-sm btn-primary w-100" (click)="loadPendingNews()"
+            [disabled]="isLoadingPendingNews">
+            <span *ngIf="isLoadingPendingNews" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isLoadingPendingNews" class="ti ti-search me-1"></i>
+            Buscar
+          </button>
+        </div>
+        <div class="col-md-5 ms-auto">
+          <label class="form-label mb-1">Buscador</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="ti ti-search"></i></span>
+            <input type="text" class="form-control" [(ngModel)]="pendingNewsSearchTerm"
+              (ngModelChange)="applyPendingNewsFilter()"
+              placeholder="Busque por máquina, área, detalle, quien reportó, MTTO..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th role="button" (click)="sortPendingNewsBy('reportedAt')">
+                Reportada <span class="text-muted">{{ pendingNewsSortIcon('reportedAt') }}</span>
+              </th>
+              <th role="button" (click)="sortPendingNewsBy('origin')">
+                Origen <span class="text-muted">{{ pendingNewsSortIcon('origin') }}</span>
+              </th>
+              <th role="button" (click)="sortPendingNewsBy('machine')">
+                Máquina <span class="text-muted">{{ pendingNewsSortIcon('machine') }}</span>
+              </th>
+              <th role="button" (click)="sortPendingNewsBy('detail')">
+                Detalle <span class="text-muted">{{ pendingNewsSortIcon('detail') }}</span>
+              </th>
+              <th role="button" (click)="sortPendingNewsBy('reportedBy')">
+                Reportado por <span class="text-muted">{{ pendingNewsSortIcon('reportedBy') }}</span>
+              </th>
+              <th role="button" (click)="sortPendingNewsBy('status')">
+                Estado <span class="text-muted">{{ pendingNewsSortIcon('status') }}</span>
+              </th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoadingPendingNews">
+              <td colspan="7" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoadingPendingNews && filteredPendingNews.length === 0">
+              <td colspan="7" class="text-center text-muted py-3">
+                Sin novedades para la fecha o la búsqueda seleccionada.
+              </td>
+            </tr>
+            <tr *ngFor="let n of filteredPendingNews">
+              <td>{{ n.origin?.reportedAt || '—' }}</td>
+              <td>
+                <div>{{ n.origin?.area }}</div>
+                <small class="text-muted">{{ n.origin?.subArea }}</small>
+              </td>
+              <td>
+                <div>{{ n.origin?.machineCode || '—' }}</div>
+                <small class="text-muted">{{ n.origin?.machineName }}</small>
+              </td>
+              <td [title]="n.detail">{{ n.detail }}</td>
+              <td>{{ n.origin?.reportedBy?.name || '—' }}</td>
+              <td>
+                <span class="badge bg-success" *ngIf="generatedFrom(n._id) as gen">
+                  Generada · MTTO #{{ gen.consecutiveMtto }}
+                </span>
+                <span class="badge bg-warning text-dark" *ngIf="!generatedFrom(n._id)">Pendiente</span>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-primary" (click)="generateFromNews(n)">
+                  <i class="ti me-1" [class.ti-refresh]="generatedFrom(n._id)"
+                    [class.ti-tool]="!generatedFrom(n._id)"></i>
+                  {{ generatedFrom(n._id) ? 'Generar otra vez' : 'Generar solicitud' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div class="card shadow-sm">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Solicitudes de Mantenimiento</h5>
@@ -34,9 +134,12 @@
         </div>
         <div class="col-md-2 d-flex gap-2">
           <button class="btn btn-sm btn-primary w-100" (click)="search()" [disabled]="isLoading">
+            <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isLoading" class="ti ti-search me-1"></i>
             Buscar
           </button>
           <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()" [disabled]="isLoading">
+            <i class="ti ti-x me-1"></i>
             Limpiar
           </button>
         </div>
@@ -87,14 +190,14 @@
                   title="Solicitante">R</span>
               </td>
               <td class="text-end text-nowrap">
-                <button class="btn btn-sm btn-outline-info me-1" (click)="openDetail(o)" title="Ver">
-                  Ver
+                <button class="btn btn-sm btn-outline-info me-1" (click)="openDetail(o)" title="Ver detalle">
+                  <i class="ti ti-eye"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(o)" title="Editar / Asignar">
-                  Editar
+                  <i class="ti ti-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="remove(o)" title="Eliminar">
-                  Eliminar
+                  <i class="ti ti-trash"></i>
                 </button>
               </td>
             </tr>
@@ -172,6 +275,7 @@
               <button class="btn btn-sm btn-success" (click)="addIntervention()"
                 [disabled]="isAddingIntervention">
                 <span *ngIf="isAddingIntervention" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!isAddingIntervention" class="ti ti-plus me-1"></i>
                 Agregar
               </button>
             </div>
@@ -184,17 +288,24 @@
           <button class="btn btn-sm" [class.btn-success]="detailOrder.supervisorApproval"
             [class.btn-outline-success]="!detailOrder.supervisorApproval"
             (click)="approve(detailOrder, 'SUPERVISOR')">
-            Supervisor {{ detailOrder.supervisorApproval ? '✓' : '' }}
+            <i class="ti me-1" [class.ti-check]="detailOrder.supervisorApproval"
+              [class.ti-circle]="!detailOrder.supervisorApproval"></i>
+            Supervisor
           </button>
           <button class="btn btn-sm" [class.btn-success]="detailOrder.requesterApproval"
             [class.btn-outline-success]="!detailOrder.requesterApproval"
             (click)="approve(detailOrder, 'SOLICITANTE')">
-            Solicitante {{ detailOrder.requesterApproval ? '✓' : '' }}
+            <i class="ti me-1" [class.ti-check]="detailOrder.requesterApproval"
+              [class.ti-circle]="!detailOrder.requesterApproval"></i>
+            Solicitante
           </button>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeDetail()">Cerrar</button>
+        <button type="button" class="btn btn-secondary" (click)="closeDetail()">
+          <i class="ti ti-x me-1"></i>
+          Cerrar
+        </button>
       </div>
     </div>
   </div>
@@ -299,10 +410,12 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeEdit()" [disabled]="isSaving">
+          <i class="ti ti-x me-1"></i>
           Cancelar
         </button>
         <button type="button" class="btn btn-primary" (click)="saveEdit()" [disabled]="isSaving">
           <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!isSaving" class="ti ti-device-floppy me-1"></i>
           Guardar
         </button>
       </div>

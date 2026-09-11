@@ -6,6 +6,14 @@
     </div>
 
     <div class="card-body">
+      <div class="alert alert-info d-flex justify-content-between align-items-start" *ngIf="loadedFromNews">
+        <div>
+          <strong>Formulario prellenado desde una novedad reportada.</strong>
+          Verifique los datos antes de guardar.
+        </div>
+        <button type="button" class="btn-close" aria-label="Cerrar" (click)="dismissDraftNotice()"></button>
+      </div>
+
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
         <div class="row g-3">
           <!-- Área de la máquina (servicio agrupado) -->
@@ -21,12 +29,14 @@
 
           <!-- Departamento (subárea del área seleccionada) -->
           <div class="col-md-4">
-            <label class="form-label">Departamento</label>
+            <label class="form-label">Departamento <span class="text-danger">*</span></label>
             <select class="form-select" formControlName="machineDepartment"
+              [class.is-invalid]="isFieldInvalid('machineDepartment')"
               [attr.disabled]="availableDepartments.length === 0 ? '' : null">
               <option value="">{{ availableDepartments.length ? 'Seleccione…' : 'Elija un área primero' }}</option>
               <option *ngFor="let d of availableDepartments" [value]="d.subArea">{{ d.subArea }}</option>
             </select>
+            <div class="invalid-feedback">Seleccione el departamento.</div>
           </div>
 
           <div class="col-md-4">

@@ -2,7 +2,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
+import { ProductionNews } from '../../interfaces/assembly.interface';
 import {
   AddInterventionRequest,
   ApprovalRole,
@@ -19,6 +21,8 @@ import {
   ProductionSubArea,
 } from '../../interfaces/production-news.interface';
 import { MaintenanceTechnician } from '../../interfaces/rh-staff.interface';
+import { DashboardServices } from '../../services/dashboard-services';
+import { MaintenanceDraftService } from '../../services/maintenance-draft-service';
 import { MaintenanceServices } from '../../services/maintenance-services';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
@@ -34,6 +38,9 @@ export class ViewNews implements OnInit {
   private maintenanceService = inject(MaintenanceServices);
   private rhStaffService = inject(RhStaffServices);
   private newsServices = inject(NewsServices);
+  private dashboardService = inject(DashboardServices);
+  private draftService = inject(MaintenanceDraftService);
+  private router = inject(Router);
   private toastr = inject(ToastrService);
 
   readonly statuses: MaintenanceStatus[] = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
@@ -51,6 +58,15 @@ export class ViewNews implements OnInit {
 
   orders: MaintenanceRequest[] = [];
   isLoading = false;
+
+  // Novedades entrantes de otras áreas (productionNews, category 'Reporte Mantenimiento').
+  pendingNewsDate: string = this.formatDate(new Date());
+  pendingNews: ProductionNews[] = [];
+  filteredPendingNews: ProductionNews[] = [];
+  pendingNewsSearchTerm = '';
+  pendingNewsSortField: PendingNewsSortField = 'reportedAt';
+  pendingNewsSortDirection: 'asc' | 'desc' = 'desc';
+  isLoadingPendingNews = false;
 
   // Detalle
   showDetailModal = false;
@@ -90,6 +106,7 @@ export class ViewNews implements OnInit {
     this.loadTechnicians();
     this.loadGroupedAreas();
     this.search();
+    this.loadPendingNews();
   }
 
   private loadGroupedAreas(): void {
@@ -169,6 +186,136 @@ export class ViewNews implements OnInit {
   }
 
   // ============================================================
+  //  NOVEDADES ENTRANTES (productionNews asignadas a Mantenimiento)
+  // ============================================================
+
+  /** Trae, para la fecha seleccionada, las novedades de otras áreas asignadas a Mantenimiento. */
+  loadPendingNews(): void {
+    const date = this.formatDateForBackend(this.pendingNewsDate);
+    this.isLoadingPendingNews = true;
+    this.dashboardService.viewNews(date, 'Mantenimiento').subscribe({
+      next: (res) => {
+        const news = res.ok && res.msg ? res.msg : [];
+        this.pendingNews = news.filter((n) => n.category === 'Reporte Mantenimiento');
+        this.applyPendingNewsFilter();
+      },
+      error: (err: Error) => {
+        this.pendingNews = [];
+        this.filteredPendingNews = [];
+        this.toastr.error(err.message || 'No se pudieron cargar las novedades entrantes.', 'Error');
+      },
+      complete: () => (this.isLoadingPendingNews = false),
+    });
+  }
+
+  /** Filtro de texto libre (buscador inteligente) sobre cualquier dato visible de la novedad. */
+  applyPendingNewsFilter(): void {
+    const term = this.pendingNewsSearchTerm.trim().toLowerCase();
+    const list = !term
+      ? [...this.pendingNews]
+      : this.pendingNews.filter((n) => this.pendingNewsHaystack(n).includes(term));
+
+    const dir = this.pendingNewsSortDirection === 'asc' ? 1 : -1;
+    list.sort((a, b) => dir * this.comparePendingNews(a, b, this.pendingNewsSortField));
+    this.filteredPendingNews = list;
+  }
+
+  /** Texto plano (concatenado) sobre el que corre la búsqueda: cualquier dato que el usuario tenga a mano. */
+  private pendingNewsHaystack(n: ProductionNews): string {
+    const generated = this.generatedFrom(n._id);
+    return [
+      n.category,
+      n.reference,
+      n.detail,
+      n.origin?.area,
+      n.origin?.subArea,
+      n.origin?.machineCode,
+      n.origin?.machineName,
+      n.origin?.reportedBy?.name,
+      n.origin?.reportedBy?.userApp,
+      generated ? `MTTO ${generated.consecutiveMtto}` : '',
+    ]
+      .filter((v): v is string => !!v)
+      .join(' ')
+      .toLowerCase();
+  }
+
+  /** Cambia el campo de orden; si ya es el activo, invierte la dirección. */
+  sortPendingNewsBy(field: PendingNewsSortField): void {
+    if (this.pendingNewsSortField === field) {
+      this.pendingNewsSortDirection = this.pendingNewsSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.pendingNewsSortField = field;
+      this.pendingNewsSortDirection = 'asc';
+    }
+    this.applyPendingNewsFilter();
+  }
+
+  /** Ícono de orden a mostrar junto al título de columna. */
+  pendingNewsSortIcon(field: PendingNewsSortField): string {
+    if (this.pendingNewsSortField !== field) return '↕';
+    return this.pendingNewsSortDirection === 'asc' ? '↑' : '↓';
+  }
+
+  private comparePendingNews(a: ProductionNews, b: ProductionNews, field: PendingNewsSortField): number {
+    const value = (n: ProductionNews): string => {
+      switch (field) {
+        case 'reportedAt':
+          return n.origin?.reportedAt || '';
+        case 'origin':
+          return `${n.origin?.area || ''} ${n.origin?.subArea || ''}`.trim();
+        case 'machine':
+          return `${n.origin?.machineCode || ''} ${n.origin?.machineName || ''}`.trim();
+        case 'detail':
+          return n.detail || '';
+        case 'reportedBy':
+          return n.origin?.reportedBy?.name || '';
+        case 'status':
+          return this.generatedFrom(n._id) ? '1' : '0';
+        default:
+          return '';
+      }
+    };
+    return value(a).localeCompare(value(b), 'es', { sensitivity: 'base' });
+  }
+
+  /** Solicitud MTTO ya generada a partir de esta novedad, si existe (cruce en memoria). */
+  generatedFrom(newsId: string): MaintenanceRequest | undefined {
+    return this.orders.find((o) => o.sourceNewsId === newsId);
+  }
+
+  /** Prellena y abre "Novedades Mantenimiento" con los datos de esta novedad. */
+  generateFromNews(item: ProductionNews): void {
+    this.draftService.setDraft({
+      sourceNewsId: item._id,
+      sourceReference: item.reference,
+      sourceCategory: item.category,
+      machineArea: item.origin?.area || '',
+      machineDepartment: item.origin?.subArea || '',
+      machineCode: item.origin?.machineCode || '',
+      machineName: item.origin?.machineName || '',
+      description: item.detail || '',
+      requestedBy: item.origin?.reportedBy?.name || '',
+      reportedAt: item.origin?.reportedAt || '',
+    });
+    this.router.navigate(['/maintenance/maintenanceNews']);
+  }
+
+  private formatDate(date: Date): string {
+    const d = new Date(date);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${month}-${day}`;
+  }
+
+  private formatDateForBackend(dateString: string): string {
+    const d = new Date(dateString.replace(/-/g, '/'));
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${day}/${month}/${d.getFullYear()}`;
+  }
+
+  // ============================================================
   //  DETALLE
   // ============================================================
 
@@ -190,7 +337,10 @@ export class ViewNews implements OnInit {
   openEdit(order: MaintenanceRequest): void {
     this.editOrder = order;
 
-    const { area, department } = this.parseArea(order.area);
+    // El backend guarda area/department por separado; si una solicitud vieja no trae
+    // department, se recurre a partir el "area" compuesto como fallback.
+    const area = order.area || '';
+    const department = order.department || this.parseArea(order.area).department;
     this.editForm = {
       status: order.status,
       priority: order.priority,
@@ -234,9 +384,10 @@ export class ViewNews implements OnInit {
       priority: this.editForm.priority,
       maintenanceType: this.editForm.maintenanceType,
       assignedTo: this.editForm.assignedTo,
-      // machineCode no es actualizable por el backend; sí machineName y area.
+      // machineCode no es actualizable por el backend; sí machineName, area y department.
       machineName: this.editForm.machineName,
-      area: this.composeArea(this.editForm.machineArea, this.editForm.machineDepartment),
+      area: this.editForm.machineArea,
+      department: this.editForm.machineDepartment,
       scheduledDate: this.editForm.scheduledDate,
       observation: this.editForm.observation.trim(),
     };
@@ -455,14 +606,7 @@ export class ViewNews implements OnInit {
   //  HELPERS
   // ============================================================
 
-  /** Compone "Área / Departamento" como lo espera el backend. */
-  private composeArea(area?: string, department?: string): string {
-    const a = (area || '').trim();
-    const d = (department || '').trim();
-    return d ? `${a} / ${d}` : a;
-  }
-
-  /** Separa un "Área / Departamento" en sus partes. */
+  /** Separa un "Área / Departamento" en sus partes (fallback para datos antiguos sin department). */
   private parseArea(value?: string | null): { area: string; department: string } {
     const raw = (value || '').trim();
     if (!raw) return { area: '', department: '' };
@@ -502,6 +646,9 @@ export class ViewNews implements OnInit {
     return `${day}/${month}/${year}, ${time}`;
   }
 }
+
+/** Columnas por las que se puede ordenar la tabla de novedades entrantes. */
+type PendingNewsSortField = 'reportedAt' | 'origin' | 'machine' | 'detail' | 'reportedBy' | 'status';
 
 /** Modelo del formulario de edición (área/departamento separados para los selects). */
 interface EditForm {
