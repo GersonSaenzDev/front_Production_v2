@@ -44,6 +44,9 @@
         [(ngModel)]="searchTerm"
         (input)="applyFilter()">
     </div>
+    <button type="button" class="btn-staff" (click)="openStaffModal()">
+      <i class="ti ti-users"></i> Productividad por Operario
+    </button>
     <button class="btn-excel" (click)="exportToExcel()">
       <i class="ti ti-file-spreadsheet"></i> Descargar Reporte Excel
     </button>
@@ -115,4 +118,99 @@
       }
     }
   </div>
+
+  <!-- Modal: Productividad de lectura por operario -->
+  <ng-template #staffModal let-modal>
+    <div class="modal-header">
+      <div>
+        <h5 class="modal-title">Productividad de Lectura por Operario</h5>
+        <small class="text-muted">Rango: {{ dateIni }} al {{ dateEnd }}</small>
+      </div>
+      <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss()"></button>
+    </div>
+
+    <div class="modal-body staff-modal-body">
+      @if (staffSummary.length === 0) {
+        <div class="text-center p-4 text-muted">
+          <i class="ti ti-user-off f-30"></i>
+          <p class="mt-2">No hay lecturas registradas por operario en el rango seleccionado.</p>
+        </div>
+      } @else {
+        <div class="staff-kpis">
+          <div class="staff-kpi-card">
+            <span class="kpi-value">{{ staffSummary.length }}</span>
+            <span class="kpi-label">Operarios Activos</span>
+          </div>
+          <div class="staff-kpi-card">
+            <span class="kpi-value">{{ staffGrandTotal | number }}</span>
+            <span class="kpi-label">Total Lecturas</span>
+          </div>
+          <div class="staff-kpi-card">
+            <span class="kpi-value">{{ (staffGrandTotal / staffSummary.length) | number:'1.0-1' }}</span>
+            <span class="kpi-label">Promedio por Operario</span>
+          </div>
+          <div class="staff-kpi-card highlight">
+            <span class="kpi-value">{{ topOperator?.fullName || '-' }}</span>
+            <span class="kpi-label">Operario Líder ({{ topOperator?.totalCount || 0 }} lecturas)</span>
+          </div>
+          @if (bestDay) {
+            <div class="staff-kpi-card">
+              <span class="kpi-value">{{ bestDay.display }}</span>
+              <span class="kpi-label">Día de Mayor Producción ({{ bestDayTotal }})</span>
+            </div>
+          }
+        </div>
+
+        <div class="table-responsive staff-table-wrapper">
+          <table class="table staff-table">
+            <thead>
+              <tr>
+                <th class="sticky-col">Operario</th>
+                @for (day of staffDays; track day.key) {
+                  <th class="text-center">{{ day.display }}</th>
+                }
+                <th class="text-center total-col">Total</th>
+                <th class="text-center">Días Activos</th>
+                <th class="text-center">Prom./Día Activo</th>
+                <th class="text-center">% Participación</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (op of staffSummary; track op.document) {
+                <tr>
+                  <td class="sticky-col operator-name">
+                    {{ op.fullName }}
+                    @if (op.document) {
+                      <small class="d-block text-muted">{{ op.document }}</small>
+                    }
+                  </td>
+                  @for (value of op.dayValues; track $index) {
+                    <td class="text-center" [class.zero-value]="value === 0">{{ value || '-' }}</td>
+                  }
+                  <td class="text-center total-col"><strong>{{ op.totalCount }}</strong></td>
+                  <td class="text-center">{{ op.activeDays }}</td>
+                  <td class="text-center">{{ op.avgPerActiveDay | number:'1.0-1' }}</td>
+                  <td class="text-center">{{ op.participation | number:'1.0-1' }}%</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="sticky-col"><strong>Total por Día</strong></td>
+                @for (total of staffDayTotals; track $index) {
+                  <td class="text-center"><strong>{{ total }}</strong></td>
+                }
+                <td class="text-center total-col"><strong>{{ staffGrandTotal }}</strong></td>
+                <td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="modal.dismiss()">Cerrar</button>
+    </div>
+  </ng-template>
 </div>
