@@ -2,7 +2,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
-import { finalize } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap';
 
@@ -32,6 +31,31 @@ export interface PendingReading {
   errorKind?: 'transient' | 'permanent';
   lastError?: string;
   /** Producto resuelto vía getStorage; se completa al momento de sincronizar. */
+  product?: Product;
+}
+
+/**
+ * Palet completo (10 unidades, misma referencia, consecutivos contiguos) retenido
+ * localmente hasta poder cargarlo al servidor. Igual que `PendingReading`, pero para
+ * el flujo de palet: la validación al escanear es 100% local (ver tryAddToPallet), así
+ * que un palet se puede completar y encolar sin red; el producto (nombre/EAN) recién
+ * se resuelve al momento de sincronizar (ver sendQueuePallet).
+ */
+export interface PendingPallet {
+  id: string;
+  /** Códigos de barras de las 10 unidades, en el orden en que se escanearon. */
+  barcodes: string[];
+  /** Referencia de 7 dígitos extraída del propio código (ver extractReference). */
+  reference: string;
+  area: string;
+  operatorName: string;
+  operatorId: string;
+  createdAt: string;
+  attempts: number;
+  status: PendingStatus;
+  errorKind?: 'transient' | 'permanent';
+  lastError?: string;
+  /** Producto resuelto vía getStorage (solo se consulta una vez por palet, al sincronizar). */
   product?: Product;
 }
 
@@ -86,6 +110,14 @@ export class InventoryReader implements OnInit, OnDestroy {
   private static readonly PALLET_REFERENCES = new Set<string>(['0014171', '0312093', '0033028', '0034025', '0011170', '0012092']);
   private static readonly REF_START = 9;
   private static readonly REF_LEN = 7;
+  /**
+   * Consecutivo dentro del código de 27 dígitos (posiciones 18-27, ver seeSearchReferenceStorageDAO
+   * en el backend). Igual que la referencia, se puede leer directo del propio código sin red:
+   * mismo criterio que barcode-reader.ts (extractSerial). Se usa para validar el palet (misma
+   * referencia + rango contiguo de 10) de forma 100% local, sin depender de getStorage.
+   */
+  private static readonly SERIAL_START = 17;
+  private static readonly SERIAL_LEN = 10;
 
   private dashService = inject(DashInventoryServices);
   private modalService = inject(NgbModal);
@@ -114,8 +146,9 @@ export class InventoryReader implements OnInit, OnDestroy {
   // Producto actual (modo simple)
   currentProduct: Product | null = null;
 
-  // Productos en la regleta (modo regleta)
-  regletaProducts: Product[] = [];
+  // Códigos del palet en progreso (modo regleta). Validación 100% local (ver tryAddToPallet):
+  // no requiere red para ir sumando las 10 unidades.
+  currentPalletCodes: string[] = [];
 
   // Mensaje de estado
   statusMessage: string = '';
@@ -137,9 +170,6 @@ export class InventoryReader implements OnInit, OnDestroy {
   serverResponse: any = null;
   duplicateBarcode: string | null = null;
   serverSuccess: boolean | null = null;
-
-  // Indica si hay una carga en curso para bloquear múltiples peticiones
-  loading: boolean = false;
 
   /** Evita repetir el alert bloqueante de "sin Área" en cada lectura (solo la 1ª vez). */
   private missingAreaAlerted = false;
@@ -166,9 +196,16 @@ export class InventoryReader implements OnInit, OnDestroy {
    * igual que `historicItems` en barcode-reader.ts.
    */
   private readonly SENT_KEY = 'inventory-reader.sent-barcodes.v1';
+  /** Palets completos (10 unidades) en espera de envío — mismo patrón offline-first que QUEUE_KEY. */
+  private readonly PALLET_QUEUE_KEY = 'inventory-reader.pending-pallets.v1';
+  /** Palet en progreso (< 10 unidades): se persiste para sobrevivir a un recargo accidental de la página. */
+  private readonly CURRENT_PALLET_KEY = 'inventory-reader.current-pallet.v1';
 
   /** Lecturas de modo simple retenidas hasta poder cargarlas al servidor. */
   pendingQueue: PendingReading[] = [];
+
+  /** Palets completos retenidos hasta poder cargarlos al servidor. */
+  pendingPallets: PendingPallet[] = [];
 
   /** Códigos ya confirmados por el servidor (ver SENT_KEY). */
   private sentBarcodes = new Set<string>();
@@ -187,7 +224,7 @@ export class InventoryReader implements OnInit, OnDestroy {
   private readonly onlineHandler = () => this.onConnectivityChange(true);
   private readonly offlineHandler = () => this.onConnectivityChange(false);
   private readonly focusHandler = () => {
-    if (typeof navigator !== 'undefined' && navigator.onLine && this.pendingCount > 0) {
+    if (typeof navigator !== 'undefined' && navigator.onLine && this.uploadPendingCount > 0) {
       this.flushQueue();
     }
   };
@@ -211,6 +248,26 @@ export class InventoryReader implements OnInit, OnDestroy {
   /** Lecturas rechazadas por el servidor que requieren revisión manual. */
   get errorCount(): number {
     return this.pendingQueue.filter((i) => i.status === 'error' && i.errorKind === 'permanent').length;
+  }
+
+  /** Palets que todavía deben enviarse (pendientes + errores transitorios). */
+  get pendingPalletCount(): number {
+    return this.pendingPallets.filter((p) => p.status !== 'error' || p.errorKind === 'transient').length;
+  }
+
+  /** Igual que `pendingQueueDisplay`, pero para la cola de palets. */
+  get pendingPalletsDisplay(): PendingPallet[] {
+    return [...this.pendingPallets].reverse();
+  }
+
+  /** Palets rechazados por el servidor que requieren revisión manual. */
+  get palletErrorCount(): number {
+    return this.pendingPallets.filter((p) => p.status === 'error' && p.errorKind === 'permanent').length;
+  }
+
+  /** Total a enviar al presionar "Cargar al Servidor": cola individual + palets completos. */
+  get uploadPendingCount(): number {
+    return this.pendingCount + this.pendingPalletCount;
   }
 
   /**
@@ -242,6 +299,8 @@ export class InventoryReader implements OnInit, OnDestroy {
     this.loadArea();
     this.loadSentBarcodes();
     this.loadQueue();
+    this.loadPalletQueue();
+    this.loadCurrentPallet();
     this.loadSession();
 
     if (typeof window !== 'undefined') {
@@ -251,13 +310,13 @@ export class InventoryReader implements OnInit, OnDestroy {
 
       // Red de seguridad: el evento 'online' no siempre es fiable en la bodega.
       this.retryTimer = setInterval(() => {
-        if (this.pendingCount > 0 && navigator.onLine && !this.flushing) {
+        if (this.uploadPendingCount > 0 && navigator.onLine && !this.flushing) {
           this.flushQueue();
         }
       }, 60000);
     }
 
-    if (this.online && this.pendingCount > 0) {
+    if (this.online && this.uploadPendingCount > 0) {
       this.flushQueue();
     }
   }
@@ -327,94 +386,119 @@ export class InventoryReader implements OnInit, OnDestroy {
     };
   }
 
-  private fetchProductInfo(barcode: string) {
-    if (this.loading) {
-      this.statusMessage = 'Espere, consulta en curso...';
-      return;
-    }
+  private extractSerial(code: string): number {
+    return parseInt(this.extractSerialStr(code), 10);
+  }
 
-    this.loading = true;
-    this.statusMessage = 'Consultando producto...';
-
-    this.dashService
-      .getStorage({ barcode })
-      .pipe(
-        finalize(() => {
-          this.loading = false;
-        })
-      )
-      .subscribe({
-        next: (resp: any) => {
-          if (!resp || resp.ok !== true) {
-            this.statusMessage = 'Respuesta inválida del servidor.';
-            return;
-          }
-
-          const data = resp.msg;
-          if (!Array.isArray(data) || data.length === 0) {
-            this.statusMessage = 'No se encontró información para el código proporcionado.';
-            return;
-          }
-
-          // fetchProductInfo() solo se invoca para referencias de palet (ver readBarcode()):
-          // las individuales se registran directo en la cola, sin consultar el backend aquí.
-          const product = this.mapStorageItemToProduct(data[0]);
-          this.tryAddToPallet(product);
-        },
-        error: (err) => {
-          console.error('Error al consultar getStorage:', err);
-          this.statusMessage = err?.message ? `Error: ${err.message}` : 'Error al consultar el backend.';
-        }
-      });
+  private extractSerialStr(code: string): string {
+    return code.substring(InventoryReader.SERIAL_START, InventoryReader.SERIAL_START + InventoryReader.SERIAL_LEN);
   }
 
   /**
-   * Intenta agregar un producto al palet en curso (modo Regleta). Reglas estrictas:
-   * - Las PALLET_SIZE (10) unidades deben ser de la MISMA referencia (productCode). Se puede
+   * Intenta agregar un código al palet en curso (modo Regleta). Validación 100% local
+   * (referencia + consecutivo extraídos del propio código, igual que barcode-reader.ts):
+   * NO requiere red, así que nunca bloquea el escaneo aunque no haya wifi. Reglas estrictas:
+   * - Las PALLET_SIZE (10) unidades deben ser de la MISMA referencia (dígitos 10-16). Se puede
    *   leer en cualquier orden, pero un código de otra referencia se rechaza sin tocar el palet.
-   * - Los consecutivos deben terminar formando un rango contiguo de EXACTAMENTE 10 números
-   *   (sin huecos, sin repetidos, sin sobrantes): un código que ensancharía el rango actual
-   *   a más de 10 posiciones se rechaza de inmediato, para detectar el error de lectura ahí
-   *   mismo en vez de dejar "completar" 10 unidades sueltas que no correspondan a un mismo palet.
-   * - Con el palet ya completo (10/10) no se aceptan más lecturas hasta enviarlo o limpiarlo.
+   * - Los consecutivos (dígitos 18-27) deben terminar formando un rango contiguo de EXACTAMENTE
+   *   10 números (sin huecos, sin repetidos, sin sobrantes): un código que ensancharía el rango
+   *   actual a más de 10 posiciones se rechaza de inmediato, para detectar el error de lectura
+   *   ahí mismo en vez de dejar "completar" 10 unidades sueltas que no correspondan a un mismo palet.
+   * - Con el palet ya completo (10/10) no se aceptan más lecturas hasta registrarlo o limpiarlo.
    */
-  private tryAddToPallet(product: Product): void {
-    if (this.regletaProducts.length >= InventoryReader.PALLET_SIZE) {
-      this.statusMessage = `El palet ya tiene los ${InventoryReader.PALLET_SIZE} códigos completos. Envíelo o presione "Limpiar" antes de escanear el siguiente.`;
+  private tryAddToPallet(code: string): void {
+    if (this.currentPalletCodes.length >= InventoryReader.PALLET_SIZE) {
+      this.statusMessage = `El palet ya tiene los ${InventoryReader.PALLET_SIZE} códigos completos. Presione "Registrar Palet" o "Limpiar" antes de escanear el siguiente.`;
       return;
     }
 
-    const alreadyScanned = this.regletaProducts.some((r) => r.barcode === product.barcode || r.consecutivo === product.consecutivo);
-    if (alreadyScanned) {
+    if (this.currentPalletCodes.includes(code)) {
       this.statusMessage = 'Este código ya fue escaneado en el palet actual.';
       return;
     }
 
-    if (this.regletaProducts.length > 0 && this.regletaProducts[0].productCode !== product.productCode) {
-      this.statusMessage = `Referencia distinta: el palet en curso es "${this.regletaProducts[0].productCode}" y este código es "${product.productCode}". Las ${InventoryReader.PALLET_SIZE} unidades deben ser de la misma referencia.`;
-      return;
-    }
-
-    const newNum = parseInt(product.consecutivo, 10);
-    if (isNaN(newNum)) {
+    const newRef = this.extractReference(code);
+    const newSerial = this.extractSerial(code);
+    if (isNaN(newSerial)) {
       this.statusMessage = 'No se pudo interpretar el consecutivo de este código. Vuelva a escanearlo.';
       return;
     }
 
-    const existingNums = this.regletaProducts.map((r) => parseInt(r.consecutivo, 10)).filter((n) => !isNaN(n));
-    const allNums = [...existingNums, newNum];
-    const span = Math.max(...allNums) - Math.min(...allNums) + 1;
-    if (span > InventoryReader.PALLET_SIZE) {
-      this.statusMessage = `Este consecutivo (${product.consecutivo}) no es consecutivo con el palet en curso (rango actual ${Math.min(...existingNums)}–${Math.max(...existingNums)}). Verifique que sea del mismo palet.`;
+    if (this.currentPalletCodes.length > 0) {
+      const currentRef = this.extractReference(this.currentPalletCodes[0]);
+      if (currentRef !== newRef) {
+        this.statusMessage = `Referencia distinta: el palet en curso es "${currentRef}" y este código es "${newRef}". Las ${InventoryReader.PALLET_SIZE} unidades deben ser de la misma referencia.`;
+        return;
+      }
+
+      const existingSerials = this.currentPalletCodes.map((c) => this.extractSerial(c));
+      const span = Math.max(...existingSerials, newSerial) - Math.min(...existingSerials, newSerial) + 1;
+      if (span > InventoryReader.PALLET_SIZE) {
+        this.statusMessage = `Este consecutivo no es consecutivo con el palet en curso (rango actual ${Math.min(...existingSerials)}–${Math.max(...existingSerials)}). Verifique que sea del mismo palet.`;
+        return;
+      }
+    }
+
+    this.currentPalletCodes.push(code);
+    this.persistCurrentPallet();
+
+    this.statusMessage =
+      this.currentPalletCodes.length === InventoryReader.PALLET_SIZE
+        ? `✔ Palet completo (${InventoryReader.PALLET_SIZE}/${InventoryReader.PALLET_SIZE}) — referencia ${newRef}. Ya puede registrarlo.`
+        : `Palet en progreso: ${this.currentPalletCodes.length}/${InventoryReader.PALLET_SIZE} — referencia ${newRef}.`;
+
+    this.refocusBarcodeInput();
+  }
+
+  /**
+   * Botón "Registrar como sueltos": para cuando el operario tiene unidades de una
+   * referencia de palet que NO van a completar los 10 consecutivos (palet roto,
+   * devolución, unidad suelta de bodega, etc.). Se registran una por una en la MISMA
+   * cola individual offline-first (pendingQueue) — mismo tratamiento que cualquier
+   * lectura individual, sin distinguirlas ni requerir referencia/consecutivo contiguo.
+   */
+  registerLooseUnits(): void {
+    if (this.currentPalletCodes.length === 0) {
+      this.statusMessage = 'No hay unidades en el palet en progreso para registrar como sueltas.';
       return;
     }
 
-    this.regletaProducts.push(product);
+    if (!this.inventoryArea.trim()) {
+      this.statusMessage = 'Ingrese el Área antes de registrar.';
+      return;
+    }
 
-    this.statusMessage =
-      this.regletaProducts.length === InventoryReader.PALLET_SIZE
-        ? `✔ Palet completo (${InventoryReader.PALLET_SIZE}/${InventoryReader.PALLET_SIZE}) — referencia ${product.productCode}. Ya puede enviarlo al inventario.`
-        : `Palet en progreso: ${this.regletaProducts.length}/${InventoryReader.PALLET_SIZE} — referencia ${product.productCode}.`;
+    if (!this.currentUserName) {
+      this.statusMessage = 'No se pudo obtener el usuario del token. Vuelva a iniciar sesión.';
+      return;
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        `¿Registrar estas ${this.currentPalletCodes.length} unidad(es) como SUELTAS (individuales), en vez de esperar a completar un palet de ${InventoryReader.PALLET_SIZE}?\n\nEsta acción no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
+
+    const codes = [...this.currentPalletCodes];
+    this.currentPalletCodes = [];
+    this.persistCurrentPallet();
+
+    let queuedCount = 0;
+    for (const code of codes) {
+      if (this.enqueueReading(code)) {
+        if (!this.scannedCodes.includes(code)) {
+          this.scannedCodes.unshift(code);
+        }
+        queuedCount++;
+      }
+    }
+    this.persistSession();
+
+    this.statusMessage = `${queuedCount} de ${codes.length} unidad(es) registrada(s) como suelta(s) en la cola individual.`;
+    this.refocusBarcodeInput();
   }
 
   clearData() {
@@ -422,11 +506,13 @@ export class InventoryReader implements OnInit, OnDestroy {
     this.scannedCodes = [];
     this.sentCount = 0;
     this.currentProduct = null;
-    this.regletaProducts = [];
-    // IMPORTANTE: "Limpiar" NO borra la cola de lecturas pendientes (this.pendingQueue).
-    // Esos datos solo salen de la cola cuando se cargan al servidor o se eliminan uno a uno.
-    // Sí reinicia el contador de "Escaneados / Enviados" del lote: es la forma explícita
-    // que tiene el usuario de decir "empiezo a contar un lote nuevo".
+    this.currentPalletCodes = [];
+    this.persistCurrentPallet();
+    // IMPORTANTE: "Limpiar" NO borra la cola de lecturas ni de palets pendientes
+    // (this.pendingQueue / this.pendingPallets). Esos datos solo salen de la cola cuando
+    // se cargan al servidor o se eliminan uno a uno. Sí reinicia el contador de
+    // "Escaneados / Enviados" del lote y descarta el palet EN PROGRESO (< 10 unidades):
+    // es la forma explícita que tiene el usuario de decir "empiezo a contar un lote nuevo".
     this.persistSession();
     // opcional: NO limpiar el Área aquí si quieres mantenerla
     // this.inventoryArea = '';
@@ -470,9 +556,6 @@ export class InventoryReader implements OnInit, OnDestroy {
     const code = (this.barcodeInput || '').trim();
 
     if (!code) return;
-
-    // Si ya estamos procesando, evitamos duplicar la petición
-    if (this.loading) return;
 
     // Validación: si el código está incompleto (ej. menos de 10 caracteres) no enviamos
     // Ajusta este número según el largo mínimo de tus códigos reales
@@ -535,9 +618,9 @@ export class InventoryReader implements OnInit, OnDestroy {
     this.lastDetectedReference = reference;
 
     if (isPalletReference) {
-      // Palet: la validación de referencia única + consecutivos contiguos ocurre en
-      // tryAddToPallet(), una vez resuelto el producto.
-      this.fetchProductInfo(code);
+      // Palet: validación 100% local (referencia + consecutivo extraídos del propio
+      // código), sin llamar al servidor — así nunca bloquea el escaneo por falta de red.
+      this.tryAddToPallet(code);
     } else {
       // Individual: NO se envía al servidor de inmediato. Se guarda en la cola local
       // (offline-first) y se sube cuando haya conexión.
@@ -627,10 +710,10 @@ export class InventoryReader implements OnInit, OnDestroy {
     return true;
   }
 
-  /** Botón "Cargar al servidor": intenta vaciar la cola manualmente. */
+  /** Botón "Cargar al servidor": intenta vaciar la cola manualmente (lecturas individuales + palets). */
   onUploadClick(): void {
-    if (this.pendingCount === 0) {
-      this.statusMessage = 'No hay lecturas pendientes por cargar.';
+    if (this.uploadPendingCount === 0) {
+      this.statusMessage = 'No hay lecturas ni palets pendientes por cargar.';
       return;
     }
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -706,7 +789,9 @@ export class InventoryReader implements OnInit, OnDestroy {
   }
 
   /**
-   * Recorre la cola enviando cada lectura pendiente / con error transitorio.
+   * Recorre AMBAS colas (lecturas individuales + palets completos) enviando cada una
+   * pendiente / con error transitorio. Es el único punto donde se habla con el servidor
+   * para estos dos flujos: escanear (individual o palet) nunca requiere red, solo esto.
    * @param notifyUser Solo debe ser `true` cuando lo dispara el botón "Cargar al
    * servidor" (acción explícita). Al terminar, avisa con una alerta cuántos productos
    * se enviaron y, si no queda nada pendiente, limpia el listado de códigos escaneados
@@ -717,8 +802,9 @@ export class InventoryReader implements OnInit, OnDestroy {
   async flushQueue(notifyUser: boolean = false): Promise<void> {
     if (this.flushing) return;
 
-    const targets = this.pendingQueue.filter((i) => i.status === 'pending' || (i.status === 'error' && i.errorKind === 'transient'));
-    if (targets.length === 0) return;
+    const itemTargets = this.pendingQueue.filter((i) => i.status === 'pending' || (i.status === 'error' && i.errorKind === 'transient'));
+    const palletTargets = this.pendingPallets.filter((p) => p.status === 'pending' || (p.status === 'error' && p.errorKind === 'transient'));
+    if (itemTargets.length === 0 && palletTargets.length === 0) return;
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.online = false;
@@ -731,7 +817,7 @@ export class InventoryReader implements OnInit, OnDestroy {
     let sent = 0;
     let failed = 0;
 
-    for (const item of targets) {
+    for (const item of itemTargets) {
       if (item.status === 'sending') continue;
       const ok = await this.sendQueueItem(item);
       if (ok) {
@@ -744,15 +830,30 @@ export class InventoryReader implements OnInit, OnDestroy {
       }
       this.persistQueue();
     }
+
+    let palletsSent = 0;
+    let palletsFailed = 0;
+    for (const pallet of palletTargets) {
+      if (pallet.status === 'sending') continue;
+      const ok = await this.sendQueuePallet(pallet);
+      if (ok) {
+        palletsSent++;
+      } else {
+        palletsFailed++;
+      }
+      this.persistPalletQueue();
+    }
     this.persistSession();
 
     this.flushing = false;
 
-    const remaining = this.pendingCount;
+    sent += palletsSent;
+    failed += palletsFailed;
+    const remaining = this.uploadPendingCount;
     this.lastSyncMessage =
       failed === 0
-        ? `✔ ${sent} lectura(s) cargada(s) al servidor.`
-        : `${sent} enviada(s), ${failed} sin enviar. Quedan ${remaining} pendiente(s).`;
+        ? `✔ ${sent} registro(s) cargado(s) al servidor.`
+        : `${sent} enviado(s), ${failed} sin enviar. Quedan ${remaining} pendiente(s).`;
     this.lastSyncKind = failed === 0 ? 'success' : 'warning';
     this.statusMessage = this.lastSyncMessage;
 
@@ -769,13 +870,26 @@ export class InventoryReader implements OnInit, OnDestroy {
 
       if (sent === 0 && failed > 0) {
         alertMsg = `No se pudo enviar ningún registro (${failed} con error). Revise la conexión e intente de nuevo.`;
-      } else if (remaining === 0) {
-        alertMsg = `✔ ${confirmedTotal} de ${scannedTotal} lectura(s) escaneada(s) confirmadas en el inventario.`;
+      } else {
+        const parts: string[] = [];
+        if (itemTargets.length > 0) {
+          parts.push(`${confirmedTotal} de ${scannedTotal} lectura(s) individual(es) confirmada(s)`);
+        }
+        if (palletTargets.length > 0) {
+          parts.push(`${palletsSent} de ${palletTargets.length} palet(es) enviado(s)`);
+        }
+        alertMsg = (parts.length > 0 ? parts.join(' · ') : `${sent} registro(s) enviado(s)`) + '.';
+        if (remaining > 0) {
+          alertMsg += ` Quedan ${remaining} pendiente(s) de revisión.`;
+        } else {
+          alertMsg = '✔ ' + alertMsg;
+        }
+      }
+
+      if (remaining === 0) {
         this.scannedCodes = [];
         this.sentCount = 0;
         this.persistSession();
-      } else {
-        alertMsg = `${confirmedTotal} de ${scannedTotal} lectura(s) confirmada(s). ${failed} no se pudieron enviar y quedan pendientes de revisión.`;
       }
 
       if (typeof window !== 'undefined') {
@@ -783,8 +897,13 @@ export class InventoryReader implements OnInit, OnDestroy {
       }
     }
 
-    // Si se envió algo y entraron lecturas nuevas durante el proceso, reintenta una vez.
-    if (sent > 0 && this.pendingQueue.some((i) => i.status === 'pending') && typeof navigator !== 'undefined' && navigator.onLine) {
+    // Si se envió algo y entraron lecturas/palets nuevos durante el proceso, reintenta una vez.
+    if (
+      sent > 0 &&
+      (this.pendingQueue.some((i) => i.status === 'pending') || this.pendingPallets.some((p) => p.status === 'pending')) &&
+      typeof navigator !== 'undefined' &&
+      navigator.onLine
+    ) {
       setTimeout(() => this.flushQueue(), 0);
     }
 
@@ -872,6 +991,87 @@ export class InventoryReader implements OnInit, OnDestroy {
     return false;
   }
 
+  /**
+   * Envía un palet completo: resuelve el producto UNA sola vez (a partir del primer
+   * barcode) y luego inserta las 10 unidades juntas. El consecutivo de cada unidad se
+   * extrae localmente del propio código (ver extractSerialStr) — no depende de que el
+   * servidor lo devuelva por unidad.
+   */
+  private async sendQueuePallet(pallet: PendingPallet): Promise<boolean> {
+    pallet.status = 'sending';
+    pallet.attempts++;
+    pallet.lastError = undefined;
+    this.persistPalletQueue();
+
+    try {
+      let product = pallet.product;
+      if (!product) {
+        const resp = await firstValueFrom(this.dashService.getStorageQueued({ barcode: pallet.barcodes[0] }));
+        if (!resp || resp.ok !== true || !Array.isArray(resp.msg) || resp.msg.length === 0) {
+          pallet.status = 'error';
+          pallet.errorKind = 'permanent';
+          pallet.lastError = 'No se encontró el producto para este palet.';
+          return false;
+        }
+        product = this.mapStorageItemToProduct(resp.msg[0]);
+        pallet.product = product;
+      }
+
+      const productsToRegister: Product[] = pallet.barcodes.map((barcode) => ({
+        ...product!,
+        barcode,
+        consecutivo: this.extractSerialStr(barcode)
+      }));
+
+      const payload = this.buildInsertPayload(productsToRegister, {
+        area: pallet.area,
+        operatorName: pallet.operatorName,
+        operatorId: pallet.operatorId
+      });
+      const insert = await firstValueFrom(this.dashService.insertInventoryQueued(payload));
+
+      if (insert && insert.ok === true) {
+        this.removePalletFromQueue(pallet.id);
+        return true;
+      }
+
+      pallet.status = 'error';
+      pallet.errorKind = 'permanent';
+      pallet.lastError = insert?.msg || 'El servidor rechazó el palet.';
+      return false;
+    } catch (err) {
+      return this.classifyPalletQueueError(pallet, err);
+    }
+  }
+
+  /** Igual que `classifyQueueError`, pero para palets (no participan de `sentBarcodes`/`scannedCodes`). */
+  private classifyPalletQueueError(pallet: PendingPallet, err: unknown): boolean {
+    const httpErr = (err ?? {}) as {
+      status?: number;
+      error?: { msg?: string; duplicateBarcode?: string; validationError?: boolean };
+    };
+    const status = httpErr.status;
+    const body = httpErr.error;
+
+    if (status === 409 || body?.duplicateBarcode || /duplicad/i.test(body?.msg || '')) {
+      this.removePalletFromQueue(pallet.id);
+      this.statusMessage = `El palet (referencia ${pallet.reference}) ya estaba registrado en el servidor (duplicado).`;
+      return true;
+    }
+
+    if (status === 400 || body?.validationError === true) {
+      pallet.status = 'error';
+      pallet.errorKind = 'permanent';
+      pallet.lastError = body?.msg || 'El servidor rechazó el palet (validación).';
+      return false;
+    }
+
+    pallet.status = 'error';
+    pallet.errorKind = 'transient';
+    pallet.lastError = status === 0 || status === undefined ? 'Sin conexión con el servidor.' : `Error temporal del servidor (${status}).`;
+    return false;
+  }
+
   /** Reintento manual de una lectura marcada con error. */
   retryItem(item: PendingReading): void {
     item.status = 'pending';
@@ -901,6 +1101,36 @@ export class InventoryReader implements OnInit, OnDestroy {
   private removeFromQueue(id: string): void {
     this.pendingQueue = this.pendingQueue.filter((i) => i.id !== id);
     this.persistQueue();
+  }
+
+  /** Reintento manual de un palet marcado con error. */
+  retryPallet(pallet: PendingPallet): void {
+    pallet.status = 'pending';
+    pallet.errorKind = undefined;
+    pallet.lastError = undefined;
+    this.persistPalletQueue();
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      this.flushQueue();
+    } else {
+      this.statusMessage = 'Sin conexión. Se reintentará al recuperar la red.';
+    }
+  }
+
+  /** Elimina un palet de la cola (solo con confirmación explícita). */
+  removePallet(pallet: PendingPallet): void {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(`¿Eliminar este palet de la cola?\n\nReferencia ${pallet.reference} (${pallet.barcodes.length} unidades)\n\nEsta acción no se puede deshacer.`)
+    ) {
+      return;
+    }
+    this.removePalletFromQueue(pallet.id);
+    this.statusMessage = 'Palet eliminado de la cola.';
+  }
+
+  private removePalletFromQueue(id: string): void {
+    this.pendingPallets = this.pendingPallets.filter((p) => p.id !== id);
+    this.persistPalletQueue();
   }
 
   private onConnectivityChange(isOnline: boolean): void {
@@ -942,6 +1172,60 @@ export class InventoryReader implements OnInit, OnDestroy {
     } catch (e) {
       console.error('No se pudo guardar la cola local de inventario:', e);
       this.statusMessage = '⚠ No se pudo guardar la lectura localmente (almacenamiento lleno). Sincronice cuanto antes.';
+    }
+  }
+
+  private loadPalletQueue(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(this.PALLET_QUEUE_KEY) : null;
+      const parsed = raw ? JSON.parse(raw) : [];
+      this.pendingPallets = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('No se pudo leer la cola local de palets:', e);
+      this.pendingPallets = [];
+    }
+
+    // Un 'sending' persistido = se recargó a mitad de envío: vuelve a 'pending'.
+    let changed = false;
+    for (const pallet of this.pendingPallets) {
+      if (pallet.status === 'sending') {
+        pallet.status = 'pending';
+        changed = true;
+      }
+    }
+    if (changed) this.persistPalletQueue();
+  }
+
+  private persistPalletQueue(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.PALLET_QUEUE_KEY, JSON.stringify(this.pendingPallets));
+      }
+    } catch (e) {
+      console.error('No se pudo guardar la cola local de palets:', e);
+      this.statusMessage = '⚠ No se pudo guardar el palet localmente (almacenamiento lleno). Sincronice cuanto antes.';
+    }
+  }
+
+  /** Recupera el palet en progreso (< 10 unidades) si la página se recargó a mitad de escaneo. */
+  private loadCurrentPallet(): void {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(this.CURRENT_PALLET_KEY) : null;
+      const parsed = raw ? JSON.parse(raw) : [];
+      this.currentPalletCodes = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('No se pudo leer el palet en progreso:', e);
+      this.currentPalletCodes = [];
+    }
+  }
+
+  private persistCurrentPallet(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.CURRENT_PALLET_KEY, JSON.stringify(this.currentPalletCodes));
+      }
+    } catch (e) {
+      console.error('No se pudo guardar el palet en progreso:', e);
     }
   }
 
@@ -1113,10 +1397,13 @@ export class InventoryReader implements OnInit, OnDestroy {
   }
 
   /**
-   * Envía al backend los productos seleccionados junto con los datos de usuario (área / nombres).
+   * Botón "Registrar Palet al Inventario": 100% local e instantáneo, NUNCA llama al
+   * servidor aquí. Mueve el palet completo a `pendingPallets` (offline-first, igual que
+   * la cola individual) y libera de inmediato el palet en curso para que el operario
+   * pueda seguir escaneando el siguiente palet sin esperar red. El envío real ocurre en
+   * `flushQueue()`, disparado en segundo plano si hay conexión, o al presionar
+   * "Cargar al Servidor".
    */
-
-  /** Botón "Registrar Palet al Inventario" (validación de palet de 10 — antes "Regleta"). */
   registerInventory() {
     if (!this.inventoryArea.trim()) {
       this.statusMessage = 'Ingrese el Área antes de registrar.';
@@ -1128,79 +1415,45 @@ export class InventoryReader implements OnInit, OnDestroy {
       return;
     }
 
-    const productsToRegister: Product[] = this.regletaProducts;
-
-    if (!productsToRegister || productsToRegister.length === 0) {
-      this.statusMessage = 'No hay productos para registrar.';
-      return;
-    }
-
-    // Envío bloqueado hasta completar EXACTAMENTE el palet (nunca 9, nunca 11): la validación
+    // Bloqueado hasta completar EXACTAMENTE el palet (nunca 9, nunca 11): la validación
     // de referencia única y consecutivos contiguos ya ocurrió al escanear (tryAddToPallet), así
     // que llegar aquí con longitud distinta a PALLET_SIZE solo puede significar palet incompleto.
-    if (productsToRegister.length !== InventoryReader.PALLET_SIZE) {
-      this.statusMessage = `El palet debe tener exactamente ${InventoryReader.PALLET_SIZE} unidades antes de enviar (lleva ${productsToRegister.length}/${InventoryReader.PALLET_SIZE}). Complete la lectura o presione "Limpiar" para descartar este palet.`;
+    if (this.currentPalletCodes.length !== InventoryReader.PALLET_SIZE) {
+      this.statusMessage = `El palet debe tener exactamente ${InventoryReader.PALLET_SIZE} unidades antes de registrar (lleva ${this.currentPalletCodes.length}/${InventoryReader.PALLET_SIZE}). Complete la lectura o presione "Limpiar" para descartar este palet.`;
       return;
     }
 
-    if (this.loading) {
-      this.statusMessage = 'Espere, ya se está procesando otra petición...';
-      return;
+    const area = this.inventoryArea.trim();
+    const reference = this.extractReference(this.currentPalletCodes[0]);
+
+    this.pendingPallets.push({
+      id: this.newId(),
+      barcodes: [...this.currentPalletCodes],
+      reference,
+      area,
+      operatorName: this.currentUserName,
+      operatorId: this.currentUserId,
+      createdAt: new Date().toISOString(),
+      attempts: 0,
+      status: 'pending'
+    });
+    this.persistPalletQueue();
+
+    // Libera el palet en curso YA: el operario sigue escaneando el siguiente aunque
+    // no haya red. El envío real sucede en flushQueue() (automático si hay red, o al
+    // presionar "Cargar al Servidor").
+    this.currentPalletCodes = [];
+    this.persistCurrentPallet();
+
+    this.statusMessage = this.online
+      ? `Palet guardado (referencia ${reference}). Sincronizando...`
+      : `Palet guardado SIN conexión (referencia ${reference}). Se enviará al presionar "Cargar al Servidor" o al recuperar la red.`;
+
+    this.refocusBarcodeInput();
+
+    if (this.online && !this.flushing) {
+      this.flushQueue();
     }
-
-    const payload = this.buildInsertPayload(productsToRegister);
-
-    if (
-      (!payload.inventory.barcode || payload.inventory.barcode.length === 0) &&
-      (!payload.inventory.consecutive || payload.inventory.consecutive.length === 0)
-    ) {
-      this.statusMessage = 'Los productos no tienen códigos válidos para registrar.';
-      return;
-    }
-
-    // preparar UI
-    this.loading = true;
-    this.statusMessage = 'Registrando en inventario...';
-    this.serverResponse = null;
-    this.duplicateBarcode = null;
-    this.serverSuccess = null;
-
-    this.dashService
-      .getInsertInventory(payload)
-      .pipe(
-        finalize(() => {
-          this.loading = false;
-        })
-      )
-      .subscribe({
-        next: (resp: any) => {
-          this.serverResponse = resp;
-
-          if (resp && resp.ok === true) {
-            this.serverSuccess = true;
-            this.statusMessage = resp.msg || 'Registrado correctamente en el inventario.';
-
-            // limpiar productos (mantener usuario)
-            this.currentProduct = null;
-            this.regletaProducts = [];
-            this.scannedCodes = [];
-
-            setTimeout(() => document.getElementById('codigoBarras')?.focus(), 50);
-          } else {
-            // error del backend (ok === false)
-            this.serverSuccess = false;
-            this.statusMessage = resp?.msg || 'Error al registrar en el inventario.';
-            this.duplicateBarcode = resp?.duplicateBarcode ?? null;
-          }
-        },
-        error: (err) => {
-          console.error('Error al insertar inventario:', err);
-          this.serverSuccess = false;
-          this.serverResponse = err;
-          this.duplicateBarcode = null;
-          this.statusMessage = err?.message ? `Error: ${err.message}` : 'Error al registrar inventario.';
-        }
-      });
   }
 
   /**

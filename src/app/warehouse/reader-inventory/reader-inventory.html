@@ -58,13 +58,15 @@
         <strong>{{ lastDetectedMode === 'palet' ? 'Palet (10 unidades)' : 'Individual' }}</strong>
       </div>
 
-      <!-- Estado de conexión / cola individual -->
+      <!-- Estado de conexión / colas offline (individual + palets) -->
       <div class="queue-status" style="margin-top: 10px; font-size: 0.85rem">
         <span [class.text-success]="online" [class.text-danger]="!online">
           {{ online ? '● En línea' : '○ Sin conexión — las lecturas se guardan localmente' }}
         </span>
-        <span class="text-muted">· {{ pendingCount }} pendiente(s)</span>
+        <span class="text-muted">· {{ pendingCount }} lectura(s) pendiente(s)</span>
         <span *ngIf="errorCount > 0" class="text-warning">· {{ errorCount }} con error</span>
+        <span class="text-muted">· {{ pendingPalletCount }} palet(es) pendiente(s)</span>
+        <span *ngIf="palletErrorCount > 0" class="text-warning">· {{ palletErrorCount }} palet(es) con error</span>
       </div>
 
       <!-- Resumen rápido del usuario configurado -->
@@ -231,69 +233,107 @@
         </div>
       </div>
 
-      <!-- Palet en progreso (10 unidades consecutivas, misma referencia): solo referencias
-           que estén en PALLET_REFERENCES pasan por aquí; el resto va a la cola individual. -->
+      <!-- Palet en progreso (10 unidades consecutivas, misma referencia): validación 100%
+           LOCAL (referencia + consecutivo extraídos del propio código), sin llamar al
+           servidor — nunca bloquea el escaneo por falta de red. Solo referencias que
+           estén en PALLET_REFERENCES pasan por aquí; el resto va a la cola individual. -->
       <div class="regleta-view">
-        <div class="pallet-progress" [class.pallet-complete]="regletaProducts.length === 10">
-          <strong>Palet: {{ regletaProducts.length }} / 10</strong>
-          <span *ngIf="regletaProducts.length > 0 && regletaProducts.length < 10">
-            · referencia {{ regletaProducts[0].productCode }} · faltan {{ 10 - regletaProducts.length }}
+        <div class="pallet-progress" [class.pallet-complete]="currentPalletCodes.length === 10">
+          <strong>Palet: {{ currentPalletCodes.length }} / 10</strong>
+          <span *ngIf="currentPalletCodes.length > 0 && currentPalletCodes.length < 10">
+            · referencia {{ lastDetectedReference }} · faltan {{ 10 - currentPalletCodes.length }}
           </span>
-          <span *ngIf="regletaProducts.length === 10">· ✔ completo, listo para enviar</span>
+          <span *ngIf="currentPalletCodes.length === 10">· ✔ completo, listo para registrar</span>
         </div>
 
-        <div class="regleta-products" *ngIf="regletaProducts.length > 0; else noRegletaProducts">
-          <div class="regleta-product" *ngFor="let product of regletaProducts">
-            <h4>{{ product.productName }}</h4>
-            <p>
-              <strong>EAN:</strong>
-              {{ product.EAN }}
-            </p>
-            <p>
-              <strong>Código Producto:</strong>
-              {{ product.productCode }}
-            </p>
-            <p>
-              <strong>Referencia:</strong>
-              {{ product.reference }}
-            </p>
-            <p>
-              <strong>Código de Barras:</strong>
-              {{ product.barcode }}
-            </p>
-            <p>
-              <strong>Consecutivo:</strong>
-              {{ product.consecutivo }}
-            </p>
-          </div>
-        </div>
+        <ul class="codes-list" *ngIf="currentPalletCodes.length > 0; else noRegletaProducts">
+          <li *ngFor="let code of currentPalletCodes">{{ code }}</li>
+        </ul>
         <ng-template #noRegletaProducts>
           <p class="placeholder">Escanee los 10 códigos del palet (en cualquier orden; deben ser consecutivos y de la misma referencia)</p>
         </ng-template>
+
+        <!-- Escape hatch: unidades de una referencia de palet que NO van a completar los
+             10 consecutivos (palet roto, devolución, unidad suelta). Se registran de
+             inmediato en la cola individual, igual que cualquier lectura no-palet. -->
+        <button
+          *ngIf="currentPalletCodes.length > 0 && currentPalletCodes.length < 10"
+          type="button"
+          class="btn btn-outline-warning btn-sm mt-2"
+          (click)="registerLooseUnits()"
+        >
+          Registrar como sueltos ({{ currentPalletCodes.length }})
+        </button>
+      </div>
+
+      <!-- Palets completos en espera de envío (offline-first, igual que la cola individual):
+           se llenan al presionar "Registrar Palet al Inventario" y se envían aquí mismo si
+           hay red, o al presionar "Cargar al Servidor". -->
+      <div class="reading-queue" *ngIf="pendingPallets.length > 0">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Palets pendientes ({{ pendingPalletCount }})</strong>
+          <span *ngIf="palletErrorCount > 0" class="badge bg-warning text-dark">{{ palletErrorCount }} con error</span>
+        </div>
+
+        <ul class="list-group mb-3">
+          <li class="list-group-item" *ngFor="let pallet of pendingPalletsDisplay; let i = index">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="me-2" style="min-width: 0">
+                <div class="text-truncate">
+                  <strong>{{ i + 1 }}.</strong>
+                  Referencia {{ pallet.reference }} · {{ pallet.barcodes.length }} unidades
+                </div>
+                <div *ngIf="pallet.product" class="small text-muted text-truncate">{{ pallet.product.productName }}</div>
+                <div class="small text-muted">{{ pallet.createdAt | date: 'short' }} · Área: {{ pallet.area }}</div>
+                <div *ngIf="pallet.lastError" class="small text-danger">{{ pallet.lastError }}</div>
+              </div>
+              <div class="text-nowrap">
+                <span
+                  class="badge"
+                  [class.bg-secondary]="pallet.status === 'pending'"
+                  [class.bg-info]="pallet.status === 'sending'"
+                  [class.bg-warning]="pallet.status === 'error' && pallet.errorKind === 'transient'"
+                  [class.text-dark]="pallet.status === 'error' && pallet.errorKind === 'transient'"
+                  [class.bg-danger]="pallet.status === 'error' && pallet.errorKind === 'permanent'"
+                >
+                  {{ pallet.status === 'pending' ? 'Pendiente' : pallet.status === 'sending' ? 'Enviando…' : pallet.errorKind === 'permanent' ?
+                  'Rechazado' : 'Reintentar' }}
+                </span>
+                <div class="mt-1" *ngIf="pallet.status === 'error'">
+                  <button type="button" class="btn btn-sm btn-outline-primary" (click)="retryPallet(pallet)">Reintentar</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger ms-1" (click)="removePallet(pallet)">Eliminar</button>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
       </div>
 
       <!-- Los dos flujos son independientes y siempre están visibles: se puede tener una
            cola individual pendiente Y un palet en progreso al mismo tiempo (el operario
            puede alternar referencias sin perder ninguno de los dos). -->
       <div class="action-bar">
-        <!-- Cola individual: carga por lote lo que no esté en PALLET_REFERENCES. -->
+        <!-- Cargar al Servidor: envía TODO lo pendiente (cola individual + palets completos).
+             Es el ÚNICO punto que realmente necesita red; se puede reintentar cuantas veces
+             haga falta y nunca bloquea el escaneo. -->
         <div class="action-item">
-          <span class="action-label">Cola individual</span>
-          <button class="btn-register btn btn-success" [disabled]="flushing || pendingCount === 0" (click)="onUploadClick()">
-            {{ flushing ? 'Cargando…' : 'Cargar al servidor (' + pendingCount + ')' }}
+          <span class="action-label">Cargar al Servidor</span>
+          <button class="btn-register btn btn-success" [disabled]="flushing || uploadPendingCount === 0" (click)="onUploadClick()">
+            {{ flushing ? 'Cargando…' : 'Cargar al servidor (' + uploadPendingCount + ')' }}
           </button>
         </div>
 
-        <!-- Palet: azul mientras está incompleto, verde y habilitado solo al llegar a 10/10. -->
+        <!-- Palet: local e instantáneo al llegar a 10/10 (no requiere red); solo mueve el
+             palet a la cola de envío y libera el conteo para el siguiente palet. -->
         <div class="action-item">
           <span class="action-label">Palet (referencias agrupadas)</span>
           <button
             class="btn-register btn-pallet"
-            [class.btn-success]="regletaProducts.length === 10"
-            [disabled]="regletaProducts.length !== 10 || loading"
+            [class.btn-success]="currentPalletCodes.length === 10"
+            [disabled]="currentPalletCodes.length !== 10"
             (click)="registerInventory()"
           >
-            {{ regletaProducts.length === 10 ? 'Registrar Palet al Inventario' : 'Palet: ' + regletaProducts.length + '/10' }}
+            {{ currentPalletCodes.length === 10 ? 'Registrar Palet al Inventario' : 'Palet: ' + currentPalletCodes.length + '/10' }}
           </button>
         </div>
       </div>
