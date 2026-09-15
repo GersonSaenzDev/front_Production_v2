@@ -314,7 +314,10 @@
         </small>
         <div class="form-grid">
           <div class="form-field">
-            <label class="field-label">Capacidad del vehículo (m³) <span class="optional-tag">(opcional)</span></label>
+            <label class="field-label">
+              Capacidad del vehículo (m³)
+              <span class="optional-tag">(opcional)</span>
+            </label>
             <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="form.vehicleCapacityM3" placeholder="0" />
             <small class="field-hint">Se precarga del catálogo según el tipo de vehículo; puedes ajustarla o dejarla en blanco.</small>
           </div>
@@ -442,7 +445,10 @@
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
                 <th>Costo Total</th>
-                <th>Volumen (m³) <span class="optional-tag">(opcional)</span></th>
+                <th>
+                  Volumen (m³)
+                  <span class="optional-tag">(opcional)</span>
+                </th>
                 <th>Flete</th>
                 <th></th>
               </tr>
@@ -503,7 +509,10 @@
             <i class="ti ti-device-floppy"></i>
             Registrar Despacho
           </span>
-          <span *ngIf="isSaving">Guardando...</span>
+          <span *ngIf="isSaving">
+            {{ invoiceUploadProgress ? ('Subiendo facturas ' + invoiceUploadProgress.current + '/' + invoiceUploadProgress.total + '...') :
+            'Guardando...' }}
+          </span>
         </button>
       </div>
     </div>

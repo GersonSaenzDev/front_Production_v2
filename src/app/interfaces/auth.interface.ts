@@ -16,6 +16,9 @@ export interface UserDataMenu {
   uid?: string;
   userApp?: string;
   subArea?: string;
+  /** 'Jefe' | 'Empleado' | ... (viene del token de RH). Usado por MenuAccessService para
+   * distinguir Jefe de Mantenimiento (acceso completo) de técnico (solo Cargue de Novedad). */
+  typeUser?: string;
 }
 
 export interface DataUserMenuResponse {

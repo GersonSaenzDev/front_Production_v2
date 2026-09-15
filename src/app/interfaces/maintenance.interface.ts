@@ -68,6 +68,10 @@ export interface Intervention {
   escalationRespondedBy: string | null;
   escalationRespondedAt: string | null;
   escalationResponse: string | null;
+  /** El Jefe habilitó puntualmente que el técnico corrija esta intervención (se consume al guardar). */
+  editUnlocked: boolean;
+  editUnlockedBy: string | null;
+  editUnlockedAt: string | null;
   auditTrail: AuditEntry[];
   userCreate: string | null;
   dateCreate: string | null;
@@ -248,6 +252,9 @@ export interface MaintenanceListFilters {
   machineCode?: string;
   area?: string;
   maintenanceType?: MaintenanceType;
+  /** Pantalla "Cargue de Novedad" del técnico: solo lo asignado a él (backend filtra por su
+   * propio documento del token, no por uno que se le pase). */
+  assignedToMe?: boolean;
 }
 
 /* ===================== Responses ===================== */

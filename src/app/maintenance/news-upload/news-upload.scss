@@ -1,0 +1,251 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+$mtto-primary: #003366;
+$mtto-secondary: #004d99;
+$mtto-accent: #00d2ff;
+$mtto-text-main: #1e293b;
+$mtto-text-muted: #64748b;
+$mtto-border: #e2e8f0;
+$mtto-bg-light: #f8fafc;
+
+.newsupload-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: #f5f7fa;
+}
+
+.header {
+  background: linear-gradient(90deg, #87d1e6 0%, #003366 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  margin: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.header-title { font-weight: 600; font-size: 1.6rem; margin: 0; }
+.header-subtitle { font-size: 0.85rem; color: #f0f4ff; }
+
+.main-content { max-width: 1400px; margin: 0.5rem auto 1.5rem auto; width: 100%; padding: 0 1rem; }
+
+.right-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  height: 100%;
+}
+
+.form-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: $mtto-text-muted;
+  margin-bottom: 0.35rem;
+}
+
+.form-control,
+.form-select {
+  background-color: #fff;
+  border: 1.5px solid $mtto-border;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: $mtto-text-main;
+
+  &:focus {
+    outline: none;
+    border-color: $mtto-accent;
+    box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.12);
+  }
+}
+
+// ============================================================
+//  Listado de solicitudes asignadas
+// ============================================================
+.newsupload-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.newsupload-list-item {
+  background: $mtto-bg-light;
+  border: 1.5px solid #eef2f7;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: $mtto-accent; transform: translateY(-1px); }
+
+  &.is-selected {
+    border-color: $mtto-primary;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.12);
+  }
+}
+
+.newsupload-list-main {
+  font-size: 0.9rem;
+  color: $mtto-text-main;
+  margin-bottom: 0.3rem;
+}
+
+.newsupload-list-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: $mtto-text-muted;
+  margin-bottom: 0.3rem;
+
+  i { margin-right: 0.2rem; }
+}
+
+.newsupload-list-desc {
+  font-size: 0.8rem;
+  color: $mtto-text-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.newsupload-empty-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  color: $mtto-text-muted;
+  text-align: center;
+
+  i { font-size: 2rem; margin-bottom: 0.75rem; color: #cbd5e1; }
+  p { margin: 0; font-size: 0.9rem; }
+}
+
+// ============================================================
+//  Repuestos utilizados (filas dinámicas)
+// ============================================================
+.newsupload-sparepart-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 0.6fr auto;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+// ============================================================
+//  Bloques reutilizados del estilo de Mantenimiento (secciones, detalle, intervención)
+// ============================================================
+.mtto-section {
+  background: $mtto-bg-light;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 1.25rem;
+
+  &:first-child { margin-top: 0; }
+}
+
+.mtto-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: $mtto-primary;
+  margin: 0 0 1rem;
+
+  i { color: $mtto-accent; font-size: 0.95rem; }
+}
+
+.mtto-empty-text {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+.mtto-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.1rem 1.5rem;
+}
+
+.mtto-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.88rem;
+  color: $mtto-text-main;
+
+  strong {
+    font-size: 0.66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+  }
+}
+
+.mtto-detail-item-full { grid-column: 1 / -1; }
+
+.mtto-intervention-item {
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.mtto-intervention-work {
+  font-weight: 600;
+  color: $mtto-text-main;
+  font-size: 0.88rem;
+  margin-bottom: 0.3rem;
+}
+
+.mtto-intervention-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: $mtto-text-muted;
+
+  i { margin-right: 0.25rem; }
+}
+
+.mtto-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.mtto-form-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mtto-form-group-full { grid-column: 1 / -1; }
+
+@media (max-width: 900px) {
+  .header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+}

@@ -8,6 +8,7 @@ import { ProductionNews } from '../../interfaces/assembly.interface';
 import {
   AddInterventionRequest,
   ApprovalRole,
+  Intervention,
   MaintenanceListFilters,
   MaintenancePriority,
   MaintenanceRequest,
@@ -472,6 +473,23 @@ export class ViewNews implements OnInit {
       },
       error: (err: Error) => this.toastr.error(err.message || 'Error al agregar.', 'Error'),
       complete: () => (this.isAddingIntervention = false),
+    });
+  }
+
+  /** Habilita puntualmente que el técnico corrija esta intervención (Cargue de Novedad). */
+  unlockInterventionEdit(intervention: Intervention): void {
+    if (!this.detailOrder) return;
+    this.maintenanceService.unlockInterventionEdit(this.detailOrder.id, intervention.id).subscribe({
+      next: (res) => {
+        if (!res?.ok) {
+          this.toastr.error(res?.msg || 'No se pudo habilitar la corrección.', 'Error');
+          return;
+        }
+        this.toastr.success('Corrección habilitada para el técnico.', 'Mantenimiento');
+        this.detailOrder = res.data;
+        this.replaceInList(res.data);
+      },
+      error: (err: Error) => this.toastr.error(err.message || 'Error al habilitar la corrección.', 'Error'),
     });
   }
 

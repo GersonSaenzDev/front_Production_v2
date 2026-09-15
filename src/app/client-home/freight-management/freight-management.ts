@@ -219,6 +219,7 @@ export class FreightManagement implements OnInit {
 
   public showFormModal = false;
   public isSaving = false;
+  public invoiceUploadProgress: { current: number; total: number } | null = null;
   public isLoadingDispatchNumber = false;
   public isParsingInvoices = false;
   public isLoadingCarriers = false;
@@ -527,6 +528,43 @@ export class FreightManagement implements OnInit {
     );
   }
 
+  /** Tamaño y cantidad máx. por lote de facturas al subirlas: mantiene cada request bien por
+   * debajo de cualquier límite de tamaño del servidor/proxy sin importar cuántas facturas tenga
+   * el despacho en total (evita el 413 al cargar muchas facturas juntas, ver createFreightDispatch). */
+  private static readonly INVOICE_BATCH_MAX_BYTES = 8 * 1024 * 1024;
+  private static readonly INVOICE_BATCH_MAX_FILES = 5;
+
+  private buildInvoiceBatches(): { files: File[]; meta: { invoiceNumber: string; totalValue: number }[] }[] {
+    const batches: { files: File[]; meta: { invoiceNumber: string; totalValue: number }[] }[] = [];
+    let currentFiles: File[] = [];
+    let currentMeta: { invoiceNumber: string; totalValue: number }[] = [];
+    let currentBytes = 0;
+
+    this.form.invoiceFiles.forEach((file, index) => {
+      const shouldStartNewBatch =
+        currentFiles.length > 0 &&
+        (currentFiles.length >= FreightManagement.INVOICE_BATCH_MAX_FILES ||
+          currentBytes + file.size > FreightManagement.INVOICE_BATCH_MAX_BYTES);
+
+      if (shouldStartNewBatch) {
+        batches.push({ files: currentFiles, meta: currentMeta });
+        currentFiles = [];
+        currentMeta = [];
+        currentBytes = 0;
+      }
+
+      currentFiles.push(file);
+      currentMeta.push(this.form.invoiceMeta[index]);
+      currentBytes += file.size;
+    });
+
+    if (currentFiles.length > 0) {
+      batches.push({ files: currentFiles, meta: currentMeta });
+    }
+
+    return batches;
+  }
+
   public submitDispatch(): void {
     if (!this.isFormValid) {
       this.toastr.warning(
@@ -562,21 +600,58 @@ export class FreightManagement implements OnInit {
     };
 
     this.isSaving = true;
-    this.customerHouseService.createFreightDispatch(payload, this.form.invoiceFiles, this.form.invoiceMeta).subscribe({
+    // El despacho se crea primero SIN facturas; estas se suben aparte, por lotes, para que
+    // ningún request supere el límite de tamaño del servidor sin importar cuántas se adjunten.
+    this.customerHouseService.createFreightDispatch(payload).subscribe({
       next: (response) => {
-        if (response.ok) {
-          this.toastr.success(response.msg || 'Despacho de flete registrado exitosamente.');
-          this.closeFormModal();
-          this.loadDispatches();
-        } else {
+        if (!response.ok) {
           this.toastr.error(response.msg || 'No se pudo registrar el despacho.');
+          this.isSaving = false;
+          return;
         }
+
+        this.toastr.success(response.msg || 'Despacho de flete registrado exitosamente.');
+        const batches = this.buildInvoiceBatches();
+        this.uploadInvoiceBatches(response.data._id, response.data.dispatchNumber, batches, 0);
       },
       error: (err) => {
         this.toastr.error(err.message || 'Error al registrar el despacho de flete.');
-      },
-      complete: () => {
         this.isSaving = false;
+      }
+    });
+  }
+
+  /** Sube las facturas del despacho ya creado un lote a la vez (en orden), para no exceder
+   * el límite de tamaño de request del servidor cuando hay muchas facturas adjuntas. */
+  private uploadInvoiceBatches(
+    dispatchId: string,
+    dispatchNumber: string,
+    batches: { files: File[]; meta: { invoiceNumber: string; totalValue: number }[] }[],
+    index: number
+  ): void {
+    if (index >= batches.length) {
+      this.invoiceUploadProgress = null;
+      this.isSaving = false;
+      this.closeFormModal();
+      this.loadDispatches();
+      return;
+    }
+
+    this.invoiceUploadProgress = { current: index + 1, total: batches.length };
+    const batch = batches[index];
+
+    this.customerHouseService.uploadFreightInvoiceBatch(dispatchId, batch.files, batch.meta).subscribe({
+      next: () => this.uploadInvoiceBatches(dispatchId, dispatchNumber, batches, index + 1),
+      error: (err) => {
+        const uploaded = batches.slice(0, index).reduce((sum, b) => sum + b.files.length, 0);
+        const total = batches.reduce((sum, b) => sum + b.files.length, 0);
+        this.toastr.error(
+          `El despacho ${dispatchNumber} quedó registrado, pero solo se adjuntaron ${uploaded} de ${total} factura(s): ${err.message || 'error al subir las facturas'}. Contacta a sistemas para adjuntar las restantes.`
+        );
+        this.invoiceUploadProgress = null;
+        this.isSaving = false;
+        this.closeFormModal();
+        this.loadDispatches();
       }
     });
   }

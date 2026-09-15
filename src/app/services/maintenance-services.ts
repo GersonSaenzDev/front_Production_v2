@@ -84,6 +84,9 @@ export class MaintenanceServices {
     if (filters.maintenanceType) {
       params = params.set('maintenanceType', filters.maintenanceType);
     }
+    if (filters.assignedToMe) {
+      params = params.set('assignedToMe', 'true');
+    }
     return this.http
       .get<MaintenanceListResponse>(this.BASE_API, { params })
       .pipe(catchError(this.handleError.bind(this)));
@@ -127,6 +130,16 @@ export class MaintenanceServices {
   ): Observable<MaintenanceResponse> {
     return this.http
       .put<MaintenanceResponse>(`${this.BASE_API}/${id}/interventions/${interventionId}`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Habilita puntualmente (Jefe de Mantenimiento) que el técnico corrija una intervención ya
+   * registrada. Se consume sola en cuanto el técnico guarda su corrección.
+   */
+  unlockInterventionEdit(id: string, interventionId: string): Observable<MaintenanceResponse> {
+    return this.http
+      .patch<MaintenanceResponse>(`${this.BASE_API}/${id}/interventions/${interventionId}/unlock-edit`, {})
       .pipe(catchError(this.handleError.bind(this)));
   }
 

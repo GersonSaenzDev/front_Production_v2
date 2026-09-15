@@ -75,28 +75,50 @@ export class CustomerHouseService {
   }
 
   /**
-   * @description Registra un despacho de flete multicliente. El N° de despacho lo genera
-   * el servidor; las facturas PDF adjuntas se archivan en el disco de red compartido.
+   * @description Registra un despacho de flete multicliente (sin facturas adjuntas: estas se
+   * suben aparte, por lotes, con `uploadFreightInvoiceBatch`, para no exceder el límite de
+   * tamaño de request del servidor cuando son muchas). El N° de despacho lo genera el servidor.
    * Los campos de transportadora/vehículo/cubicaje (carrierId, vehicleType, mainDestination,
    * ratedFreightValue, vehicleCapacityM3 e items[].volumeM3) viajan dentro del mismo `payload`.
    * @param {FreightDispatchRequest} body - Datos del despacho a registrar (sin dispatchNumber).
-   * @param {File[]} invoiceFiles - Facturas PDF adjuntas (0-n).
-   * @param {{invoiceNumber: string, totalValue: number}[]} invoiceMeta - Metadata alineada por índice con invoiceFiles.
    * @returns {Observable<FreightDispatchResponse>}
    */
-  createFreightDispatch(
-    body: FreightDispatchRequest,
-    invoiceFiles: File[] = [],
-    invoiceMeta: { invoiceNumber: string; totalValue: number }[] = []
-  ): Observable<FreightDispatchResponse> {
+  createFreightDispatch(body: FreightDispatchRequest): Observable<FreightDispatchResponse> {
     const formData = new FormData();
-    formData.append('payload', JSON.stringify({ ...body, invoiceMeta }));
-    invoiceFiles.forEach((file) => formData.append('invoices', file));
+    formData.append('payload', JSON.stringify(body));
 
     return this.http.post<FreightDispatchResponse>(this.FREIGHT_DISPATCH_ENDPOINT, formData).pipe(
       catchError(this.handleError.bind(this)),
       map((response) => {
         console.log('CUSTOMER HOUSE SERVICE - CONTROL: Respuesta del backend (createFreightDispatch):', response);
+        return response;
+      })
+    );
+  }
+
+  /**
+   * @description Adjunta un LOTE de facturas PDF a un despacho ya creado. El formulario divide
+   * las facturas seleccionadas en varios lotes pequeños y llama este método una vez por lote,
+   * para que ningún request individual supere el límite de tamaño del servidor sin importar
+   * cuántas facturas tenga el despacho en total.
+   * @param {string} dispatchId - _id del despacho ya registrado.
+   * @param {File[]} invoiceFiles - Facturas PDF del lote (1-n).
+   * @param {{invoiceNumber: string, totalValue: number}[]} invoiceMeta - Metadata alineada por índice con invoiceFiles.
+   * @returns {Observable<FreightDispatchResponse>}
+   */
+  uploadFreightInvoiceBatch(
+    dispatchId: string,
+    invoiceFiles: File[],
+    invoiceMeta: { invoiceNumber: string; totalValue: number }[]
+  ): Observable<FreightDispatchResponse> {
+    const formData = new FormData();
+    formData.append('invoiceMeta', JSON.stringify(invoiceMeta));
+    invoiceFiles.forEach((file) => formData.append('invoices', file));
+
+    return this.http.post<FreightDispatchResponse>(`${this.FREIGHT_DISPATCH_ENDPOINT}/${dispatchId}/invoices`, formData).pipe(
+      catchError(this.handleError.bind(this)),
+      map((response) => {
+        console.log('CUSTOMER HOUSE SERVICE - CONTROL: Respuesta del backend (uploadFreightInvoiceBatch):', response);
         return response;
       })
     );

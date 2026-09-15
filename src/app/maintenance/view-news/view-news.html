@@ -279,6 +279,15 @@
                 <span><i class="ti ti-users"></i> {{ it.technicianCodes?.join(', ') || '—' }}</span>
                 <span><i class="ti ti-clock"></i> {{ it.startAt || '—' }} → {{ it.endAt || '—' }}</span>
               </div>
+              <div class="mt-2">
+                <span class="badge bg-success" *ngIf="it.editUnlocked">
+                  <i class="ti ti-lock-open"></i> Corrección habilitada
+                </span>
+                <button class="btn btn-sm btn-outline-primary" *ngIf="!it.editUnlocked"
+                  (click)="unlockInterventionEdit(it)">
+                  <i class="ti ti-lock-open me-1"></i> Habilitar corrección
+                </button>
+              </div>
             </li>
           </ul>
           <ng-template #noInterventions>

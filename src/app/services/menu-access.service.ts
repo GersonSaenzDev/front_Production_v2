@@ -147,6 +147,32 @@ export class MenuAccessService {
     return item.type === 'item' && item.url === 'maintenance/maintenanceWarehouse';
   }
 
+  /**
+   * Técnico de Mantenimiento: pertenece al área MANTENIMIENTO pero NO es el Jefe (typeUser
+   * distinto de 'Jefe', ej. 'Empleado'). Solo debe ver/entrar a "Cargue de Novedad" (registrar
+   * su propia intervención en lo que se le asignó); el resto del módulo (crear solicitudes,
+   * ver todo, asignar, aprobar, Almacén) es exclusivo del Jefe.
+   *
+   * Restricción deliberadamente conservadora: si `typeUser` no viene (sesión guardada antes de
+   * este cambio, o dato de RH incompleto) se trata como Jefe (acceso completo, el
+   * comportamiento de siempre) en vez de bloquear a alguien que hoy sí tiene acceso. Tras un
+   * login/refresh nuevo el token ya trae `typeUser` y la restricción aplica.
+   */
+  isMaintenanceTechnician(): boolean {
+    const userData = this.authService.userData();
+    if (!userData) return false;
+    const area = userData.area?.toUpperCase().trim() || '';
+    const typeUser = userData.typeUser?.toUpperCase().trim() || '';
+    return area === 'MANTENIMIENTO' && typeUser === 'EMPLEADO';
+  }
+
+  // Items del menú de Mantenimiento exclusivos del Jefe (crear solicitudes / ver todo, asignar,
+  // aprobar). Un técnico solo debe ver "Cargue de Novedad" (ver isMaintenanceTechnician).
+  private isMaintenanceJefeOnlyNavItem(item: any): boolean {
+    const url = item.url || '';
+    return url === 'maintenance/maintenanceNews' || url === 'maintenance/viewNews';
+  }
+
   // Items del menú que componen el collapse "Bodega" (grupo Logística + collapse
   // Bodega + sus items), usado por el permiso aditivo BODEGA_VIEWER_USERS. No
   // incluye los collapses "Casa Cliente" ni "Almacén" del mismo grupo.
@@ -238,6 +264,12 @@ export class MenuAccessService {
     // cualquier lógica por área/departamento para que la restrinja de forma incondicional.
     if (this.isMaintenanceWarehouseNavItem(item)) {
       return this.isMaintenanceWarehouseUser(userData.userApp);
+    }
+
+    // Un técnico de Mantenimiento (no Jefe) no debe ver "Novedades Mantenimiento" (crear
+    // solicitudes) ni "Visualizar Novedades" (gestión completa): solo su "Cargue de Novedad".
+    if (this.isMaintenanceJefeOnlyNavItem(item)) {
+      return !this.isMaintenanceTechnician();
     }
 
     // PLANEACIÓN ve el menú Estadístico además de su acceso normal (independiente del área)

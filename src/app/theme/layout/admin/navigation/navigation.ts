@@ -787,6 +787,15 @@ export const NavigationItems: NavigationItem[] = [
             breadcrumbs: true
           },
           {
+            id: 'mantenimiento-news-upload',
+            title: 'Cargue de Novedad',
+            type: 'item',
+            // Item del técnico: registrar su propia intervención en lo que se le asignó.
+            // Ver menu-access.service.ts (isMaintenanceTechnician) para el resto del filtrado.
+            url: 'maintenance/newsUpload',
+            breadcrumbs: true
+          },
+          {
             id: 'mantenimiento-warehouse',
             title: 'Almacén de Mantenimiento',
             type: 'item',
