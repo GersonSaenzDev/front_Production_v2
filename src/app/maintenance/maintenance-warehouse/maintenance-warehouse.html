@@ -1,0 +1,236 @@
+<div class="container-fluid py-3">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Almacén de Mantenimiento</h5>
+      <small>Registre y controle la entrega de repuestos/materiales por solicitud.</small>
+    </div>
+
+    <div class="card-body">
+      <!-- Filtros -->
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-md-3">
+          <label class="form-label mb-1">Estado</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filters.status">
+            <option value="">Todos</option>
+            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Código máquina</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="filters.machineCode"
+            placeholder="M-0312" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Área</label>
+          <input type="text" class="form-control form-control-sm" [(ngModel)]="filters.area"
+            placeholder="PRODUCCIÓN / ENSAMBLE" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          <button class="btn btn-sm btn-primary w-100" (click)="search()" [disabled]="isLoading">
+            <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isLoading" class="ti ti-search me-1"></i>
+            Buscar
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()" [disabled]="isLoading">
+            <i class="ti ti-x me-1"></i>
+            Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>MTTO</th>
+              <th>Máquina</th>
+              <th>Área</th>
+              <th>Estado</th>
+              <th>Asignado a</th>
+              <th>Entregas</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="7" class="text-center text-muted py-3">
+                <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
+              </td>
+            </tr>
+            <tr *ngIf="!isLoading && orders.length === 0">
+              <td colspan="7" class="text-center text-muted py-3">Sin solicitudes.</td>
+            </tr>
+            <tr *ngFor="let o of orders">
+              <td><strong>#{{ o.consecutiveMtto }}</strong></td>
+              <td>
+                <div>{{ o.machineCode }}</div>
+                <small class="text-muted">{{ o.machineName }}</small>
+              </td>
+              <td>
+                <div>{{ o.area }}</div>
+                <small class="text-muted">{{ o.department }}</small>
+              </td>
+              <td><span [class]="statusClass(o.status)">{{ o.status }}</span></td>
+              <td>{{ assignedDisplay(o) }}</td>
+              <td>
+                <span class="badge" [class.bg-success]="deliveriesCount(o) > 0"
+                  [class.bg-light]="deliveriesCount(o) === 0" [class.text-dark]="deliveriesCount(o) === 0">
+                  {{ deliveriesCount(o) }}
+                </span>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-primary" (click)="openDeliveryModal(o)">
+                  <i class="ti ti-truck-delivery me-1"></i>
+                  Entregas
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: HISTORIAL + REGISTRAR ENTREGA ================= -->
+<div class="modal-backdrop-custom" *ngIf="showDeliveryModal && selectedOrder" (click)="closeDeliveryModal()">
+  <div class="modal-dialog-custom" (click)="$event.stopPropagation()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title">
+            <i class="ti ti-truck-delivery"></i>
+            Entregas — MTTO #{{ selectedOrder.consecutiveMtto }}
+          </h5>
+          <p class="modal-subtitle">{{ selectedOrder.machineCode }} · {{ selectedOrder.machineName || 'Sin nombre' }}</p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="closeDeliveryModal()"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-history"></i>
+            Historial de entregas
+          </h6>
+
+          <ul class="mtto-delivery-list" *ngIf="selectedOrder.warehouseDeliveries?.length; else noDeliveries">
+            <li class="mtto-delivery-item" *ngFor="let d of selectedOrder.warehouseDeliveries">
+              <div class="mtto-delivery-items">
+                <span class="mtto-delivery-chip" *ngFor="let it of d.items">
+                  {{ it.description }}<small *ngIf="it.code"> ({{ it.code }})</small> × {{ it.quantity }}
+                </span>
+              </div>
+              <div class="mtto-delivery-meta">
+                <span><i class="ti ti-user-up"></i> Entrega: {{ d.deliveredBy?.fullName || '—' }}</span>
+                <span><i class="ti ti-user-check"></i> Recibe: {{ d.receivedBy?.fullName || '—' }}</span>
+                <span><i class="ti ti-clock"></i> {{ d.deliveredAt || '—' }}</span>
+              </div>
+              <div class="mtto-delivery-notes" *ngIf="d.notes">{{ d.notes }}</div>
+            </li>
+          </ul>
+          <ng-template #noDeliveries>
+            <p class="mtto-empty-text">Sin entregas registradas todavía.</p>
+          </ng-template>
+        </div>
+
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-plus"></i>
+            Registrar nueva entrega
+          </h6>
+
+          <div class="mtto-add-intervention">
+            <h6 class="mtto-add-intervention-title">
+              <i class="ti ti-package"></i>
+              Repuestos / materiales
+            </h6>
+
+            <div class="mtto-form-row mb-2">
+              <div class="mtto-form-group">
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="newItem.code"
+                  placeholder="Código (opcional)" />
+              </div>
+              <div class="mtto-form-group mtto-form-group-full">
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="newItem.description"
+                  placeholder="Descripción del repuesto/material" />
+              </div>
+              <div class="mtto-form-group">
+                <input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="newItem.quantity"
+                  placeholder="Cant." />
+              </div>
+            </div>
+            <div class="text-end mb-2">
+              <button type="button" class="btn btn-sm btn-outline-primary" (click)="addItem()">
+                <i class="ti ti-plus me-1"></i>
+                Agregar renglón
+              </button>
+            </div>
+
+            <ul class="mtto-item-rows" *ngIf="deliveryItems.length">
+              <li *ngFor="let it of deliveryItems; let i = index">
+                <span>{{ it.description }}<small *ngIf="it.code"> ({{ it.code }})</small> × {{ it.quantity }}</span>
+                <button type="button" class="mtto-item-remove" (click)="removeItem(i)" aria-label="Quitar">×</button>
+              </li>
+            </ul>
+            <p class="mtto-empty-text mb-0" *ngIf="!deliveryItems.length">
+              Agregue al menos un renglón para poder registrar la entrega.
+            </p>
+          </div>
+
+          <div class="mtto-form-row mt-3">
+            <div class="mtto-form-group">
+              <label class="form-label">Entrega (usuario actual)</label>
+              <input type="text" class="form-control" [value]="currentDeliverer.fullName" readonly />
+            </div>
+
+            <div class="mtto-form-group position-relative">
+              <label class="form-label">Recibe <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="receivedBySearchTerm"
+                [ngModelOptions]="{ standalone: true }" autocomplete="off"
+                placeholder="Escriba nombre o número de documento"
+                (ngModelChange)="onReceivedBySearchChange($event)"
+                (focus)="onStaffFocus()" (blur)="onStaffBlur()" />
+              <div class="autocomplete-results" *ngIf="predictiveStaffList.length > 0 && showStaffDropdown">
+                <div class="autocomplete-item" *ngFor="let person of predictiveStaffList"
+                  (mousedown)="selectReceivedBy(person)">
+                  <strong>{{ person.full_name }}</strong>
+                  <small class="text-muted d-block">Doc: {{ person.document }}</small>
+                </div>
+              </div>
+              <small class="text-success d-block mt-1" *ngIf="selectedReceivedBy">
+                <i class="ti ti-check me-1"></i>{{ selectedReceivedBy.fullName }}
+              </small>
+            </div>
+
+            <div class="mtto-form-group">
+              <label class="form-label">Fecha y hora de entrega</label>
+              <input type="datetime-local" class="form-control" [(ngModel)]="deliveredAt"
+                [ngModelOptions]="{ standalone: true }" />
+            </div>
+
+            <div class="mtto-form-group mtto-form-group-full">
+              <label class="form-label">Observaciones</label>
+              <textarea class="form-control" rows="2" [(ngModel)]="notes"
+                [ngModelOptions]="{ standalone: true }"
+                placeholder="Detalles relevantes de la entrega"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeliveryModal()" [disabled]="isSaving">
+          <i class="ti ti-x me-1"></i>
+          Cerrar
+        </button>
+        <button type="button" class="btn btn-primary" (click)="submitDelivery()" [disabled]="isSaving">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!isSaving" class="ti ti-truck-delivery me-1"></i>
+          Registrar entrega
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

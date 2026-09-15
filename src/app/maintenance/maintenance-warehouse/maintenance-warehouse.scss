@@ -1,0 +1,369 @@
+// src/app/maintenance/maintenance-warehouse/maintenance-warehouse.scss
+//
+// Mismo sistema de modales "sofisticado" (glass-card + header degradado) usado en
+// view-news.scss, adaptado a este componente (los estilos de Angular son por componente,
+// no se pueden compartir directamente entre .scss).
+$mtto-primary: #003366;
+$mtto-secondary: #004d99;
+$mtto-accent: #00d2ff;
+$mtto-text-main: #1e293b;
+$mtto-text-muted: #64748b;
+$mtto-border: #e2e8f0;
+$mtto-bg-light: #f8fafc;
+
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  z-index: 1050;
+  overflow-y: auto;
+  animation: mttoFadeIn 0.2s ease;
+}
+
+.modal-dialog-custom {
+  width: 100%;
+  max-width: 760px;
+  animation: mttoModalAppear 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .modal-content {
+    border: none;
+    border-radius: 18px;
+    background-color: #fff;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+    overflow: visible; // deja ver el dropdown de autocompletado fuera del body
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, $mtto-primary 0%, $mtto-secondary 100%);
+    border: none;
+    border-radius: 18px 18px 0 0;
+    padding: 1.25rem 1.75rem;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+
+    .modal-title {
+      margin: 0;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-subtitle {
+      margin: 0.2rem 0 0;
+      font-size: 0.8rem;
+      font-weight: 400;
+      opacity: 0.85;
+    }
+
+    .btn-close {
+      flex-shrink: 0;
+      margin-top: 0.2rem;
+      opacity: 0.9;
+      &:hover { opacity: 1; }
+    }
+  }
+
+  .modal-body {
+    background-color: #fff;
+    padding: 1.75rem;
+    max-height: 72vh;
+    overflow-y: auto;
+
+    .badge {
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.68rem;
+      padding: 0.35rem 0.7rem;
+      letter-spacing: 0.3px;
+    }
+  }
+
+  .modal-footer {
+    background-color: #fff;
+    border-top: 1px solid #eef2f7;
+    border-radius: 0 0 18px 18px;
+    padding: 1.1rem 1.75rem;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.55rem 1.4rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      border: none;
+      box-shadow: none;
+      transition: all 0.2s ease;
+
+      &.btn-secondary {
+        background: #f1f5f9;
+        color: #475569;
+        &:hover:not(:disabled) { background: #e2e8f0; transform: translateY(-1px); }
+      }
+
+      &.btn-primary {
+        background: linear-gradient(135deg, $mtto-primary 0%, $mtto-secondary 100%);
+        &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0, 51, 102, 0.25); }
+      }
+
+      &:disabled { opacity: 0.65; cursor: not-allowed; }
+    }
+  }
+
+  .form-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: $mtto-text-muted;
+    margin-bottom: 0.35rem;
+  }
+
+  .form-control,
+  .form-select {
+    background-color: #fff;
+    border: 1.5px solid $mtto-border;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    color: $mtto-text-main;
+    transition: all 0.2s ease;
+
+    &::placeholder { color: #94a3b8; }
+
+    &:focus {
+      outline: none;
+      border-color: $mtto-accent;
+      box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.12);
+    }
+
+    &[readonly] {
+      background-color: #f1f5f9;
+      color: $mtto-text-muted;
+    }
+  }
+}
+
+// Tarjetas de sección (Historial, Registrar nueva entrega).
+.mtto-section {
+  background: $mtto-bg-light;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 1.25rem;
+
+  &:first-child { margin-top: 0; }
+}
+
+.mtto-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: $mtto-primary;
+  margin: 0 0 1rem;
+
+  i { color: $mtto-accent; font-size: 0.95rem; }
+}
+
+.mtto-empty-text {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+// Historial de entregas ya registradas.
+.mtto-delivery-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.mtto-delivery-item {
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.mtto-delivery-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.mtto-delivery-chip {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  small { font-weight: 400; opacity: 0.85; }
+}
+
+.mtto-delivery-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: $mtto-text-muted;
+
+  i { margin-right: 0.25rem; }
+}
+
+.mtto-delivery-notes {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: $mtto-text-main;
+  font-style: italic;
+}
+
+// Formulario de nueva entrega.
+.mtto-add-intervention {
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+
+  .btn {
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    &:hover:not(:disabled) { transform: translateY(-1px); }
+  }
+}
+
+.mtto-add-intervention-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 0.75rem;
+
+  i { color: #10b981; }
+}
+
+// Renglones (repuestos/materiales) agregados a la entrega en curso.
+.mtto-item-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: $mtto-bg-light;
+    border: 1px solid #eef2f7;
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    color: $mtto-text-main;
+
+    small { color: $mtto-text-muted; }
+  }
+}
+
+.mtto-item-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+
+  &:hover { background: rgba(220, 38, 38, 0.2); }
+}
+
+// Grid genérico de campos de formulario.
+.mtto-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.mtto-form-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mtto-form-group-full {
+  grid-column: 1 / -1;
+}
+
+@keyframes mttoFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mttoModalAppear {
+  from { opacity: 0; transform: scale(0.95) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+// Resultados del buscador predictivo (quién recibe).
+.autocomplete-results {
+  position: absolute;
+  z-index: 1100;
+  width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.autocomplete-item {
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #1f2d3d;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child { border-bottom: none; }
+
+  &:hover {
+    background-color: #e7f1ff;
+    color: #084298;
+    font-weight: 500;
+  }
+}

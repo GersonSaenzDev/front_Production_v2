@@ -15,6 +15,19 @@ export interface SparePart {
   quantity: number;
 }
 
+/** Persona referenciada por documento + nombre (snapshot, sin populate). */
+export interface PersonRef {
+  document: string;
+  fullName: string;
+}
+
+/** Técnico asignado a la solicitud (puede haber 1 o N por solicitud). */
+export interface MaintenanceAssignee {
+  document: string;
+  fullName: string;
+  specialty?: string;
+}
+
 export interface AuditEntry {
   action: string;
   modifiedBy: string;
@@ -29,14 +42,50 @@ export interface Approval {
   observation: string | null;
 }
 
-/** Intervención (acción de contención) como la devuelve el backend. */
+/** Ciclo de vida de la solicitud de escalamiento a mesa técnica de una intervención. */
+export type EscalationStatus = 'NINGUNA' | 'SOLICITADA' | 'ATENDIDA';
+
+/**
+ * Intervención (acción de contención) como la devuelve el backend. Cada técnico asignado a
+ * la solicitud puede registrar la suya propia (workDone/startAt/endAt/notes), con la duración
+ * calculada por el backend y la posibilidad de pedir escalar a mesa técnica.
+ * Se consume desde OTRO componente (no view-news/maintenance-news todavía).
+ */
 export interface Intervention {
   id: string;
   technicianCodes: string[];
   workDone: string;
   startAt: string;
   endAt: string;
+  /** Minutos entre startAt y endAt, calculados por el backend. */
+  durationMinutes: number | null;
+  /** Detalles puntuales de relevancia adicionales al trabajo realizado. */
+  notes: string;
   spareParts: SparePart[];
+  escalateToTechnicalDesk: boolean;
+  escalationReason: string;
+  escalationStatus: EscalationStatus;
+  escalationRespondedBy: string | null;
+  escalationRespondedAt: string | null;
+  escalationResponse: string | null;
+  auditTrail: AuditEntry[];
+  userCreate: string | null;
+  dateCreate: string | null;
+  userUpdate: string | null;
+  dateUpdate: string | null;
+}
+
+/**
+ * Entrega de Almacén de Mantenimiento (repuestos/materiales) para una solicitud. Controla qué
+ * se entregó, quién entregó (almacén) y quién recibió. Se consume desde OTRO componente.
+ */
+export interface WarehouseDelivery {
+  id: string;
+  items: SparePart[];
+  deliveredBy: PersonRef | null;
+  receivedBy: PersonRef | null;
+  deliveredAt: string;
+  notes: string;
   auditTrail: AuditEntry[];
   userCreate: string | null;
   dateCreate: string | null;
@@ -52,6 +101,8 @@ export interface MaintenanceRequest {
   /** Formato MMAA + secuencia de 5 dígitos por mes (ej. "062600001"). String para conservar ceros. */
   consecutiveMtto: string;
   consecutiveSection: string;
+  /** Consecutivo/código del sistema externo Summum, para seguimiento cruzado. */
+  consecutiveSummum: string;
   machineCode: string;
   machineName: string;
   area: string;
@@ -68,10 +119,15 @@ export interface MaintenanceRequest {
   receivedAt: string;
   scheduledDate: string;
   completedDate: string | null;
+  /** Legado: texto libre derivado de `assignees` (nombres separados por coma) para compatibilidad. */
   assignedTo: string;
+  /** Asignación real: 1 o N técnicos (ej. plomero + mecánico + electricista). */
+  assignees: MaintenanceAssignee[];
   /** Id de la novedad (productionNews) de la que se generó esta solicitud, si aplica. */
   sourceNewsId: string | null;
   interventions: Intervention[];
+  /** Entregas de Almacén de Mantenimiento para esta solicitud. Se gestiona desde OTRO componente. */
+  warehouseDeliveries: WarehouseDelivery[];
   supervisorApproval: Approval | null;
   requesterApproval: Approval | null;
   auditTrail: AuditEntry[];
@@ -84,13 +140,26 @@ export interface MaintenanceRequest {
 
 /* ===================== Requests ===================== */
 
-/** Intervención al crear / agregar (sin auditoría ni ids). */
+/** Intervención al crear / agregar (sin auditoría ni ids; durationMinutes lo calcula el backend). */
 export interface InterventionInput {
   technicianCodes: string[];
   workDone: string;
   startAt: string;
   endAt: string;
+  notes?: string;
   spareParts: SparePart[];
+  /** Solicita que mesa técnica valide esta intervención. */
+  escalateToTechnicalDesk?: boolean;
+  escalationReason?: string;
+}
+
+/** Entrega de Almacén de Mantenimiento al registrar (sin auditoría ni id). */
+export interface WarehouseDeliveryInput {
+  items: SparePart[];
+  deliveredBy?: PersonRef;
+  receivedBy?: PersonRef;
+  deliveredAt?: string;
+  notes?: string;
 }
 
 export interface SeedConsecutiveRequest {
@@ -103,6 +172,8 @@ export interface CreateMaintenanceRequest {
   maintenanceType: MaintenanceType; // requerido
   description: string; // requerido
   consecutiveSection?: string;
+  /** Consecutivo/código del sistema externo Summum, para seguimiento cruzado. */
+  consecutiveSummum?: string;
   machineName?: string;
   area?: string;
   department?: string;
@@ -114,7 +185,10 @@ export interface CreateMaintenanceRequest {
   reportedAt?: string;
   receivedAt?: string;
   scheduledDate?: string;
+  /** Legado: solo se usa si no se envía `assignees`. */
   assignedTo?: string;
+  /** Asignación real: 1 o N técnicos (ej. plomero + mecánico + electricista). */
+  assignees?: MaintenanceAssignee[];
   /** Id de la novedad (productionNews) origen, cuando la solicitud se genera desde una novedad. */
   sourceNewsId?: string;
   interventions?: InterventionInput[];
@@ -122,6 +196,7 @@ export interface CreateMaintenanceRequest {
 
 export interface UpdateMaintenanceRequest {
   consecutiveSection?: string;
+  consecutiveSummum?: string;
   machineName?: string;
   area?: string;
   department?: string;
@@ -138,6 +213,7 @@ export interface UpdateMaintenanceRequest {
   scheduledDate?: string;
   completedDate?: string;
   assignedTo?: string;
+  assignees?: MaintenanceAssignee[];
   /** Razón del cambio; queda en el auditTrail. */
   observation?: string;
 }
@@ -149,9 +225,17 @@ export interface UpdateInterventionRequest {
   workDone?: string;
   startAt?: string;
   endAt?: string;
+  notes?: string;
   spareParts?: SparePart[];
+  escalateToTechnicalDesk?: boolean;
+  escalationReason?: string;
+  /** Uso de mesa técnica al atender un escalamiento. */
+  escalationStatus?: EscalationStatus;
+  escalationResponse?: string;
   observation?: string;
 }
+
+export interface AddWarehouseDeliveryRequest extends WarehouseDeliveryInput {}
 
 export interface ApprovalRequest {
   role: ApprovalRole; // requerido

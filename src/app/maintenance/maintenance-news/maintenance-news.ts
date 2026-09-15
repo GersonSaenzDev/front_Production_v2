@@ -1,11 +1,12 @@
 // src/app/maintenance/maintenance-news/maintenance-news.ts
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { debounceTime, filter } from 'rxjs';
 import {
   CreateMaintenanceRequest,
+  MaintenanceAssignee,
   MaintenancePriority,
   MaintenanceType,
 } from '../../interfaces/maintenance.interface';
@@ -24,7 +25,7 @@ import { RhStaffServices } from '../../services/rh-staff-services';
 @Component({
   selector: 'app-maintenance-news',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './maintenance-news.html',
   styleUrl: './maintenance-news.scss',
 })
@@ -57,6 +58,13 @@ export class MaintenanceNews implements OnInit {
   showTechnicianDropdown = false;
   private isSelectingTechnician = false;
 
+  /**
+   * Asignación a 1 o N personas (ej. plomero + mecánico + electricista para la misma
+   * solicitud). No es un FormControl: es una lista aparte que se agrega al payload al enviar.
+   */
+  assigneeSearchTerm = '';
+  selectedAssignees: MaintenanceAssignee[] = [];
+
   form!: FormGroup;
   isSubmitting = false;
 
@@ -70,6 +78,7 @@ export class MaintenanceNews implements OnInit {
 
     this.form = this.fb.group({
       consecutiveSection: [''],
+      consecutiveSummum: [''],
       machineArea: ['', Validators.required],
       machineDepartment: ['', Validators.required],
       machineCode: ['', Validators.required],
@@ -84,12 +93,10 @@ export class MaintenanceNews implements OnInit {
       reportedAt: [''],
       receivedAt: [''],
       scheduledDate: [''],
-      assignedTo: [''],
     });
 
     this.loadTechnicians();
     this.setupMachineSearch();
-    this.setupTechnicianSearch();
 
     this.form.get('machineArea')?.valueChanges.subscribe((area) => this.handleAreaChange(area));
 
@@ -248,37 +255,45 @@ export class MaintenanceNews implements OnInit {
     });
   }
 
-  private setupTechnicianSearch(): void {
-    this.form
-      .get('assignedTo')
-      ?.valueChanges.pipe(
-        debounceTime(200),
-        filter(() => !this.isSelectingTechnician),
+  /** Filtra técnicos por nombre/documento a medida que se escribe, excluyendo los ya asignados. */
+  onAssigneeSearchChange(term: string): void {
+    if (this.isSelectingTechnician) return;
+    const t = (term || '').toString().trim().toLowerCase();
+    if (t.length < 1) {
+      this.predictiveTechnicianList = [];
+      this.showTechnicianDropdown = false;
+      return;
+    }
+    const selectedDocs = new Set(this.selectedAssignees.map((a) => a.document));
+    this.predictiveTechnicianList = this.technicians
+      .filter(
+        (tech) =>
+          !selectedDocs.has(tech.document) &&
+          ((tech.fullName || '').toLowerCase().includes(t) ||
+            (tech.document || '').toLowerCase().includes(t)),
       )
-      .subscribe((term: string) => {
-        const t = (term || '').toString().trim().toLowerCase();
-        if (t.length < 1) {
-          this.predictiveTechnicianList = [];
-          this.showTechnicianDropdown = false;
-          return;
-        }
-        this.predictiveTechnicianList = this.technicians
-          .filter(
-            (tech) =>
-              (tech.fullName || '').toLowerCase().includes(t) ||
-              (tech.document || '').toLowerCase().includes(t),
-          )
-          .slice(0, 20);
-        this.showTechnicianDropdown = this.predictiveTechnicianList.length > 0;
-      });
+      .slice(0, 20);
+    this.showTechnicianDropdown = this.predictiveTechnicianList.length > 0;
   }
 
-  selectTechnician(tech: MaintenanceTechnician): void {
+  /** Agrega un técnico a la lista de asignados (1 o N por solicitud); evita duplicados. */
+  addAssignee(tech: MaintenanceTechnician): void {
     this.isSelectingTechnician = true;
-    this.form.get('assignedTo')?.setValue(tech.fullName, { emitEvent: false });
+    if (!this.selectedAssignees.some((a) => a.document === tech.document)) {
+      this.selectedAssignees.push({
+        document: tech.document,
+        fullName: tech.fullName,
+        specialty: tech.specialty,
+      });
+    }
+    this.assigneeSearchTerm = '';
     this.predictiveTechnicianList = [];
     this.showTechnicianDropdown = false;
     setTimeout(() => (this.isSelectingTechnician = false), 300);
+  }
+
+  removeAssignee(index: number): void {
+    this.selectedAssignees.splice(index, 1);
   }
 
   onTechnicianBlur(): void {
@@ -313,6 +328,7 @@ export class MaintenanceNews implements OnInit {
 
     // Solo enviamos los opcionales con contenido.
     if (v.consecutiveSection?.trim()) payload.consecutiveSection = v.consecutiveSection.trim();
+    if (v.consecutiveSummum?.trim()) payload.consecutiveSummum = v.consecutiveSummum.trim();
     if (v.machineName?.trim()) payload.machineName = v.machineName.trim();
     if (v.machineArea?.trim()) payload.area = v.machineArea.trim();
     if (v.machineDepartment?.trim()) payload.department = v.machineDepartment.trim();
@@ -324,7 +340,14 @@ export class MaintenanceNews implements OnInit {
     if (v.reportedAt) payload.reportedAt = this.toBackendDateTime(v.reportedAt);
     if (v.receivedAt) payload.receivedAt = this.toBackendDateTime(v.receivedAt);
     if (v.scheduledDate) payload.scheduledDate = this.toBackendDate(v.scheduledDate);
-    if (v.assignedTo?.trim()) payload.assignedTo = v.assignedTo.trim();
+    // Asignación a 1 o N personas (ej. plomero + mecánico + electricista).
+    if (this.selectedAssignees.length) {
+      payload.assignees = this.selectedAssignees.map((a) => ({
+        document: a.document,
+        fullName: a.fullName,
+        specialty: a.specialty,
+      }));
+    }
     if (this.sourceNewsId) payload.sourceNewsId = this.sourceNewsId;
 
     this.isSubmitting = true;
@@ -353,6 +376,7 @@ export class MaintenanceNews implements OnInit {
     const user = this.authService.userData();
     this.form.reset({
       consecutiveSection: '',
+      consecutiveSummum: '',
       machineArea: '',
       machineDepartment: '',
       machineCode: '',
@@ -367,12 +391,13 @@ export class MaintenanceNews implements OnInit {
       reportedAt: '',
       receivedAt: '',
       scheduledDate: '',
-      assignedTo: '',
     });
     this.availableDepartments = [];
     this.machinesByArea = [];
     this.predictiveMachineList = [];
     this.showMachineDropdown = false;
+    this.assigneeSearchTerm = '';
+    this.selectedAssignees = [];
     this.predictiveTechnicianList = [];
     this.showTechnicianDropdown = false;
     this.loadedFromNews = false;

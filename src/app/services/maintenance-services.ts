@@ -6,6 +6,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import {
   AddInterventionRequest,
+  AddWarehouseDeliveryRequest,
   ApprovalRequest,
   ApprovalResponse,
   CreateMaintenanceRequest,
@@ -144,6 +145,16 @@ export class MaintenanceServices {
   deleteMaintenance(id: string): Observable<DeleteMaintenanceResponse> {
     return this.http
       .delete<DeleteMaintenanceResponse>(`${this.BASE_API}/${id}`)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Registra una entrega de Almacén de Mantenimiento (repuestos/materiales) para una solicitud.
+   * Pensado para el componente de Almacén (no se consume desde view-news/maintenance-news).
+   */
+  addWarehouseDelivery(id: string, payload: AddWarehouseDeliveryRequest): Observable<MaintenanceResponse> {
+    return this.http
+      .post<MaintenanceResponse>(`${this.BASE_API}/${id}/warehouse-deliveries`, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 }

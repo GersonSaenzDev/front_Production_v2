@@ -93,6 +93,11 @@ export class ViewNews implements OnInit {
   showTechnicianDropdown = false;
   private isSelectingTechnician = false;
 
+  // Eliminar
+  showDeleteModal = false;
+  isDeleting = false;
+  orderToDelete: MaintenanceRequest | null = null;
+
   // Nueva intervención (acción de contención)
   newIntervention: { technicianCodes: string; workDone: string; startAt: string; endAt: string } = {
     technicianCodes: '',
@@ -474,8 +479,22 @@ export class ViewNews implements OnInit {
   //  ELIMINAR
   // ============================================================
 
-  remove(order: MaintenanceRequest): void {
-    if (!confirm(`¿Eliminar la solicitud MTTO #${order.consecutiveMtto}?`)) return;
+  openDeleteModal(order: MaintenanceRequest): void {
+    this.orderToDelete = order;
+    this.showDeleteModal = true;
+  }
+
+  closeDeleteModal(): void {
+    if (this.isDeleting) return;
+    this.showDeleteModal = false;
+    this.orderToDelete = null;
+  }
+
+  confirmDelete(): void {
+    if (!this.orderToDelete) return;
+    const order = this.orderToDelete;
+
+    this.isDeleting = true;
     this.maintenanceService.deleteMaintenance(order.id).subscribe({
       next: (res) => {
         if (!res?.ok) {
@@ -484,8 +503,11 @@ export class ViewNews implements OnInit {
         }
         this.orders = this.orders.filter((o) => o.id !== order.id);
         this.toastr.success('Solicitud eliminada.', 'Mantenimiento');
+        this.showDeleteModal = false;
+        this.orderToDelete = null;
       },
       error: (err: Error) => this.toastr.error(err.message || 'Error al eliminar.', 'Error'),
+      complete: () => (this.isDeleting = false),
     });
   }
 

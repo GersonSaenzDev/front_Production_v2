@@ -196,7 +196,7 @@
                 <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(o)" title="Editar / Asignar">
                   <i class="ti ti-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="remove(o)" title="Eliminar">
+                <button class="btn btn-sm btn-outline-danger" (click)="openDeleteModal(o)" title="Eliminar">
                   <i class="ti ti-trash"></i>
                 </button>
               </td>
@@ -212,61 +212,99 @@
 <div class="modal-backdrop-custom" *ngIf="showDetailModal && detailOrder" (click)="closeDetail()">
   <div class="modal-dialog-custom" (click)="$event.stopPropagation()">
     <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">MTTO #{{ detailOrder.consecutiveMtto }} — {{ detailOrder.machineCode }}</h5>
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title">
+            <i class="ti ti-tool"></i>
+            MTTO #{{ detailOrder.consecutiveMtto }} · {{ detailOrder.machineCode }}
+          </h5>
+          <p class="modal-subtitle">{{ detailOrder.machineName || 'Máquina sin nombre' }}</p>
+        </div>
         <button type="button" class="btn-close btn-close-white" (click)="closeDetail()"></button>
       </div>
       <div class="modal-body">
-        <div class="row g-2">
-          <div class="col-md-6"><strong>Máquina:</strong> {{ detailOrder.machineName || '—' }}</div>
-          <div class="col-md-6"><strong>Área:</strong> {{ detailOrder.area || '—' }}</div>
-          <div class="col-md-4"><strong>Tipo:</strong> {{ detailOrder.maintenanceType }}</div>
-          <div class="col-md-4"><strong>Servicio:</strong> {{ detailOrder.serviceType || '—' }}</div>
-          <div class="col-md-4"><strong>Prioridad:</strong>
+        <div class="mtto-detail-grid">
+          <div class="mtto-detail-item">
+            <strong>Máquina</strong>
+            <span>{{ detailOrder.machineName || '—' }}</span>
+          </div>
+          <div class="mtto-detail-item">
+            <strong>Área</strong>
+            <span>{{ detailOrder.area || '—' }}</span>
+          </div>
+          <div class="mtto-detail-item">
+            <strong>Tipo</strong>
+            <span>{{ detailOrder.maintenanceType }}</span>
+          </div>
+          <div class="mtto-detail-item">
+            <strong>Servicio</strong>
+            <span>{{ detailOrder.serviceType || '—' }}</span>
+          </div>
+          <div class="mtto-detail-item">
+            <strong>Prioridad</strong>
             <span [class]="priorityClass(detailOrder.priority)">{{ detailOrder.priority }}</span>
           </div>
-          <div class="col-md-4"><strong>Estado:</strong>
+          <div class="mtto-detail-item">
+            <strong>Estado</strong>
             <span [class]="statusClass(detailOrder.status)">{{ detailOrder.status }}</span>
           </div>
-          <div class="col-md-4"><strong>Asignado a:</strong> {{ detailOrder.assignedTo || '—' }}</div>
-          <div class="col-md-4"><strong>Solicitado por:</strong> {{ detailOrder.requestedBy || '—' }}</div>
-          <div class="col-12"><strong>Descripción:</strong> {{ detailOrder.description }}</div>
-          <div class="col-12"><strong>Falla:</strong> {{ detailOrder.failureDescription || '—' }}</div>
+          <div class="mtto-detail-item">
+            <strong>Asignado a</strong>
+            <span>{{ detailOrder.assignedTo || '—' }}</span>
+          </div>
+          <div class="mtto-detail-item">
+            <strong>Solicitado por</strong>
+            <span>{{ detailOrder.requestedBy || '—' }}</span>
+          </div>
+          <div class="mtto-detail-item mtto-detail-item-full">
+            <strong>Descripción</strong>
+            <span>{{ detailOrder.description }}</span>
+          </div>
+          <div class="mtto-detail-item mtto-detail-item-full">
+            <strong>Falla</strong>
+            <span>{{ detailOrder.failureDescription || '—' }}</span>
+          </div>
         </div>
 
-        <hr />
-        <h6>Acciones de contención</h6>
-        <ul class="list-group mb-3" *ngIf="detailOrder.interventions?.length; else noInterventions">
-          <li class="list-group-item" *ngFor="let it of detailOrder.interventions">
-            <div><strong>{{ it.workDone }}</strong></div>
-            <small class="text-muted">
-              Técnicos: {{ it.technicianCodes?.join(', ') || '—' }} |
-              {{ it.startAt || '—' }} → {{ it.endAt || '—' }}
-            </small>
-          </li>
-        </ul>
-        <ng-template #noInterventions>
-          <p class="text-muted">Sin acciones de contención registradas.</p>
-        </ng-template>
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-list-check"></i>
+            Acciones de contención
+          </h6>
 
-        <!-- Agregar intervención -->
-        <div class="card bg-light">
-          <div class="card-body">
-            <h6 class="card-title">Agregar acción de contención</h6>
-            <div class="row g-2">
-              <div class="col-md-12">
+          <ul class="mtto-intervention-list" *ngIf="detailOrder.interventions?.length; else noInterventions">
+            <li class="mtto-intervention-item" *ngFor="let it of detailOrder.interventions">
+              <div class="mtto-intervention-work">{{ it.workDone }}</div>
+              <div class="mtto-intervention-meta">
+                <span><i class="ti ti-users"></i> {{ it.technicianCodes?.join(', ') || '—' }}</span>
+                <span><i class="ti ti-clock"></i> {{ it.startAt || '—' }} → {{ it.endAt || '—' }}</span>
+              </div>
+            </li>
+          </ul>
+          <ng-template #noInterventions>
+            <p class="mtto-empty-text">Sin acciones de contención registradas.</p>
+          </ng-template>
+
+          <!-- Agregar intervención -->
+          <div class="mtto-add-intervention">
+            <h6 class="mtto-add-intervention-title">
+              <i class="ti ti-plus"></i>
+              Agregar acción de contención
+            </h6>
+            <div class="mtto-form-row">
+              <div class="mtto-form-group mtto-form-group-full">
                 <input type="text" class="form-control form-control-sm"
                   [(ngModel)]="newIntervention.workDone" placeholder="Trabajo realizado" />
               </div>
-              <div class="col-md-4">
+              <div class="mtto-form-group">
                 <input type="text" class="form-control form-control-sm"
                   [(ngModel)]="newIntervention.technicianCodes" placeholder="Códigos técnicos (T-07, T-12)" />
               </div>
-              <div class="col-md-4">
+              <div class="mtto-form-group">
                 <input type="datetime-local" class="form-control form-control-sm"
                   [(ngModel)]="newIntervention.startAt" />
               </div>
-              <div class="col-md-4">
+              <div class="mtto-form-group">
                 <input type="datetime-local" class="form-control form-control-sm"
                   [(ngModel)]="newIntervention.endAt" />
               </div>
@@ -282,23 +320,27 @@
           </div>
         </div>
 
-        <hr />
-        <h6>Vo.Bo</h6>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm" [class.btn-success]="detailOrder.supervisorApproval"
-            [class.btn-outline-success]="!detailOrder.supervisorApproval"
-            (click)="approve(detailOrder, 'SUPERVISOR')">
-            <i class="ti me-1" [class.ti-check]="detailOrder.supervisorApproval"
-              [class.ti-circle]="!detailOrder.supervisorApproval"></i>
-            Supervisor
-          </button>
-          <button class="btn btn-sm" [class.btn-success]="detailOrder.requesterApproval"
-            [class.btn-outline-success]="!detailOrder.requesterApproval"
-            (click)="approve(detailOrder, 'SOLICITANTE')">
-            <i class="ti me-1" [class.ti-check]="detailOrder.requesterApproval"
-              [class.ti-circle]="!detailOrder.requesterApproval"></i>
-            Solicitante
-          </button>
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-shield-check"></i>
+            Vo.Bo
+          </h6>
+          <div class="mtto-vobo-group">
+            <button class="btn btn-sm" [class.btn-success]="detailOrder.supervisorApproval"
+              [class.btn-outline-success]="!detailOrder.supervisorApproval"
+              (click)="approve(detailOrder, 'SUPERVISOR')">
+              <i class="ti me-1" [class.ti-check]="detailOrder.supervisorApproval"
+                [class.ti-circle]="!detailOrder.supervisorApproval"></i>
+              Supervisor
+            </button>
+            <button class="btn btn-sm" [class.btn-success]="detailOrder.requesterApproval"
+              [class.btn-outline-success]="!detailOrder.requesterApproval"
+              (click)="approve(detailOrder, 'SOLICITANTE')">
+              <i class="ti me-1" [class.ti-check]="detailOrder.requesterApproval"
+                [class.ti-circle]="!detailOrder.requesterApproval"></i>
+              Solicitante
+            </button>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -315,96 +357,125 @@
 <div class="modal-backdrop-custom" *ngIf="showEditModal && editOrder" (click)="closeEdit()">
   <div class="modal-dialog-custom" (click)="$event.stopPropagation()">
     <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">Editar MTTO #{{ editOrder.consecutiveMtto }}</h5>
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title">
+            <i class="ti ti-pencil"></i>
+            Editar MTTO #{{ editOrder.consecutiveMtto }}
+          </h5>
+          <p class="modal-subtitle">{{ editOrder.machineCode }} · {{ editOrder.machineName || 'Sin nombre' }}</p>
+        </div>
         <button type="button" class="btn-close btn-close-white" (click)="closeEdit()"></button>
       </div>
       <div class="modal-body">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Estado</label>
-            <select class="form-select" [(ngModel)]="editForm.status">
-              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Prioridad</label>
-            <select class="form-select" [(ngModel)]="editForm.priority">
-              <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Tipo</label>
-            <select class="form-select" [(ngModel)]="editForm.maintenanceType">
-              <option *ngFor="let t of maintenanceTypes" [value]="t">{{ t }}</option>
-            </select>
-          </div>
-          <div class="col-md-6 position-relative">
-            <label class="form-label">Asignar a (nombre o documento)</label>
-            <input type="text" class="form-control" [(ngModel)]="editForm.assignedTo" autocomplete="off"
-              placeholder="Escriba nombre o número de documento"
-              (ngModelChange)="onEditAssignedChange($event)"
-              (focus)="onTechnicianFocus()" (blur)="onTechnicianBlur()" />
-            <div class="autocomplete-results"
-              *ngIf="predictiveTechnicianList.length > 0 && showTechnicianDropdown">
-              <div class="autocomplete-item" *ngFor="let tech of predictiveTechnicianList"
-                (mousedown)="selectEditTechnician(tech)">
-                <strong>{{ tech.fullName }}</strong> — {{ tech.specialty }}
-                <small class="text-muted d-block">Doc: {{ tech.document }}</small>
-              </div>
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-settings"></i>
+            Estado y prioridad
+          </h6>
+          <div class="mtto-form-row">
+            <div class="mtto-form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-select" [(ngModel)]="editForm.status">
+                <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+              </select>
+            </div>
+            <div class="mtto-form-group">
+              <label class="form-label">Prioridad</label>
+              <select class="form-select" [(ngModel)]="editForm.priority">
+                <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+              </select>
+            </div>
+            <div class="mtto-form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-select" [(ngModel)]="editForm.maintenanceType">
+                <option *ngFor="let t of maintenanceTypes" [value]="t">{{ t }}</option>
+              </select>
             </div>
           </div>
+        </div>
 
-          <!-- Área de la máquina (servicio agrupado) -->
-          <div class="col-md-6">
-            <label class="form-label">Área de la máquina</label>
-            <select class="form-select" [(ngModel)]="editForm.machineArea"
-              (ngModelChange)="onEditAreaChange($event)">
-              <option value="">Seleccione el área…</option>
-              <option *ngFor="let g of groupedAreas" [value]="g.area">{{ g.area }}</option>
-            </select>
-          </div>
-
-          <!-- Departamento (subárea) -->
-          <div class="col-md-6">
-            <label class="form-label">Departamento</label>
-            <select class="form-select" [(ngModel)]="editForm.machineDepartment"
-              [attr.disabled]="availableDepartments.length === 0 ? '' : null">
-              <option value="">{{ availableDepartments.length ? 'Seleccione…' : 'Elija un área primero' }}</option>
-              <option *ngFor="let d of availableDepartments" [value]="d.subArea">{{ d.subArea }}</option>
-            </select>
-          </div>
-
-          <!-- Máquina (buscador predictivo) -->
-          <div class="col-md-6 position-relative">
-            <label class="form-label">Código de máquina</label>
-            <input type="text" class="form-control" [(ngModel)]="editForm.machineCode" autocomplete="off"
-              placeholder="Escriba parte del código de la máquina"
-              (ngModelChange)="onEditMachineCodeChange($event)"
-              (focus)="onMachineFocus()" (blur)="onMachineBlur()" />
-            <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
-              <div class="autocomplete-item" *ngFor="let m of predictiveMachineList"
-                (mousedown)="selectEditMachine(m)">
-                <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-map-pin"></i>
+            Asignación y ubicación de la máquina
+          </h6>
+          <div class="mtto-form-row">
+            <div class="mtto-form-group position-relative">
+              <label class="form-label">Asignar a (nombre o documento)</label>
+              <input type="text" class="form-control" [(ngModel)]="editForm.assignedTo" autocomplete="off"
+                placeholder="Escriba nombre o número de documento"
+                (ngModelChange)="onEditAssignedChange($event)"
+                (focus)="onTechnicianFocus()" (blur)="onTechnicianBlur()" />
+              <div class="autocomplete-results"
+                *ngIf="predictiveTechnicianList.length > 0 && showTechnicianDropdown">
+                <div class="autocomplete-item" *ngFor="let tech of predictiveTechnicianList"
+                  (mousedown)="selectEditTechnician(tech)">
+                  <strong>{{ tech.fullName }}</strong> — {{ tech.specialty }}
+                  <small class="text-muted d-block">Doc: {{ tech.document }}</small>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="col-md-6">
-            <label class="form-label">Nombre de máquina</label>
-            <input type="text" class="form-control" [(ngModel)]="editForm.machineName"
-              placeholder="Se completa al seleccionar el código" readonly />
-          </div>
+            <!-- Área de la máquina (servicio agrupado) -->
+            <div class="mtto-form-group">
+              <label class="form-label">Área de la máquina</label>
+              <select class="form-select" [(ngModel)]="editForm.machineArea"
+                (ngModelChange)="onEditAreaChange($event)">
+                <option value="">Seleccione el área…</option>
+                <option *ngFor="let g of groupedAreas" [value]="g.area">{{ g.area }}</option>
+              </select>
+            </div>
 
-          <div class="col-md-6">
-            <label class="form-label">Fecha programada</label>
-            <input type="text" class="form-control" [(ngModel)]="editForm.scheduledDate"
-              placeholder="dd/MM/yyyy" />
+            <!-- Departamento (subárea) -->
+            <div class="mtto-form-group">
+              <label class="form-label">Departamento</label>
+              <select class="form-select" [(ngModel)]="editForm.machineDepartment"
+                [attr.disabled]="availableDepartments.length === 0 ? '' : null">
+                <option value="">{{ availableDepartments.length ? 'Seleccione…' : 'Elija un área primero' }}</option>
+                <option *ngFor="let d of availableDepartments" [value]="d.subArea">{{ d.subArea }}</option>
+              </select>
+            </div>
+
+            <!-- Máquina (buscador predictivo) -->
+            <div class="mtto-form-group position-relative">
+              <label class="form-label">Código de máquina</label>
+              <input type="text" class="form-control" [(ngModel)]="editForm.machineCode" autocomplete="off"
+                placeholder="Escriba parte del código de la máquina"
+                (ngModelChange)="onEditMachineCodeChange($event)"
+                (focus)="onMachineFocus()" (blur)="onMachineBlur()" />
+              <div class="autocomplete-results" *ngIf="predictiveMachineList.length > 0 && showMachineDropdown">
+                <div class="autocomplete-item" *ngFor="let m of predictiveMachineList"
+                  (mousedown)="selectEditMachine(m)">
+                  <strong>{{ m.machineCode }}</strong> — {{ resolveMachineName(m) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="mtto-form-group">
+              <label class="form-label">Nombre de máquina</label>
+              <input type="text" class="form-control" [(ngModel)]="editForm.machineName"
+                placeholder="Se completa al seleccionar el código" readonly />
+            </div>
           </div>
-          <div class="col-12">
-            <label class="form-label">Observación <span class="text-danger">*</span></label>
-            <textarea class="form-control" rows="2" [(ngModel)]="editForm.observation"
-              placeholder="Razón del cambio (queda en el historial de auditoría)"></textarea>
+        </div>
+
+        <div class="mtto-section">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-calendar-event"></i>
+            Programación y observación
+          </h6>
+          <div class="mtto-form-row">
+            <div class="mtto-form-group">
+              <label class="form-label">Fecha programada</label>
+              <input type="text" class="form-control" [(ngModel)]="editForm.scheduledDate"
+                placeholder="dd/MM/yyyy" />
+            </div>
+            <div class="mtto-form-group mtto-form-group-full">
+              <label class="form-label">Observación <span class="text-danger">*</span></label>
+              <textarea class="form-control" rows="2" [(ngModel)]="editForm.observation"
+                placeholder="Razón del cambio (queda en el historial de auditoría)"></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -417,6 +488,69 @@
           <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
           <i *ngIf="!isSaving" class="ti ti-device-floppy me-1"></i>
           Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL CONFIRMAR ELIMINACIÓN ================= -->
+<div class="modal-backdrop-custom" *ngIf="showDeleteModal && orderToDelete" (click)="closeDeleteModal()">
+  <div class="modal-dialog-custom modal-dialog-custom-sm" (click)="$event.stopPropagation()">
+    <div class="modal-content">
+      <div class="modal-header is-danger">
+        <div>
+          <h5 class="modal-title">
+            <i class="ti ti-alert-triangle"></i>
+            Eliminar solicitud
+          </h5>
+          <p class="modal-subtitle">MTTO #{{ orderToDelete.consecutiveMtto }}</p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="closeDeleteModal()"
+          [disabled]="isDeleting"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mtto-delete-warning">
+          <i class="ti ti-alert-triangle"></i>
+          <p>¿Está seguro de eliminar esta solicitud de mantenimiento? Esta acción no se puede deshacer.</p>
+        </div>
+
+        <div class="mtto-delete-summary">
+          <div class="mtto-delete-row">
+            <span class="mtto-delete-label">MTTO</span>
+            <span class="mtto-delete-value">#{{ orderToDelete.consecutiveMtto }}</span>
+          </div>
+          <div class="mtto-delete-row">
+            <span class="mtto-delete-label">Máquina</span>
+            <span class="mtto-delete-value">{{ orderToDelete.machineCode }} — {{ orderToDelete.machineName || '—' }}</span>
+          </div>
+          <div class="mtto-delete-row">
+            <span class="mtto-delete-label">Tipo</span>
+            <span class="mtto-delete-value">{{ orderToDelete.maintenanceType }}</span>
+          </div>
+          <div class="mtto-delete-row">
+            <span class="mtto-delete-label">Estado</span>
+            <span [class]="statusClass(orderToDelete.status)">{{ orderToDelete.status }}</span>
+          </div>
+          <div class="mtto-delete-row">
+            <span class="mtto-delete-label">Asignado a</span>
+            <span class="mtto-delete-value">{{ orderToDelete.assignedTo || '—' }}</span>
+          </div>
+          <div class="mtto-delete-row">
+            <span class="mtto-delete-label">Programada</span>
+            <span class="mtto-delete-value">{{ orderToDelete.scheduledDate || '—' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()" [disabled]="isDeleting">
+          <i class="ti ti-x me-1"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="isDeleting">
+          <span *ngIf="isDeleting" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!isDeleting" class="ti ti-trash me-1"></i>
+          Eliminar
         </button>
       </div>
     </div>

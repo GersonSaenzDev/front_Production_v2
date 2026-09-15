@@ -114,6 +114,39 @@ export class MenuAccessService {
     return this.BODEGA_VIEWER_USERS.includes(code);
   }
 
+  // Lista PUNTUAL de usuarios autorizados a entrar al Almacén de Mantenimiento (entrega de
+  // repuestos/materiales por solicitud: qué se entrega, quién entrega y quién recibe).
+  // Acceso EXCLUSIVO y restrictivo (al revés de BODEGA_VIEWER_USERS): ni siquiera el resto
+  // del área MANTENIMIENTO lo ve por defecto, por tratarse de datos sensibles/de auditoría.
+  // Se identifican por userApp (username de login). Gerencia/Desarrollo siempre tiene acceso
+  // (ver isManagerWithFullAccess) sin necesidad de estar en esta lista.
+  // TODO (Gerson): agregar aquí el userApp de cada persona autorizada, ej: 'JPEREZ'.
+  private readonly MAINTENANCE_WAREHOUSE_USERS: string[] = [];
+
+  private isMaintenanceWarehouseUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.MAINTENANCE_WAREHOUSE_USERS.includes(code);
+  }
+
+  /**
+   * Acceso exclusivo al Almacén de Mantenimiento: Gerencia/Desarrollo (acceso total) o la
+   * lista puntual MAINTENANCE_WAREHOUSE_USERS. Lo usa tanto el filtro de menú (item oculto
+   * para el resto) como el guard de la ruta (bloquea entrar por URL directa).
+   */
+  canAccessMaintenanceWarehouse(): boolean {
+    const userData = this.authService.userData();
+    if (!userData) return false;
+    const area = userData.area?.toUpperCase().trim() || '';
+    const dept = userData.departament?.toUpperCase().trim() || '';
+    if (this.isManagerWithFullAccess(area, dept)) return true;
+    return this.isMaintenanceWarehouseUser(userData.userApp);
+  }
+
+  // Identifica el item de menú "Almacén de Mantenimiento" (url dedicada, ver navigation.ts).
+  private isMaintenanceWarehouseNavItem(item: any): boolean {
+    return item.type === 'item' && item.url === 'maintenance/maintenanceWarehouse';
+  }
+
   // Items del menú que componen el collapse "Bodega" (grupo Logística + collapse
   // Bodega + sus items), usado por el permiso aditivo BODEGA_VIEWER_USERS. No
   // incluye los collapses "Casa Cliente" ni "Almacén" del mismo grupo.
@@ -197,6 +230,14 @@ export class MenuAccessService {
 
     if (this.isManagerWithFullAccess(area, dept)) {
       return true;
+    }
+
+    // Item exclusivo de Almacén de Mantenimiento (datos sensibles de entrega/recepción de
+    // repuestos): requiere estar en la lista puntual de autorizados, sin importar el área o
+    // departamento; ni siquiera el resto de Mantenimiento lo ve por defecto. Va antes de
+    // cualquier lógica por área/departamento para que la restrinja de forma incondicional.
+    if (this.isMaintenanceWarehouseNavItem(item)) {
+      return this.isMaintenanceWarehouseUser(userData.userApp);
     }
 
     // PLANEACIÓN ve el menú Estadístico además de su acceso normal (independiente del área)

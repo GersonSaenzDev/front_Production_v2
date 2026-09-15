@@ -45,6 +45,12 @@
               placeholder="07-2024" />
           </div>
 
+          <div class="col-md-4">
+            <label class="form-label">Consecutivo Summum</label>
+            <input type="text" class="form-control" formControlName="consecutiveSummum"
+              placeholder="Código de seguimiento en Summum" />
+          </div>
+
           <!-- Máquina (buscador predictivo) -->
           <div class="col-md-6 position-relative">
             <label class="form-label">Código de máquina <span class="text-danger">*</span></label>
@@ -120,17 +126,27 @@
           </div>
 
           <div class="col-md-4 position-relative">
-            <label class="form-label">Asignar a (nombre o documento)</label>
-            <input type="text" class="form-control" formControlName="assignedTo" autocomplete="off"
+            <label class="form-label">Asignar a (1 o más personas)</label>
+            <input type="text" class="form-control" name="assigneeSearch" autocomplete="off"
+              [(ngModel)]="assigneeSearchTerm" [ngModelOptions]="{ standalone: true }"
               placeholder="Escriba nombre o número de documento"
+              (ngModelChange)="onAssigneeSearchChange($event)"
               (focus)="onTechnicianFocus()" (blur)="onTechnicianBlur()" />
             <div class="autocomplete-results"
               *ngIf="predictiveTechnicianList.length > 0 && showTechnicianDropdown">
               <div class="autocomplete-item" *ngFor="let tech of predictiveTechnicianList"
-                (mousedown)="selectTechnician(tech)">
+                (mousedown)="addAssignee(tech)">
                 <strong>{{ tech.fullName }}</strong> — {{ tech.specialty }}
                 <small class="text-muted d-block">Doc: {{ tech.document }}</small>
               </div>
+            </div>
+
+            <div class="assignee-chips" *ngIf="selectedAssignees.length">
+              <span class="assignee-chip" *ngFor="let a of selectedAssignees; let i = index">
+                {{ a.fullName }}<small *ngIf="a.specialty"> · {{ a.specialty }}</small>
+                <button type="button" class="assignee-chip-remove" (click)="removeAssignee(i)"
+                  aria-label="Quitar">×</button>
+              </span>
             </div>
           </div>
 

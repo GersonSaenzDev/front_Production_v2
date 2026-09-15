@@ -785,6 +785,15 @@ export const NavigationItems: NavigationItem[] = [
             type: 'item',
             url: 'maintenance/viewNews',
             breadcrumbs: true
+          },
+          {
+            id: 'mantenimiento-warehouse',
+            title: 'Almacén de Mantenimiento',
+            type: 'item',
+            // Acceso restringido a usuarios puntuales (ver menu-access.service.ts): no se
+            // muestra a toda el área de Mantenimiento como los items anteriores.
+            url: 'maintenance/maintenanceWarehouse',
+            breadcrumbs: true
           }
         ]
       }

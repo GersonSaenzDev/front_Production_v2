@@ -30,3 +30,49 @@
     font-weight: 500;
   }
 }
+
+// Personas asignadas a la solicitud (1 o N), agregadas desde el buscador predictivo de arriba.
+.assignee-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #e7f1ff;
+  color: #084298;
+  border: 1px solid #bcd6f7;
+  border-radius: 999px;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  small {
+    color: #4a72a3;
+    font-weight: 400;
+  }
+}
+
+.assignee-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(8, 66, 152, 0.12);
+  color: #084298;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: rgba(8, 66, 152, 0.25);
+  }
+}

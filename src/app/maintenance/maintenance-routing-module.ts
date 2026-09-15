@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { maintenanceWarehouseGuard } from '../guards/maintenance-warehouse.guard';
 
 const routes: Routes = [
   {
@@ -9,6 +10,12 @@ const routes: Routes = [
   {
     path: 'viewNews',
     loadComponent: () => import('./view-news/view-news').then(c => c.ViewNews)
+  },
+  {
+    path: 'maintenanceWarehouse',
+    // Acceso restringido: solo la lista puntual de usuarios autorizados (ver menu-access.service.ts).
+    canActivate: [maintenanceWarehouseGuard],
+    loadComponent: () => import('./maintenance-warehouse/maintenance-warehouse').then(c => c.MaintenanceWarehouse)
   }
 ];
 
