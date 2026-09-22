@@ -142,6 +142,17 @@
 
             <button
               type="button"
+              class="btn-clean-duplicates"
+              (click)="cleanDuplicateBarcodes()"
+              [disabled]="isCleaningDuplicates"
+              title="Elimina los códigos de barras duplicados cargados hoy en LoadBarcode"
+            >
+              <i class="ti" [ngClass]="isCleaningDuplicates ? 'ti-loader-2 spin' : 'ti-trash-x'"></i>
+              <span>{{ isCleaningDuplicates ? 'Limpiando...' : 'Limpiar Duplicados' }}</span>
+            </button>
+
+            <button
+              type="button"
               class="btn-export-excel"
               (click)="exportToExcel()"
               [disabled]="isGlobalSearching ? globalResults.length === 0 : totalRecords === 0"

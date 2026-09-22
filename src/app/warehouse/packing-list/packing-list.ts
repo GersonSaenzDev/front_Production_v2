@@ -364,6 +364,36 @@ export class PackingList implements OnInit {
   public crossValidateResult: PackingListCrossValidateResponse | null = null;
   public showUnmatchedList = false;
 
+  // ============================================================
+  //  LIMPIEZA MANUAL DE DUPLICADOS (LoadBarcode, día actual)
+  // ============================================================
+
+  public isCleaningDuplicates = false;
+
+  /** Botón manual de bodega: limpia los códigos de barras duplicados del día actual.
+   * El mismo proceso corre automático todos los días a las 04:00 am sobre el día anterior. */
+  public cleanDuplicateBarcodes(): void {
+    if (this.isCleaningDuplicates) return;
+
+    this.isCleaningDuplicates = true;
+    this.dashboardService.cleanDuplicateBarcodes().subscribe({
+      next: (response) => {
+        if (response.ok) {
+          this.toastr.success(response.msg || 'Duplicados eliminados correctamente.');
+          if ((response.totalEliminados || 0) > 0) this.loadPackingList();
+        } else {
+          this.toastr.error(response.msg || 'No se pudo limpiar los duplicados.');
+        }
+      },
+      error: (err) => {
+        this.toastr.error(err.message || 'Error al limpiar los duplicados.');
+      },
+      complete: () => {
+        this.isCleaningDuplicates = false;
+      }
+    });
+  }
+
   public onValidationFileSelected(fileList: FileList | null): void {
     if (!fileList || fileList.length === 0) return;
     const file = fileList[0];

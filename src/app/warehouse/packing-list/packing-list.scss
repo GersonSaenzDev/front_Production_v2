@@ -638,6 +638,38 @@ $abba-amber: #d97706;
       cursor: not-allowed;
     }
   }
+
+  .btn-clean-duplicates {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgba($abba-amber, 0.35);
+    border-radius: 10px;
+    padding: 0.6rem 1.05rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    height: fit-content;
+    transition: all 0.25s ease;
+    background: $abba-amber;
+    color: #fff;
+
+    i {
+      font-size: 1.1rem;
+    }
+
+    &:hover:not(:disabled) {
+      background: color.adjust($abba-amber, $lightness: -6%);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba($abba-amber, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
 }
 
 .btn-back {
@@ -1099,7 +1131,8 @@ $abba-amber: #d97706;
       align-items: stretch;
     }
 
-    .btn-export-excel {
+    .btn-export-excel,
+    .btn-clean-duplicates {
       width: 100%;
       justify-content: center;
     }

@@ -18,7 +18,8 @@ import {
     PackingListCheckPayload,
     PackingListCheckResponse,
     PackingListCrossValidateResponse,
-    LoadAssemblyResponse
+    LoadAssemblyResponse,
+    CleanDuplicateBarcodesResponse
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -44,6 +45,7 @@ export class DashboardServices {
   private readonly PACKING_LIST_CHECK_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/check`;
   private readonly PACKING_LIST_CROSS_VALIDATE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/crossValidate`;
   private readonly LOAD_ASSEMBLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/loadAssembly`;
+  private readonly CLEAN_DUPLICATE_BARCODES_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/cleanDuplicateBarcodes`;
 
 
   private handleError(error: any) {
@@ -312,6 +314,16 @@ export class DashboardServices {
     formData.append('resulBarcode', file);
 
     return this.http.post<LoadAssemblyResponse>(this.LOAD_ASSEMBLY_ENDPOINT, formData)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Ejecución manual e inmediata (botón de bodega) de la limpieza de códigos de
+   * barras duplicados en LoadBarcode. Sin body: el backend limpia el día actual (hora Colombia).
+   * El mismo proceso corre automático todos los días a las 04:00 am sobre el día anterior.
+   */
+  cleanDuplicateBarcodes(): Observable<CleanDuplicateBarcodesResponse> {
+    return this.http.post<CleanDuplicateBarcodesResponse>(this.CLEAN_DUPLICATE_BARCODES_ENDPOINT, {})
       .pipe(catchError(this.handleError.bind(this)));
   }
 }

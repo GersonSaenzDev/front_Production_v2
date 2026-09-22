@@ -342,3 +342,16 @@ export interface LoadAssemblyResponse {
   msg: string;
   data?: unknown;
 }
+
+/**
+ * @description Respuesta del endpoint POST /storage/cleanDuplicateBarcodes.
+ * Elimina en LoadBarcode los registros duplicados (mismo barcode) de una fecha,
+ * conservando el primer registro cargado.
+ */
+export interface CleanDuplicateBarcodesResponse {
+  ok: boolean;
+  msg: string;
+  date?: string;
+  totalBarcodesDuplicados?: number;
+  totalEliminados?: number;
+}
