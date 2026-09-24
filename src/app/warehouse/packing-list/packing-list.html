@@ -145,7 +145,7 @@
               class="btn-clean-duplicates"
               (click)="cleanDuplicateBarcodes()"
               [disabled]="isCleaningDuplicates"
-              title="Elimina los códigos de barras duplicados cargados hoy en LoadBarcode"
+              title="Marca como duplicados los códigos de barras repetidos cargados hoy (no se elimina ningún registro)"
             >
               <i class="ti" [ngClass]="isCleaningDuplicates ? 'ti-loader-2 spin' : 'ti-trash-x'"></i>
               <span>{{ isCleaningDuplicates ? 'Limpiando...' : 'Limpiar Duplicados' }}</span>

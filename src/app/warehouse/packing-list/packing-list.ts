@@ -370,8 +370,10 @@ export class PackingList implements OnInit {
 
   public isCleaningDuplicates = false;
 
-  /** Botón manual de bodega: limpia los códigos de barras duplicados del día actual.
-   * El mismo proceso corre automático todos los días a las 04:00 am sobre el día anterior. */
+  /** Botón manual de bodega: marca como duplicados los códigos de barras repetidos del día
+   * actual (isDuplicated: true). No borra ningún registro — se conservan para trazabilidad,
+   * solo dejan de contar como unidad producida en los reportes. El mismo proceso corre
+   * automático todos los días a las 04:00 am sobre el día anterior. */
   public cleanDuplicateBarcodes(): void {
     if (this.isCleaningDuplicates) return;
 
@@ -379,14 +381,14 @@ export class PackingList implements OnInit {
     this.dashboardService.cleanDuplicateBarcodes().subscribe({
       next: (response) => {
         if (response.ok) {
-          this.toastr.success(response.msg || 'Duplicados eliminados correctamente.');
-          if ((response.totalEliminados || 0) > 0) this.loadPackingList();
+          this.toastr.success(response.msg || 'Duplicados marcados correctamente.');
+          if ((response.totalMarcados || 0) > 0) this.loadPackingList();
         } else {
-          this.toastr.error(response.msg || 'No se pudo limpiar los duplicados.');
+          this.toastr.error(response.msg || 'No se pudo marcar los duplicados.');
         }
       },
       error: (err) => {
-        this.toastr.error(err.message || 'Error al limpiar los duplicados.');
+        this.toastr.error(err.message || 'Error al marcar los duplicados.');
       },
       complete: () => {
         this.isCleaningDuplicates = false;
