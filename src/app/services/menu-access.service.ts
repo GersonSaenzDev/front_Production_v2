@@ -114,6 +114,16 @@ export class MenuAccessService {
     return this.BODEGA_VIEWER_USERS.includes(code);
   }
 
+  // Usuarios de OTRAS áreas que, además de su menú normal, deben ver el menú
+  // Estadístico → Visualizar Novedades (/stadistics). Permiso ADITIVO por userApp
+  // (username de login), sin importar area/departamento.
+  private readonly STADISTICS_VIEWER_USERS = ['ACPEÑA'];
+
+  private isStadisticsViewerUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.STADISTICS_VIEWER_USERS.includes(code);
+  }
+
   // Lista PUNTUAL de usuarios autorizados a entrar al Almacén de Mantenimiento (entrega de
   // repuestos/materiales por solicitud: qué se entrega, quién entrega y quién recibe).
   // Acceso EXCLUSIVO y restrictivo (al revés de BODEGA_VIEWER_USERS): ni siquiera el resto
@@ -277,7 +287,13 @@ export class MenuAccessService {
       return true;
     }
 
-    // El menú Estadístico es exclusivo de Desarrollo/Gerencias, Analista de Presupuesto y Planeación
+    // Permiso aditivo por usuario (STADISTICS_VIEWER_USERS) para ver el menú Estadístico
+    if (isStadistics && this.isStadisticsViewerUser(userData.userApp)) {
+      return true;
+    }
+
+    // El menú Estadístico es exclusivo de Desarrollo/Gerencias, Analista de Presupuesto,
+    // Planeación y los usuarios de STADISTICS_VIEWER_USERS
     if (isStadistics) {
       return false;
     }

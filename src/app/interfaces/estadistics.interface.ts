@@ -1,10 +1,13 @@
 // src/app/interfaces/estadistics.interface.ts
 
 /**
- * @description Estructura de datos para consultar las estadísticas de novedades por fecha.
+ * @description Estructura de datos para consultar las estadísticas de novedades.
+ * Se envía `date` (un día) o `startDate` + `endDate` (rango inclusivo).
  */
 export interface EstadisticNewsRequest {
-    date: string;                     // Formato: "DD/MM/YYYY"
+    date?: string;                    // Formato: "DD/MM/YYYY"
+    startDate?: string;               // Formato: "DD/MM/YYYY"
+    endDate?: string;                 // Formato: "DD/MM/YYYY"
 }
 
 /**

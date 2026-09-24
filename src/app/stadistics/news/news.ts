@@ -6,10 +6,12 @@ import { FormsModule } from '@angular/forms';
 import * as XLSX from 'xlsx'; // Exportación a Excel
 
 import { EstadisticsService } from '../../services/estadistics.service';
-import { EstadisticNews } from '../../interfaces/estadistics.interface';
+import { EstadisticNews, EstadisticNewsRequest } from '../../interfaces/estadistics.interface';
 import { displayArea } from '../../theme/layout/admin/navigation/area-display.util';
 
 registerLocaleData(localeEs, 'es');
+
+export type DateFilterMode = 'day' | 'range';
 
 export interface CategorySummary {
   category: string;
@@ -28,7 +30,10 @@ export interface CategorySummary {
 export class StadisticsNews implements OnInit {
   private estadisticsService = inject(EstadisticsService);
 
+  public dateMode: DateFilterMode = 'day';
   public selectedDate: string = this.formatDate(new Date());
+  public startDate: string = this.formatDate(new Date());
+  public endDate: string = this.formatDate(new Date());
   public searchTerm: string = '';
   public isLoading: boolean = false;
 
@@ -49,21 +54,45 @@ export class StadisticsNews implements OnInit {
     return this.allNews.length;
   }
 
+  /** Rango completo y en orden (las fechas ISO YYYY-MM-DD se comparan como texto). */
+  get isRangeValid(): boolean {
+    return !!this.startDate && !!this.endDate && this.startDate <= this.endDate;
+  }
+
   ngOnInit(): void {
     this.onDateChange();
   }
 
-  public onDateChange(): void {
-    const dateForBackend = this.formatDateForBackend(this.selectedDate);
-    this.loadAllData(dateForBackend);
+  public setDateMode(mode: DateFilterMode): void {
+    if (this.dateMode === mode) return;
+    this.dateMode = mode;
+    if (mode === 'range') {
+      // El rango arranca sobre el día que se estaba consultando
+      this.startDate = this.selectedDate;
+      this.endDate = this.selectedDate;
+    }
+    this.onDateChange();
   }
 
-  private loadAllData(date: string): void {
+  public onDateChange(): void {
+    if (this.dateMode === 'range') {
+      if (!this.isRangeValid) return;
+      this.loadAllData({
+        startDate: this.formatDateForBackend(this.startDate),
+        endDate: this.formatDateForBackend(this.endDate)
+      });
+      return;
+    }
+    if (!this.selectedDate) return;
+    this.loadAllData({ date: this.formatDateForBackend(this.selectedDate) });
+  }
+
+  private loadAllData(request: EstadisticNewsRequest): void {
     this.isLoading = true;
     this.allNews = [];
     this.categorySummaries = [];
 
-    this.estadisticsService.getViewNewsEstadistic({ date }).subscribe({
+    this.estadisticsService.getViewNewsEstadistic(request).subscribe({
       next: (response) => {
         this.allNews = response.ok && response.msg ? this.sortByCreation(response.msg) : [];
         this.calculateCategorySummaries();
@@ -301,7 +330,11 @@ export class StadisticsNews implements OnInit {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Novedades');
 
-    const fileDate = this.formatDateForBackend(this.selectedDate).replace(/\//g, '-');
+    const toFileDate = (d: string) => this.formatDateForBackend(d).replace(/\//g, '-');
+    const fileDate =
+      this.dateMode === 'range'
+        ? `${toFileDate(this.startDate)}_a_${toFileDate(this.endDate)}`
+        : toFileDate(this.selectedDate);
     XLSX.writeFile(workbook, `Estadistica_Novedades_${fileDate}.xlsx`);
   }
 

@@ -10,28 +10,80 @@
       <div class="header-text">
         <h3 class="header-title mb-1">Estadística de Novedades</h3>
         <p class="header-subtitle mb-0">
-          Mostrando novedades para
-          <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+          @if (dateMode === 'day') {
+            Mostrando novedades para
+            <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+          } @else if (isRangeValid) {
+            Mostrando novedades del
+            <strong>{{ startDate | date:'longDate':'':'es' }}</strong>
+            al
+            <strong>{{ endDate | date:'longDate':'':'es' }}</strong>
+          } @else {
+            <span class="range-error">La fecha inicial debe ser anterior o igual a la final</span>
+          }
         </p>
       </div>
 
       <div class="header-actions">
         <div class="filter-group">
-          <label for="headerNewsDate" class="filter-label">Fecha de consulta</label>
-          <input
-            type="date"
-            id="headerNewsDate"
-            class="form-control filter-input"
-            [(ngModel)]="selectedDate"
-            (ngModelChange)="onDateChange()">
+          <span class="filter-label">Consultar por</span>
+          <div class="mode-toggle" role="group" aria-label="Tipo de consulta">
+            <button
+              type="button"
+              class="mode-btn"
+              [class.active]="dateMode === 'day'"
+              (click)="setDateMode('day')">
+              Día
+            </button>
+            <button
+              type="button"
+              class="mode-btn"
+              [class.active]="dateMode === 'range'"
+              (click)="setDateMode('range')">
+              Rango
+            </button>
+          </div>
         </div>
+
+        @if (dateMode === 'day') {
+          <div class="filter-group">
+            <label for="headerNewsDate" class="filter-label">Fecha de consulta</label>
+            <input
+              type="date"
+              id="headerNewsDate"
+              class="form-control filter-input"
+              [(ngModel)]="selectedDate"
+              (ngModelChange)="onDateChange()">
+          </div>
+        } @else {
+          <div class="filter-group">
+            <label for="headerNewsStartDate" class="filter-label">Desde</label>
+            <input
+              type="date"
+              id="headerNewsStartDate"
+              class="form-control filter-input"
+              [max]="endDate"
+              [(ngModel)]="startDate"
+              (ngModelChange)="onDateChange()">
+          </div>
+          <div class="filter-group">
+            <label for="headerNewsEndDate" class="filter-label">Hasta</label>
+            <input
+              type="date"
+              id="headerNewsEndDate"
+              class="form-control filter-input"
+              [min]="startDate"
+              [(ngModel)]="endDate"
+              (ngModelChange)="onDateChange()">
+          </div>
+        }
 
         <button
           type="button"
           class="btn-export"
           (click)="exportToExcel()"
-          [disabled]="isLoading || totalNews === 0"
-          title="Descargar todas las novedades del día en Excel">
+          [disabled]="isLoading || totalNews === 0 || (dateMode === 'range' && !isRangeValid)"
+          title="Descargar todas las novedades del periodo en Excel">
           <i class="ti ti-file-spreadsheet"></i>
           <span>Descargar Excel ({{ totalNews }})</span>
         </button>
