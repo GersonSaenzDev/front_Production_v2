@@ -18,6 +18,8 @@ import {
     PackingListCheckPayload,
     PackingListCheckResponse,
     PackingListCrossValidateResponse,
+    SummumReconcileResponse,
+    PackingListRevokePayload,
     LoadAssemblyResponse,
     CleanDuplicateBarcodesResponse
 } from '../interfaces/assembly.interface';
@@ -44,6 +46,8 @@ export class DashboardServices {
   private readonly PACKING_LIST_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList`;
   private readonly PACKING_LIST_CHECK_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/check`;
   private readonly PACKING_LIST_CROSS_VALIDATE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/crossValidate`;
+  private readonly PACKING_LIST_SUMMUM_RECONCILE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/summumReconcile`;
+  private readonly PACKING_LIST_REVOKE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/revoke`;
   private readonly LOAD_ASSEMBLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/loadAssembly`;
   private readonly CLEAN_DUPLICATE_BARCODES_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/cleanDuplicateBarcodes`;
 
@@ -301,6 +305,36 @@ export class DashboardServices {
     formData.append('validationFile', file);
 
     return this.http.post<PackingListCrossValidateResponse>(this.PACKING_LIST_CROSS_VALIDATE_ENDPOINT, formData)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Concilia por cantidad un vale de traslado Summum (.txt) contra un grupo de
+   * horas del Packing List. Con `dryRun: true` solo devuelve la vista previa; con `false`
+   * marca las unidades (packingList.summum) y registra el vale.
+   * @param {File} file - Vale Summum obtenido del input type="file".
+   * @param {string} date - Fecha del grupo (YYYY-MM-DD).
+   * @param {string} hour - Hora del grupo (HH:mm:ss).
+   * @param {boolean} dryRun - true: vista previa; false: aplicar.
+   */
+  reconcileSummumVale(file: File, date: string, hour: string, dryRun: boolean): Observable<SummumReconcileResponse> {
+    const formData = new FormData();
+    formData.append('validationFile', file);
+    formData.append('date', date);
+    formData.append('hour', hour);
+    formData.append('dryRun', String(dryRun));
+
+    return this.http.post<SummumReconcileResponse>(this.PACKING_LIST_SUMMUM_RECONCILE_ENDPOINT, formData)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Desmarca manualmente una unidad verificada (por vale Summum y/o check manual).
+   * El backend registra responsable (del token), fecha y motivo en el auditTrail.
+   * @param {PackingListRevokePayload} payload - `{ id, observation }`; el motivo es obligatorio.
+   */
+  revokePackingListVerification(payload: PackingListRevokePayload): Observable<PackingListCheckResponse> {
+    return this.http.post<PackingListCheckResponse>(this.PACKING_LIST_REVOKE_ENDPOINT, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 

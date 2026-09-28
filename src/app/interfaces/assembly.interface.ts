@@ -263,7 +263,93 @@ export interface PackingListStatus {
   checkedBy?: PackingListActorRef;
   checkedAt?: string;
   observation?: string;
+  /** Conciliación por cantidad contra el vale Summum; independiente de `checked`. */
+  summum?: PackingListSummumMark;
   auditTrail?: PackingListAuditItem[];
+}
+
+/**
+ * @description Marca de conciliación de una unidad contra un vale de traslado Summum.
+ */
+export interface PackingListSummumMark {
+  reconciled: boolean;
+  document?: string;
+  valeDate?: string;
+  reconciledAt?: string;
+  reconciledBy?: PackingListActorRef;
+  /** Reversión manual: quién, cuándo y por qué se desmarcó la unidad. */
+  revokedAt?: string;
+  revokedBy?: PackingListActorRef;
+  revokeObservation?: string;
+}
+
+/**
+ * @description Payload de POST /assembly/packingList/revoke (desmarcar una unidad verificada).
+ */
+export interface PackingListRevokePayload {
+  id: string;
+  observation: string;
+}
+
+/**
+ * @description Estado de una referencia (código Summum de 5 dígitos) en la conciliación:
+ * - MATCH: Summum === picking
+ * - MISSING_IN_SUMMUM: picking > Summum (faltan por cargar en Summum)
+ * - EXCESS_IN_SUMMUM: Summum > picking (se cargó más de lo escaneado)
+ * - NOT_IN_SUMMUM: escaneada pero no está en ningún vale
+ * - NOT_SCANNED: está en el vale pero no en el grupo
+ */
+export type SummumReconcileStatus = 'MATCH' | 'MISSING_IN_SUMMUM' | 'EXCESS_IN_SUMMUM' | 'NOT_IN_SUMMUM' | 'NOT_SCANNED';
+
+export interface SummumReconcileRow {
+  code: string;
+  productCodes: string[];
+  reference: string;
+  productName: string;
+  picking: number;
+  /** Unidades del grupo ya conciliadas por otros vales. */
+  previouslyReconciled: number;
+  summum: number;
+  toMark: number;
+  difference: number;
+  status: SummumReconcileStatus;
+}
+
+/**
+ * @description Respuesta de POST /assembly/packingList/summumReconcile (vista previa o aplicación).
+ * - Éxito: `{ ok: true, msg, dryRun, vale, group, rows, summary, ... }`
+ * - Error: `{ ok: false, msg }` (PLSV-00..04)
+ */
+export interface SummumReconcileResponse {
+  ok: boolean;
+  msg: string;
+  dryRun?: boolean;
+  vale?: {
+    document: string;
+    comprobante: string;
+    valeDate: string;
+    fileName: string;
+    declaredTotal: number;
+    totalAllLines: number;
+    declaredTotalMatches: boolean;
+    totalEntries: number;
+    linesRead: number;
+    rejectedLines: string[];
+    integrityIssues: { code: string; entrada: number; salida: number }[];
+  };
+  group?: { date: string; hour: string; units: number };
+  dateMismatch?: boolean;
+  alreadyApplied?: { groupDate: string; groupHour: string; appliedAt: string; appliedBy: string } | null;
+  rows?: SummumReconcileRow[];
+  summary?: {
+    references: number;
+    matched: number;
+    withDifferences: number;
+    totalPicking: number;
+    totalSummum: number;
+    totalToMark: number;
+  };
+  totalMarked?: number;
 }
 
 /**

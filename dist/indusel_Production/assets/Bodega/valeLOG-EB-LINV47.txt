@@ -1,0 +1,33 @@
+                                                        INDUSEL S.A.S.
+                                                             Nit...:   800241810
+                Comprobante.: 987    TRASLADOS-PRODUCCION PLANTA-AL                     Documento......:  21699
+                Beneficiario:                                                           Fecha Documento: SEP 25/2026
+-----------------------------------------------------------------------------------------------------------------------------------------------
+I Producto    Ref.Produc.               Nombre                         OPERACION INVENTARIO    BO       Cantidad     Vr.Unitario      Vr. Total
+-----------------------------------------------------------------------------------------------------------------------------------------------
+T 01164       AT 101-5N N                COCINA GAS APTO 4 PTS HOR/    04 ENTRADA POR TRASLADO 01        16.0000
+T 01164       AT 101-5N N                COCINA GAS APTO 4 PTS HOR/    53 SALIDA POR TRASLADOS EA        16.0000
+T 00005       AT 203-2MN GT              COCINA GAS 4PT BOT.PLANA Q    04 ENTRADA POR TRASLADO 01        20.0000
+T 00005       AT 203-2MN GT              COCINA GAS 4PT BOT.PLANA Q    53 SALIDA POR TRASLADOS EA        20.0000
+T 00135       AT 20HEN EE N              COC 20"PARRILLA PLATINA MA    04 ENTRADA POR TRASLADO 01        12.0000
+T 00135       AT 20HEN EE N              COC 20"PARRILLA PLATINA MA    53 SALIDA POR TRASLADOS EA        12.0000
+T 00141       AT 24HIDN GT N             COC MESA INOX.PARR.PLAT.MA    53 SALIDA POR TRASLADOS EA        16.0000
+T 00141       AT 24HIDN GT N             COC MESA INOX.PARR.PLAT.MA    04 ENTRADA POR TRASLADO 01        16.0000
+T 01102       CG 4PSN SE                 COOK TOP GAS 4 PTOS PORCEL    53 SALIDA POR TRASLADOS EA        60.0000
+T 01102       CG 4PSN SE                 COOK TOP GAS 4 PTOS PORCEL    04 ENTRADA POR TRASLADO 01        60.0000
+T 01117       SG 200-1                   S/MESA GAS 2 PTOS QR MOTEA    53 SALIDA POR TRASLADOS ES       480.0000
+T 01117       SG 200-1                   S/MESA GAS 2 PTOS QR MOTEA    04 ENTRADA POR TRASLADO 01       480.0000
+
+
+
+        TOTAL DOCUMENTO:                                                                       1,208.0000
+Observaciones :
+
+
+
+Despachado                                  Recibido
+
+____________________________                ______________________________
+
+
+

@@ -204,14 +204,14 @@
                   </td>
                 </tr>
 
-                <tr *ngFor="let item of globalResults" [class.row-checked]="item.packingList?.checked">
+                <tr *ngFor="let item of globalResults" [class.row-checked]="isVerified(item)">
                   <td class="check-col">
                     <input
                       type="checkbox"
                       class="packing-checkbox"
-                      [checked]="item.packingList?.checked"
+                      [checked]="isVerified(item)"
                       [disabled]="isSaving(item)"
-                      (change)="toggleCheck(item)"
+                      (change)="toggleCheck(item); $any($event.target).checked = isVerified(item)"
                     />
                   </td>
 
@@ -250,13 +250,16 @@
                   </td>
 
                   <td class="cell-stacked">
-                    <span class="status-pill" [ngClass]="item.packingList?.checked ? 'status-closed' : 'status-pending'">
-                      {{ item.packingList?.checked ? 'Verificado' : 'Pendiente' }}
+                    <span class="status-pill" [ngClass]="isVerified(item) ? 'status-closed' : 'status-pending'">
+                      {{ isVerified(item) ? 'Verificado' : 'Pendiente' }}
                     </span>
-                    <small class="cell-sub" *ngIf="item.packingList?.checked && item.packingList?.checkedBy?.name">
+                    <small class="cell-sub" *ngIf="isVerified(item) && verifiedByName(item)">
                       <i class="ti ti-user"></i>
-                      {{ item.packingList?.checkedBy?.name }}
+                      {{ verifiedByName(item) }}
                     </small>
+                    <span class="status-pill status-summum mt-1" *ngIf="item.packingList?.summum?.reconciled">
+                      Summum #{{ item.packingList?.summum?.document }}
+                    </span>
                   </td>
                 </tr>
               </tbody>
@@ -298,6 +301,7 @@
               <span class="status-pill status-pending" *ngIf="group.pending > 0">
                 {{ group.pending }} pendiente{{ group.pending !== 1 ? 's' : '' }}
               </span>
+              <span class="status-pill status-summum" *ngIf="group.summumReconciled > 0">{{ group.summumReconciled }} Summum</span>
             </div>
 
             <div class="hour-group-validators" *ngIf="group.validators.length > 0" [title]="group.validators.join(', ')">
@@ -322,7 +326,9 @@
               <i class="ti ti-clock"></i>
               Grupo {{ group.hour }}
             </h6>
-            <small class="section-subtitle">{{ group.checked }}/{{ group.total }} ítems verificados en este grupo</small>
+            <small class="section-subtitle">
+              {{ group.checked }}/{{ group.total }} ítems verificados en este grupo · {{ group.summumReconciled }} conciliados Summum
+            </small>
           </div>
 
           <div class="toolbar-end">
@@ -337,6 +343,22 @@
               />
             </div>
 
+            <label
+              class="btn-summum-vale"
+              [class.disabled]="isReconcilingSummum"
+              title="Cargar el vale de traslado de Summum (.txt) para conciliar por cantidad este grupo de horas"
+            >
+              <i class="ti" [ngClass]="isReconcilingSummum ? 'ti-loader-2 spin' : 'ti-file-invoice'"></i>
+              <span>{{ isReconcilingSummum ? 'Procesando...' : 'Cargar Vale Summum' }}</span>
+              <input
+                type="file"
+                accept=".txt"
+                hidden
+                [disabled]="isReconcilingSummum"
+                (change)="onSummumValeSelected($any($event.target).files); $any($event.target).value = null"
+              />
+            </label>
+
             <button
               type="button"
               class="btn-export-excel"
@@ -347,6 +369,136 @@
               <i class="ti ti-file-spreadsheet"></i>
               <span>Descargar</span>
             </button>
+          </div>
+        </div>
+
+        <!-- CONCILIACIÓN CONTRA EL VALE SUMMUM (vista previa → confirmar) -->
+        <div class="summum-panel mt-3" *ngIf="summumPreview as preview" [class.applied]="isSummumApplied">
+          <div class="summum-panel-header">
+            <div class="summum-panel-title">
+              <i class="ti" [ngClass]="isSummumApplied ? 'ti-circle-check' : 'ti-file-invoice'"></i>
+              <div>
+                <strong>{{ isSummumApplied ? 'Vale aplicado' : 'Vista previa' }} · Vale Summum #{{ preview.vale?.document }}</strong>
+                <small>
+                  Fecha vale {{ preview.vale?.valeDate || '—' }} · Grupo {{ preview.group?.date }} {{ preview.group?.hour }} · {{
+                  preview.vale?.fileName }}
+                </small>
+              </div>
+            </div>
+            <button type="button" class="btn-close-banner" (click)="clearSummumPreview()" title="Cerrar">
+              <i class="ti ti-x"></i>
+            </button>
+          </div>
+
+          <!-- ALERTAS DE CONTROL -->
+          <div class="summum-alerts">
+            <div class="summum-alert alert-warning" *ngIf="preview.dateMismatch">
+              <i class="ti ti-calendar-exclamation"></i>
+              La fecha del vale ({{ preview.vale?.valeDate }}) no coincide con la fecha del grupo ({{ preview.group?.date }}).
+            </div>
+            <div class="summum-alert alert-danger" *ngIf="preview.alreadyApplied && !isSummumApplied">
+              <i class="ti ti-ban"></i>
+              Este vale ya fue aplicado al grupo {{ preview.alreadyApplied.groupDate }} {{ preview.alreadyApplied.groupHour }} ({{
+              preview.alreadyApplied.appliedAt }} · {{ preview.alreadyApplied.appliedBy }}). No se puede aplicar de nuevo.
+            </div>
+            <div class="summum-alert alert-warning" *ngIf="preview.vale && !preview.vale.declaredTotalMatches">
+              <i class="ti ti-alert-triangle"></i>
+              El TOTAL DOCUMENTO declarado ({{ preview.vale.declaredTotal | number }}) no coincide con la suma de las líneas leídas ({{
+              preview.vale.totalAllLines | number }}).
+            </div>
+            <div class="summum-alert alert-warning" *ngIf="preview.vale?.integrityIssues?.length">
+              <i class="ti ti-alert-triangle"></i>
+              Entradas y salidas no cuadran en:
+              <span *ngFor="let issue of preview.vale?.integrityIssues; let last = last">
+                {{ issue.code }} (entrada {{ issue.entrada }} / salida {{ issue.salida }}){{ last ? '' : ',' }}
+              </span>
+            </div>
+            <div class="summum-alert alert-warning" *ngIf="preview.vale?.rejectedLines?.length">
+              <i class="ti ti-alert-triangle"></i>
+              {{ preview.vale?.rejectedLines?.length }} línea(s) del vale no se pudieron leer.
+            </div>
+          </div>
+
+          <!-- RESUMEN -->
+          <div class="summum-summary" *ngIf="preview.summary as summary">
+            <div class="summum-kpi">
+              <span class="kpi-value">{{ summary.matched }}/{{ summary.references }}</span>
+              <span class="kpi-label">Referencias que cuadran</span>
+            </div>
+            <div class="summum-kpi">
+              <span class="kpi-value">{{ summary.totalPicking | number }}</span>
+              <span class="kpi-label">Unidades en el grupo</span>
+            </div>
+            <div class="summum-kpi">
+              <span class="kpi-value">{{ summary.totalSummum | number }}</span>
+              <span class="kpi-label">Unidades en el vale</span>
+            </div>
+            <div class="summum-kpi highlight">
+              <span class="kpi-value">{{ (isSummumApplied ? preview.totalMarked : summary.totalToMark) | number }}</span>
+              <span class="kpi-label">{{ isSummumApplied ? 'Unidades conciliadas' : 'Se conciliarán' }}</span>
+            </div>
+          </div>
+
+          <!-- DETALLE POR REFERENCIA -->
+          <div class="table-wrapper mt-3">
+            <table class="packing-table">
+              <thead>
+                <tr>
+                  <th scope="col">Código Summum</th>
+                  <th scope="col">Producto</th>
+                  <th scope="col" class="text-end">Picking</th>
+                  <th scope="col" class="text-end">Otros vales</th>
+                  <th scope="col" class="text-end">Summum</th>
+                  <th scope="col" class="text-end">Diferencia</th>
+                  <th scope="col">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of preview.rows">
+                  <td class="cell-stacked">
+                    <span class="cell-main-text">{{ row.code }}</span>
+                    <small class="cell-sub" *ngIf="row.productCodes.length">
+                      <i class="ti ti-barcode"></i>
+                      {{ row.productCodes.join(', ') }}
+                    </small>
+                  </td>
+                  <td class="cell-stacked">
+                    <span class="cell-main-text">{{ row.productName }}</span>
+                    <small class="cell-sub">{{ row.reference }}</small>
+                  </td>
+                  <td class="text-end">{{ row.picking }}</td>
+                  <td class="text-end">{{ row.previouslyReconciled || '—' }}</td>
+                  <td class="text-end">{{ row.summum }}</td>
+                  <td class="text-end" [class.diff-negative]="row.difference < 0" [class.diff-positive]="row.difference > 0">
+                    {{ row.difference > 0 ? '+' : '' }}{{ row.difference }}
+                  </td>
+                  <td>
+                    <span class="status-pill" [ngClass]="summumStatusClass(row.status)">{{ summumStatusLabel(row.status) }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="summum-actions">
+            <button type="button" class="btn-summum-secondary" (click)="exportSummumReconciliation()">
+              <i class="ti ti-file-spreadsheet"></i>
+              Descargar conciliación
+            </button>
+            <ng-container *ngIf="!isSummumApplied">
+              <button type="button" class="btn-summum-secondary" (click)="clearSummumPreview()" [disabled]="isReconcilingSummum">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="btn-summum-confirm"
+                (click)="applySummumVale()"
+                [disabled]="isReconcilingSummum || !!preview.alreadyApplied"
+              >
+                <i class="ti" [ngClass]="isReconcilingSummum ? 'ti-loader-2 spin' : 'ti-check'"></i>
+                Confirmar y aplicar vale
+              </button>
+            </ng-container>
           </div>
         </div>
 
@@ -372,6 +524,11 @@
           <label class="filter-toggle">
             <input type="checkbox" [(ngModel)]="onlyDuplicated" (ngModelChange)="applyFilter()" />
             Duplicados
+          </label>
+
+          <label class="filter-toggle" title="Unidades que ningún vale Summum ha conciliado">
+            <input type="checkbox" [(ngModel)]="onlyNotReconciled" (ngModelChange)="applyFilter()" />
+            Sin conciliar Summum
           </label>
 
           <span class="reference-filter-pill" *ngIf="referenceFilter">
@@ -430,14 +587,15 @@
                 </td>
               </tr>
 
-              <tr *ngFor="let item of filteredItems" [class.row-checked]="item.packingList?.checked">
+              <tr *ngFor="let item of filteredItems" [class.row-checked]="isVerified(item)">
                 <td class="check-col">
                   <input
                     type="checkbox"
                     class="packing-checkbox"
-                    [checked]="item.packingList?.checked"
+                    [checked]="isVerified(item)"
                     [disabled]="isSaving(item)"
-                    (change)="toggleCheck(item)"
+                    [title]="item.packingList?.summum?.reconciled ? 'Conciliado por vale Summum #' + item.packingList?.summum?.document + ' — desmarcar requiere motivo' : ''"
+                    (change)="toggleCheck(item); $any($event.target).checked = isVerified(item)"
                   />
                 </td>
 
@@ -469,16 +627,32 @@
                 </td>
 
                 <td class="cell-stacked">
-                  <span class="status-pill" [ngClass]="item.packingList?.checked ? 'status-closed' : 'status-pending'">
-                    {{ item.packingList?.checked ? 'Verificado' : 'Pendiente' }}
+                  <span class="status-pill" [ngClass]="isVerified(item) ? 'status-closed' : 'status-pending'">
+                    {{ isVerified(item) ? 'Verificado' : 'Pendiente' }}
                   </span>
-                  <small class="cell-sub" *ngIf="item.packingList?.checked && item.packingList?.checkedBy?.name">
+                  <small class="cell-sub" *ngIf="isVerified(item) && verifiedByName(item)">
                     <i class="ti ti-user"></i>
-                    {{ item.packingList?.checkedBy?.name }}
+                    {{ verifiedByName(item) }}
                   </small>
-                  <small class="cell-sub" *ngIf="item.packingList?.checked && item.packingList?.checkedAt">
+                  <small class="cell-sub" *ngIf="isVerified(item) && verifiedAt(item)">
                     <i class="ti ti-calendar-event"></i>
-                    {{ item.packingList?.checkedAt }}
+                    {{ verifiedAt(item) }}
+                  </small>
+                  <span
+                    class="status-pill status-summum mt-1"
+                    *ngIf="item.packingList?.summum?.reconciled"
+                    [title]="'Conciliado ' + (item.packingList?.summum?.reconciledAt || '') + ' por ' + (item.packingList?.summum?.reconciledBy?.name || '')"
+                  >
+                    Summum #{{ item.packingList?.summum?.document }}
+                  </span>
+                  <small
+                    class="cell-sub revoked-note"
+                    *ngIf="!item.packingList?.summum?.reconciled && item.packingList?.summum?.revokedAt"
+                    [title]="item.packingList?.summum?.revokeObservation || ''"
+                  >
+                    <i class="ti ti-arrow-back-up"></i>
+                    Summum #{{ item.packingList?.summum?.document }} revertida por {{ item.packingList?.summum?.revokedBy?.name }} · {{
+                    item.packingList?.summum?.revokedAt }} · {{ item.packingList?.summum?.revokeObservation }}
                   </small>
                 </td>
               </tr>
@@ -486,6 +660,44 @@
           </table>
         </div>
       </ng-container>
+    </div>
+  </div>
+
+  <!-- MODAL: DESMARCAR UNA UNIDAD CONCILIADA POR SUMMUM (motivo obligatorio) -->
+  <div class="revoke-backdrop" *ngIf="revokeTarget as target" (click)="cancelRevoke()">
+    <div class="revoke-dialog" role="dialog" aria-modal="true" aria-labelledby="revokeTitle" (click)="$event.stopPropagation()">
+      <h6 id="revokeTitle" class="revoke-title">
+        <i class="ti ti-arrow-back-up"></i>
+        Desmarcar unidad conciliada
+      </h6>
+      <p class="revoke-text">
+        La unidad
+        <strong>{{ target.barcode }}</strong>
+        ({{ target.productName }}) fue conciliada con el vale Summum
+        <strong>#{{ target.packingList?.summum?.document }}</strong>
+        por {{ target.packingList?.summum?.reconciledBy?.name || '—' }}. Al desmarcarla quedará pendiente y se registrará tu usuario, la
+        fecha y el motivo.
+      </p>
+
+      <label for="revokeReason" class="revoke-label">Motivo (obligatorio)</label>
+      <textarea
+        id="revokeReason"
+        class="form-control"
+        rows="3"
+        maxlength="300"
+        placeholder="Ej: la unidad no se encontró físicamente en la estiba"
+        [(ngModel)]="revokeReason"
+        [disabled]="isRevoking"
+      ></textarea>
+      <small class="revoke-hint">Mínimo 5 caracteres.</small>
+
+      <div class="summum-actions">
+        <button type="button" class="btn-summum-secondary" (click)="cancelRevoke()" [disabled]="isRevoking">Cancelar</button>
+        <button type="button" class="btn-revoke-confirm" (click)="confirmRevoke()" [disabled]="!canConfirmRevoke">
+          <i class="ti" [ngClass]="isRevoking ? 'ti-loader-2 spin' : 'ti-arrow-back-up'"></i>
+          Desmarcar unidad
+        </button>
+      </div>
     </div>
   </div>
 </div>

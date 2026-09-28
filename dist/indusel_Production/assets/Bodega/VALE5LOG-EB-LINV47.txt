@@ -1,0 +1,33 @@
+                                                        INDUSEL S.A.S.
+                                                             Nit...:   800241810
+                Comprobante.: 987    TRASLADOS-PRODUCCION PLANTA-AL                     Documento......:  21713
+                Beneficiario:                                                           Fecha Documento: SEP 28/2026
+-----------------------------------------------------------------------------------------------------------------------------------------------
+I Producto    Ref.Produc.               Nombre                         OPERACION INVENTARIO    BO       Cantidad     Vr.Unitario      Vr. Total
+-----------------------------------------------------------------------------------------------------------------------------------------------
+T 01504       AG 201-5N GT               COCINA GAS APT 4 PT FTE.VI    04 ENTRADA POR TRASLADO 01         8.0000
+T 01504       AG 201-5N GT               COCINA GAS APT 4 PT FTE.VI    53 SALIDA POR TRASLADOS EA         8.0000
+T 00135       AT 20HEN EE N              COC 20"PARRILLA PLATINA MA    53 SALIDA POR TRASLADOS EA        12.0000
+T 00135       AT 20HEN EE N              COC 20"PARRILLA PLATINA MA    04 ENTRADA POR TRASLADO 01        12.0000
+T 00147       AT 20HVN GT TC N           COC PISO  VIDRIO EA.TC PAR    53 SALIDA POR TRASLADOS EA         4.0000
+T 00147       AT 20HVN GT TC N           COC PISO  VIDRIO EA.TC PAR    04 ENTRADA POR TRASLADO 01         4.0000
+T 00139       AT 24 HEDN GT N            COC MESA ESMALTADA PARRILL    04 ENTRADA POR TRASLADO 01         4.0000
+T 00139       AT 24 HEDN GT N            COC MESA ESMALTADA PARRILL    53 SALIDA POR TRASLADOS EA         4.0000
+T 01130       CG 4PLX                    C/INOX. 4PTOS GAS,EA, PARR    53 SALIDA POR TRASLADOS EA         1.0000
+T 01130       CG 4PLX                    C/INOX. 4PTOS GAS,EA, PARR    04 ENTRADA POR TRASLADO 01         1.0000
+T 01267       CG 501 V5DN TC N           C/VID. EMPOTRAR 30  2 PARR    53 SALIDA POR TRASLADOS EA        14.0000
+T 01267       CG 501 V5DN TC N           C/VID. EMPOTRAR 30  2 PARR    04 ENTRADA POR TRASLADO 01        14.0000
+T 03302       SG 200-1 QL                S/MESA GAS 2 PTOS QR MOTEA    53 SALIDA POR TRASLADOS ES        60.0000
+T 03302       SG 200-1 QL                S/MESA GAS 2 PTOS QR MOTEA    04 ENTRADA POR TRASLADO 01        60.0000
+
+        TOTAL DOCUMENTO:                                                                         206.0000
+Observaciones :
+
+
+
+Despachado                                  Recibido
+
+____________________________                ______________________________
+
+
+

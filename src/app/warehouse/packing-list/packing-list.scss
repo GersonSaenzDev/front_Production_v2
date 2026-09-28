@@ -1086,6 +1086,316 @@ $abba-amber: #d97706;
     background: #fee2e2;
     color: #991b1b;
   }
+  &.status-summum {
+    background: $abba-blue-light;
+    color: $abba-blue;
+  }
+}
+
+// =======================
+//  CONCILIACIÓN VALE SUMMUM
+// =======================
+.btn-summum-vale {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba($abba-blue, 0.35);
+  border-radius: 10px;
+  padding: 0.6rem 1.05rem;
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  height: fit-content;
+  transition: all 0.25s ease;
+  background: $abba-blue;
+  color: #fff;
+
+  i {
+    font-size: 1.1rem;
+  }
+
+  &:hover:not(.disabled) {
+    background: $abba-blue-dark;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba($abba-blue, 0.3);
+  }
+
+  &.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.summum-panel {
+  border: 1px solid rgba($abba-blue, 0.25);
+  border-left: 4px solid $abba-blue;
+  border-radius: 12px;
+  background: #fff;
+  padding: 1.25rem;
+  box-shadow: 0 4px 14px rgba($abba-blue, 0.08);
+
+  &.applied {
+    border-left-color: $abba-green;
+  }
+
+  .summum-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .summum-panel-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    color: $abba-blue-dark;
+
+    > i {
+      font-size: 1.5rem;
+      color: $abba-blue;
+    }
+
+    strong {
+      display: block;
+      font-size: 1rem;
+    }
+
+    small {
+      color: $abba-gray;
+    }
+  }
+
+  &.applied .summum-panel-title > i {
+    color: $abba-green;
+  }
+
+  .btn-close-banner {
+    border: none;
+    background: transparent;
+    color: $abba-gray;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+}
+
+.summum-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.summum-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+
+  &.alert-warning {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  &.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+}
+
+.summum-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.summum-kpi {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+
+  .kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: $abba-dark;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-label {
+    font-size: 0.75rem;
+    color: $abba-gray;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  &.highlight {
+    background: $abba-blue-light;
+    border-color: rgba($abba-blue, 0.25);
+
+    .kpi-value {
+      color: $abba-blue;
+    }
+  }
+}
+
+.summum-panel .packing-table {
+  .text-end {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .diff-negative {
+    color: #991b1b;
+    font-weight: 700;
+  }
+
+  .diff-positive {
+    color: $abba-amber;
+    font-weight: 700;
+  }
+}
+
+.summum-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.btn-summum-secondary,
+.btn-summum-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.btn-summum-secondary {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: $abba-gray;
+
+  &:hover:not(:disabled) {
+    background: #f8fafc;
+  }
+}
+
+.btn-summum-confirm {
+  border: 1px solid $abba-green;
+  background: $abba-green;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: color.adjust($abba-green, $lightness: -6%);
+  }
+}
+
+// =======================
+//  DESMARCAR UNIDAD CONCILIADA (modal)
+// =======================
+.revoked-note {
+  color: #92400e !important;
+  white-space: normal;
+}
+
+.revoke-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba($abba-dark, 0.45);
+}
+
+.revoke-dialog {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba($abba-dark, 0.3);
+
+  .revoke-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: $abba-blue-dark;
+    font-weight: 700;
+
+    i {
+      color: $abba-amber;
+      font-size: 1.3rem;
+    }
+  }
+
+  .revoke-text {
+    font-size: 0.88rem;
+    color: $abba-gray;
+    margin: 0.75rem 0 1rem;
+  }
+
+  .revoke-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $abba-dark;
+    margin-bottom: 0.35rem;
+  }
+
+  .revoke-hint {
+    color: $abba-gray;
+  }
+}
+
+.btn-revoke-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid $abba-amber;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  background: $abba-amber;
+  color: #fff;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: color.adjust($abba-amber, $lightness: -6%);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 }
 
 // =======================
@@ -1132,10 +1442,16 @@ $abba-amber: #d97706;
     }
 
     .btn-export-excel,
-    .btn-clean-duplicates {
+    .btn-clean-duplicates,
+    .btn-summum-vale {
       width: 100%;
       justify-content: center;
     }
+  }
+
+  .summum-actions > button {
+    flex: 1;
+    justify-content: center;
   }
 
   .groups-grid {
