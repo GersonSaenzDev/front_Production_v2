@@ -53,9 +53,10 @@ export interface NewsAssignment {
  */
 export interface NewsStop {
     stopType: string;
-    startTime: string;        // HH:MM
-    endTime: string;          // HH:MM
-    totalTime: string;        // HH:MM
+    startTime: string;        // HH:MM (la fecha de inicio es newsDate)
+    endDate?: string;         // DD/MM/YYYY (puede ser días después de newsDate)
+    endTime: string;          // HH:MM — vacío si la parada sigue EN CURSO
+    totalTime: string;        // HH:MM (horas pueden superar 24) — vacío si sigue EN CURSO
 }
 
 /**

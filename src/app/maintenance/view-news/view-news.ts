@@ -27,11 +27,12 @@ import { MaintenanceDraftService } from '../../services/maintenance-draft-servic
 import { MaintenanceServices } from '../../services/maintenance-services';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
+import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoing-stops/ongoing-stops.component';
 
 @Component({
   selector: 'app-maintenance-view-news',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent],
   templateUrl: './view-news.html',
   styleUrl: './view-news.scss',
 })

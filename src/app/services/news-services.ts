@@ -16,6 +16,11 @@ import {
     MachinesByAreaRequest,
     MachinesByAreaResponse
 } from '../interfaces/production-news.interface';
+import {
+    FinishStopPayload,
+    FinishStopResponse,
+    ProductionNewsResponse as OngoingStopsResponse
+} from '../interfaces/assembly.interface';
 
 @Injectable({
     providedIn: 'root'
@@ -26,6 +31,8 @@ export class NewsServices {
     private readonly BASE_URL = environment.backendUrl;
     private readonly BASE_API = environment.api;
     private readonly PRODUCTION_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews`;
+    private readonly FINISH_STOP_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews/finishStop`;
+    private readonly ONGOING_STOPS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews/ongoingStops`;
     private readonly WAREHOUSE_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/newsWarehouse`;
     private readonly PRODUCTION_AREAS_GROUPED_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionAreas/grouped`;
     private readonly PRODUCTION_AREAS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionAreas`;
@@ -64,6 +71,29 @@ export class NewsServices {
                     console.log('NEWS SERVICES - CONTROL: Respuesta del backend (productionNews):', response);
                     return response;
                 })
+            );
+    }
+
+    /**
+     * @description Registra el fin de una parada reportada EN CURSO. El backend calcula el total.
+     * @param {FinishStopPayload} payload - { newsId, endDate: 'DD/MM/YYYY', endTime: 'HH:mm' }.
+     * @returns {Observable<FinishStopResponse>} - Devuelve la novedad actualizada en `data`.
+     */
+    finishStop(payload: FinishStopPayload): Observable<FinishStopResponse> {
+        return this.http.post<FinishStopResponse>(this.FINISH_STOP_ENDPOINT, payload)
+            .pipe(catchError(this.handleError.bind(this)));
+    }
+
+    /**
+     * @description Paradas EN CURSO del área (origen o asignada), sin filtro de fecha.
+     * @param {string} area - Área o subárea a consultar (mismo scope que viewNews).
+     * @returns {Observable<OngoingStopsResponse>}
+     */
+    getOngoingStops(area: string): Observable<OngoingStopsResponse> {
+        return this.http.post<OngoingStopsResponse>(this.ONGOING_STOPS_ENDPOINT, { area })
+            .pipe(
+                catchError(this.handleError.bind(this)),
+                map(response => ({ ok: response?.ok, msg: response?.ok && Array.isArray(response.msg) ? response.msg : [] }))
             );
     }
 
@@ -180,8 +210,9 @@ export class NewsServices {
             const stop = newsData.stop;
             if (!stop?.stopType) errors.push('El tipo de parada es obligatorio para Parada de Proceso');
             if (!stop?.startTime) errors.push('La hora de inicio es obligatoria para Parada de Proceso');
-            if (!stop?.endTime) errors.push('La hora de fin es obligatoria para Parada de Proceso');
-            if (!stop?.totalTime) errors.push('El tiempo total es obligatorio para Parada de Proceso');
+            // Sin hora de fin la parada queda EN CURSO y se finaliza después;
+            // si trae fin, el total también es obligatorio.
+            if (stop?.endTime && !stop?.totalTime) errors.push('El tiempo total es obligatorio cuando la parada ya finalizó');
         }
 
         return {

@@ -1,6 +1,6 @@
 // src/app/theme/layout/admin/navigation/shared-news/shared-news.component.ts
 import { CommonModule } from '@angular/common';
-import { Component, inject, Input, OnInit } from '@angular/core';
+import { Component, inject, Input, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { debounceTime, filter, switchMap, tap } from 'rxjs';
@@ -16,11 +16,28 @@ import { AuthService } from '../../../../../services/auth-services';
 import { DashboardServices } from '../../../../../services/dashboard-services';
 import { NewsServices } from '../../../../../services/news-services';
 import { displayArea } from '../area-display.util';
+import { OngoingStopsComponent } from '../ongoing-stops/ongoing-stops.component';
+import { Time24Directive, TIME_24_PATTERN } from '../time-24.directive';
+import {
+  formatDurationLabel,
+  formatStopTotal,
+  isoToDdMmYyyy,
+  minutesBetween,
+  parseStopMoment,
+  toHHmm,
+  toIsoDate
+} from '../stop-time.util';
+
+/** Estado de la parada al reportarla: sigue detenida (sin fin) o ya terminó. */
+type StopStatus = 'ongoing' | 'finished';
+
+/** Tolerancia (min) para relojes levemente adelantados; igual a la del backend. */
+const FUTURE_TOLERANCE_MINUTES = 5;
 
 @Component({
   selector: 'app-shared-news',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, OngoingStopsComponent, Time24Directive],
   templateUrl: './shared-news.component.html',
   styleUrls: ['./shared-news.component.scss']
 })
@@ -35,8 +52,15 @@ export class SharedNewsComponent implements OnInit {
   private newsServices = inject(NewsServices);
   private toastr = inject(ToastrService);
 
+  @ViewChild(OngoingStopsComponent) private ongoingStops?: OngoingStopsComponent;
+
   get userArea(): string {
     return this.authService.userData()?.area || this.defaultOriginArea || '';
+  }
+
+  /** Scope del panel de paradas en curso (mismo criterio que la consulta de novedades). */
+  get stopsScope(): string {
+    return this.defaultOriginArea || this.userArea;
   }
 
   get displayTitle(): string {
@@ -104,6 +128,10 @@ export class SharedNewsComponent implements OnInit {
   predictiveList: string[] = [];
   novedadForm!: FormGroup;
   isLineaParada = false;
+  /** Aviso cuando el fin quedó "antes" del inicio el mismo día y se asume el día siguiente. */
+  stopEndHint = '';
+  /** Tiempo total legible de la parada finalizada ('3h 05m'). */
+  stopTotalLabel = '';
   isOriginEnsamble = false;
   showDropdown: boolean = false;
 
@@ -131,7 +159,9 @@ export class SharedNewsComponent implements OnInit {
       assignmentSubArea: ['', Validators.required],
       productReference: [''],
       tipoNovedad: [''],
+      estadoParada: [{ value: 'ongoing' as StopStatus, disabled: true }],
       horaInicio: [{ value: '', disabled: true }],
+      fechaFin: [{ value: '', disabled: true }],
       horaFin: [{ value: '', disabled: true }],
       totalParada: [{ value: '00:00', disabled: true }],
       detalle: ['', [Validators.required, Validators.minLength(50)]]
@@ -153,8 +183,10 @@ export class SharedNewsComponent implements OnInit {
       this.handleAssignmentAreaChange(value);
     });
 
-    this.novedadForm.get('horaInicio')?.valueChanges.subscribe(() => this.calculateTotalParada());
-    this.novedadForm.get('horaFin')?.valueChanges.subscribe(() => this.calculateTotalParada());
+    this.novedadForm.get('estadoParada')?.valueChanges.subscribe(() => this.applyStopStatus());
+    for (const field of ['fecha', 'horaInicio', 'fechaFin', 'horaFin']) {
+      this.novedadForm.get(field)?.valueChanges.subscribe(() => this.calculateTotalParada());
+    }
 
     this.handleCategoriaChange(this.novedadForm.get('categoriaNovedad')?.value);
   }
@@ -184,38 +216,125 @@ export class SharedNewsComponent implements OnInit {
 
   handleCategoriaChange(value: string): void {
     const inicioControl = this.novedadForm.get('horaInicio');
-    const finControl = this.novedadForm.get('horaFin');
     const tipoControl = this.novedadForm.get('tipoNovedad');
+    const estadoControl = this.novedadForm.get('estadoParada');
 
     this.isLineaParada = value === 'Parada de Proceso';
 
     if (this.isLineaParada) {
-      inicioControl?.setValidators(Validators.required);
-      finControl?.setValidators(Validators.required);
+      inicioControl?.setValidators([Validators.required, Validators.pattern(TIME_24_PATTERN)]);
       tipoControl?.setValidators(Validators.required);
       inicioControl?.enable();
-      finControl?.enable();
+      estadoControl?.enable({ emitEvent: false });
       this.novedadForm.get('totalParada')?.enable();
       tipoControl?.enable();
+      // Lo más común es reportar la parada en el momento en que ocurre.
+      if (!inicioControl?.value) inicioControl?.setValue(toHHmm(new Date()));
       if (!this.novedadForm.get('totalParada')?.value) {
         this.novedadForm.get('totalParada')?.setValue('00:00');
       }
     } else {
       inicioControl?.clearValidators();
-      finControl?.clearValidators();
       tipoControl?.clearValidators();
       inicioControl?.disable();
-      finControl?.disable();
+      estadoControl?.disable({ emitEvent: false });
       this.novedadForm.get('totalParada')?.disable();
       tipoControl?.disable();
       inicioControl?.setValue('');
-      finControl?.setValue('');
+      estadoControl?.setValue('ongoing', { emitEvent: false });
       this.novedadForm.get('totalParada')?.setValue('00:00');
       tipoControl?.setValue('');
     }
     inicioControl?.updateValueAndValidity();
-    finControl?.updateValueAndValidity();
     tipoControl?.updateValueAndValidity();
+    // El fin depende de si la parada ya terminó (y solo aplica a paradas); si no aplica, se limpia.
+    this.applyStopStatus();
+  }
+
+  /** true cuando se reporta una parada que ya terminó (se capturan inicio y fin). */
+  get isStopFinished(): boolean {
+    return this.isLineaParada && this.novedadForm?.get('estadoParada')?.value === 'finished';
+  }
+
+  /**
+   * Habilita el fin (fecha + hora) solo si la parada ya terminó. Si sigue detenida,
+   * se registra sin fin y queda EN CURSO para finalizarla después.
+   */
+  private applyStopStatus(): void {
+    const finControl = this.novedadForm.get('horaFin');
+    const fechaFinControl = this.novedadForm.get('fechaFin');
+
+    if (this.isStopFinished) {
+      finControl?.setValidators([Validators.required, Validators.pattern(TIME_24_PATTERN)]);
+      fechaFinControl?.setValidators(Validators.required);
+      finControl?.enable({ emitEvent: false });
+      fechaFinControl?.enable({ emitEvent: false });
+      if (!fechaFinControl?.value) {
+        fechaFinControl?.setValue(this.novedadForm.get('fecha')?.value || this.getCurrentDate(), { emitEvent: false });
+      }
+    } else {
+      finControl?.clearValidators();
+      fechaFinControl?.clearValidators();
+      finControl?.setValue('', { emitEvent: false });
+      fechaFinControl?.setValue('', { emitEvent: false });
+      finControl?.disable({ emitEvent: false });
+      fechaFinControl?.disable({ emitEvent: false });
+    }
+    finControl?.updateValueAndValidity({ emitEvent: false });
+    fechaFinControl?.updateValueAndValidity({ emitEvent: false });
+    this.calculateTotalParada();
+  }
+
+  /** Botón "Ahora" de la hora de inicio. */
+  setStartNow(): void {
+    this.novedadForm.get('horaInicio')?.setValue(toHHmm(new Date()));
+    this.novedadForm.get('horaInicio')?.markAsTouched();
+  }
+
+  /** Botón "Ahora" del fin: fecha y hora actuales. */
+  setEndNow(): void {
+    const now = new Date();
+    this.novedadForm.get('fechaFin')?.setValue(toIsoDate(now));
+    this.novedadForm.get('horaFin')?.setValue(toHHmm(now));
+    this.novedadForm.get('horaFin')?.markAsTouched();
+  }
+
+  /** Fecha de la novedad en formato corto para las ayudas del formulario. */
+  get stopStartDateLabel(): string {
+    return isoToDdMmYyyy(this.novedadForm?.get('fecha')?.value || '');
+  }
+
+  /**
+   * Rango real de la parada. Si el fin queda antes del inicio con la MISMA fecha
+   * (turno nocturno: 22:00 → 06:00), se asume que terminó al día siguiente.
+   */
+  private resolveStopRange(): { start: Date; end: Date | null; endDate: string; nextDay: boolean } | null {
+    const v = this.novedadForm.getRawValue();
+    const start = parseStopMoment(isoToDdMmYyyy(v.fecha), v.horaInicio);
+    if (!start) return null;
+    if (!this.isStopFinished) return { start, end: null, endDate: '', nextDay: false };
+
+    const endIso: string = v.fechaFin || v.fecha;
+    let end = parseStopMoment(isoToDdMmYyyy(endIso), v.horaFin);
+    let nextDay = false;
+    if (end && end <= start && endIso === v.fecha) {
+      end = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1, end.getHours(), end.getMinutes());
+      nextDay = true;
+    }
+    return { start, end, endDate: end ? isoToDdMmYyyy(toIsoDate(end)) : '', nextDay };
+  }
+
+  /** Error de tiempos de la parada ('' si es válido). */
+  get stopTimeError(): string {
+    if (!this.isLineaParada) return '';
+    const range = this.resolveStopRange();
+    if (!range) return '';
+    const limit = FUTURE_TOLERANCE_MINUTES;
+    if (minutesBetween(new Date(), range.start) > limit) return 'La hora de inicio no puede estar en el futuro. Revise la fecha de la novedad.';
+    if (!range.end) return '';
+    if (range.end <= range.start) return 'El fin de la parada debe ser posterior al inicio.';
+    if (minutesBetween(new Date(), range.end) > limit) return 'La hora de fin no puede estar en el futuro.';
+    return '';
   }
 
   handleOriginAreaChange(area: string): void {
@@ -326,23 +445,15 @@ export class SharedNewsComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
+  /** Total de la parada (HH:mm) considerando fecha de inicio y fecha de fin (varios días). */
   calculateTotalParada(): void {
-    const inicio = this.novedadForm.get('horaInicio')?.value;
-    const fin = this.novedadForm.get('horaFin')?.value;
-    if (inicio && fin) {
-      const [hInicio, mInicio] = inicio.split(':').map(Number);
-      const [hFin, mFin] = fin.split(':').map(Number);
-      const totalMinutosInicio = hInicio * 60 + mInicio;
-      let totalMinutosFin = hFin * 60 + mFin;
-      if (totalMinutosFin < totalMinutosInicio) totalMinutosFin += 24 * 60;
-      const diferenciaMinutos = totalMinutosFin - totalMinutosInicio;
-      const horas = Math.floor(diferenciaMinutos / 60);
-      const minutos = diferenciaMinutos % 60;
-      const totalParada = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
-      this.novedadForm.get('totalParada')?.setValue(totalParada);
-    } else {
-      this.novedadForm.get('totalParada')?.setValue('00:00');
-    }
+    const range = this.resolveStopRange();
+    const minutes = range?.end && range.end > range.start ? minutesBetween(range.start, range.end) : 0;
+    this.stopEndHint = range?.nextDay && range.end
+      ? `Se asume que terminó al día siguiente (${range.endDate.slice(0, 5)}).`
+      : '';
+    this.stopTotalLabel = minutes > 0 ? formatDurationLabel(minutes) : '';
+    this.novedadForm.get('totalParada')?.setValue(formatStopTotal(minutes), { emitEvent: false });
   }
 
   onSubmit(): void {
@@ -376,8 +487,23 @@ export class SharedNewsComponent implements OnInit {
       assignment: { currentArea: formValues.assignmentArea, currentSubArea: formValues.assignmentSubArea || '' }
     };
 
+    const isOngoingStop = this.isLineaParada && !this.isStopFinished;
     if (this.isLineaParada) {
-      request.stop = { stopType: formValues.tipoNovedad, startTime: formValues.horaInicio, endTime: formValues.horaFin, totalTime: formValues.totalParada };
+      if (this.stopTimeError) {
+        this.toastr.warning(this.stopTimeError, 'Revise los tiempos de la parada');
+        return;
+      }
+      // Parada en curso: sin fin ni total; el backend la marca isOngoing y se finaliza después.
+      const range = this.resolveStopRange();
+      request.stop = isOngoingStop
+        ? { stopType: formValues.tipoNovedad, startTime: formValues.horaInicio, endTime: '', totalTime: '' }
+        : {
+            stopType: formValues.tipoNovedad,
+            startTime: formValues.horaInicio,
+            endDate: range?.endDate || '',
+            endTime: formValues.horaFin,
+            totalTime: formValues.totalParada
+          };
     }
 
     const validation = this.newsServices.validateProductionNews(request);
@@ -401,6 +527,10 @@ export class SharedNewsComponent implements OnInit {
           ? `${response.msg} (ID: ${createdId})`
           : response.msg;
         this.toastr.success(successMsg, 'Novedad registrada');
+        if (isOngoingStop) {
+          this.toastr.info('La parada quedó EN CURSO. Registre la hora de fin en "Paradas en curso" cuando se resuelva.', 'Parada en curso');
+          this.ongoingStops?.refresh();
+        }
         this.resetForm();
       },
       error: (error) => {
@@ -424,7 +554,9 @@ export class SharedNewsComponent implements OnInit {
       assignmentSubArea: '',
       productReference: '',
       tipoNovedad: '',
+      estadoParada: 'ongoing',
       horaInicio: '',
+      fechaFin: '',
       horaFin: '',
       totalParada: '00:00',
       detalle: ''

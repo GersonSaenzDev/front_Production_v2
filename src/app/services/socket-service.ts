@@ -20,7 +20,7 @@ import { environment } from 'src/environments/environment';
 
 // --- Tipos de eventos emitidos por el backend (ver src/sockets/index.js en el API) ---
 
-export type ProductionNewsAction = 'created' | 'responded' | 'redirected' | 'closed';
+export type ProductionNewsAction = 'created' | 'responded' | 'redirected' | 'closed' | 'stopFinished';
 
 export interface ProductionNewsEvent {
   action: ProductionNewsAction;
@@ -55,11 +55,14 @@ export class SocketService {
   private readonly _responded$ = new Subject<ProductionNewsEvent>();
   private readonly _redirected$ = new Subject<ProductionNewsRedirectedEvent>();
   private readonly _closed$ = new Subject<ProductionNewsEvent>();
+  private readonly _stopFinished$ = new Subject<ProductionNewsEvent>();
 
   readonly productionNewsCreated$: Observable<ProductionNewsEvent> = this._created$.asObservable();
   readonly productionNewsResponded$: Observable<ProductionNewsEvent> = this._responded$.asObservable();
   readonly productionNewsRedirected$: Observable<ProductionNewsRedirectedEvent> = this._redirected$.asObservable();
   readonly productionNewsClosed$: Observable<ProductionNewsEvent> = this._closed$.asObservable();
+  /** Se registró el fin de una parada que estaba EN CURSO. */
+  readonly productionNewsStopFinished$: Observable<ProductionNewsEvent> = this._stopFinished$.asObservable();
 
   /**
    * Conecta al servidor de WebSockets usando el token recibido.
@@ -154,6 +157,7 @@ export class SocketService {
     this.socket.on('productionNews:responded', (payload: ProductionNewsEvent) => this._responded$.next(payload));
     this.socket.on('productionNews:redirected', (payload: ProductionNewsRedirectedEvent) => this._redirected$.next(payload));
     this.socket.on('productionNews:closed', (payload: ProductionNewsEvent) => this._closed$.next(payload));
+    this.socket.on('productionNews:stopFinished', (payload: ProductionNewsEvent) => this._stopFinished$.next(payload));
   }
 
   private normalizeAuthError(message?: string): SocketAuthError {

@@ -120,9 +120,14 @@ export interface NewsAssignment {
 export interface NewsStop {
   stopType?: string;
   startTime?: string;
+  /** Fecha de fin 'DD/MM/YYYY' (puede ser días después de newsDate). Ausente en datos antiguos. */
+  endDate?: string;
   endTime?: string;
   totalTime?: string;
+  /** true mientras la parada no tenga registrado su fin. */
   isOngoing?: boolean;
+  finishedBy?: NewsUserRef;
+  finishedAt?: string;
 }
 
 /**
@@ -218,6 +223,34 @@ export interface NewsReplyPayload {
   needsRedirect: boolean;
   redirectTo: NewsRedirectTo;
   closeNews: boolean;
+  /** Obligatorio al cerrar una parada EN CURSO: fin de la parada ('DD/MM/YYYY', 'HH:mm'). */
+  stopEnd?: NewsStopEnd;
+}
+
+/**
+ * @description Fin de una parada que se reportó en curso.
+ */
+export interface NewsStopEnd {
+  endDate: string;
+  endTime: string;
+}
+
+/**
+ * @description Payload de POST /assembly/productionNews/finishStop.
+ * El tiempo total lo calcula el backend (inicio = newsDate + stop.startTime).
+ */
+export interface FinishStopPayload extends NewsStopEnd {
+  newsId: string;
+  observation?: string;
+}
+
+/**
+ * @description Respuesta de finishStop: devuelve la novedad actualizada.
+ */
+export interface FinishStopResponse {
+  ok: boolean;
+  msg: string;
+  data?: ProductionNews;
 }
 
 /**

@@ -14,6 +14,9 @@
     </div>
   </div>
 
+  <!-- PARADAS EN CURSO (solo visible si hay paradas sin hora de fin) -->
+  <app-ongoing-stops class="d-block mt-4" [area]="stopsScope"></app-ongoing-stops>
+
   <!-- TARJETA DEL FORMULARIO -->
   <div class="card form-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">
@@ -168,19 +171,77 @@
                 </select>
               </div>
 
-              <div class="col-md-4 col-6">
-                <label for="horaInicio" class="form-label">Inicio (HH:mm) <span class="required-mark">*</span></label>
-                <input type="text" id="horaInicio" class="form-control" formControlName="horaInicio" placeholder="Ej: 14:30" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]" [ngClass]="{'is-invalid': isFieldInvalid('horaInicio')}">
+              <!-- ¿La parada ya terminó? -->
+              <div class="col-12">
+                <span class="form-label d-block">¿La parada ya terminó? <span class="required-mark">*</span></span>
+                <div class="stop-status-toggle" role="radiogroup" aria-label="Estado de la parada">
+                  <label class="stop-status-option" [class.active]="!isStopFinished">
+                    <input type="radio" formControlName="estadoParada" value="ongoing">
+                    <i class="ti ti-player-pause"></i>
+                    <span>
+                      <strong>No, sigue detenida</strong>
+                      <small>Registre solo el inicio. El fin se agrega después.</small>
+                    </span>
+                  </label>
+                  <label class="stop-status-option" [class.active]="isStopFinished">
+                    <input type="radio" formControlName="estadoParada" value="finished">
+                    <i class="ti ti-player-stop"></i>
+                    <span>
+                      <strong>Sí, ya terminó</strong>
+                      <small>Registre el inicio y el fin ahora.</small>
+                    </span>
+                  </label>
+                </div>
               </div>
 
-              <div class="col-md-4 col-6">
-                <label for="horaFin" class="form-label">Fin (HH:mm) <span class="required-mark">*</span></label>
-                <input type="text" id="horaFin" class="form-control" formControlName="horaFin" placeholder="Ej: 15:00" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]" [ngClass]="{'is-invalid': isFieldInvalid('horaFin')}">
+              <div class="col-md-4 col-sm-6">
+                <label for="horaInicio" class="form-label">Hora de inicio (24h) <span class="required-mark">*</span></label>
+                <div class="input-group">
+                  <input type="text" appTime24 id="horaInicio" class="form-control" formControlName="horaInicio" [ngClass]="{'is-invalid': isFieldInvalid('horaInicio')}">
+                  <button type="button" class="btn btn-now" (click)="setStartNow()" title="Usar la hora actual">Ahora</button>
+                </div>
+                <small class="field-help">Del {{ stopStartDateLabel }} (fecha de la novedad)</small>
               </div>
 
-              <div class="col-md-4">
-                <label for="totalParada" class="form-label">Total Parada (HH:mm)</label>
-                <input type="text" id="totalParada" class="form-control total-parada-input" formControlName="totalParada" readonly>
+              <ng-container *ngIf="isStopFinished">
+                <div class="col-md-4 col-sm-6">
+                  <label for="fechaFin" class="form-label">Fecha de fin <span class="required-mark">*</span></label>
+                  <input type="date" id="fechaFin" class="form-control" formControlName="fechaFin" [ngClass]="{'is-invalid': isFieldInvalid('fechaFin')}">
+                  <small class="field-help">Cámbiela si la parada duró varios días.</small>
+                </div>
+
+                <div class="col-md-4 col-sm-6">
+                  <label for="horaFin" class="form-label">Hora de fin (24h) <span class="required-mark">*</span></label>
+                  <div class="input-group">
+                    <input type="text" appTime24 id="horaFin" class="form-control" formControlName="horaFin" [ngClass]="{'is-invalid': isFieldInvalid('horaFin')}">
+                    <button type="button" class="btn btn-now" (click)="setEndNow()" title="Usar la fecha y hora actual">Ahora</button>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="stop-total-banner" [class.is-invalid]="!!stopTimeError">
+                    <span class="stop-total-label"><i class="ti ti-hourglass"></i> Total parada</span>
+                    <span class="stop-total-value">
+                      <input type="text" id="totalParada" class="total-parada-input" formControlName="totalParada" readonly aria-label="Total parada (HH:mm)">
+                      <small *ngIf="stopTotalLabel">({{ stopTotalLabel }})</small>
+                    </span>
+                  </div>
+                  <small class="field-help" *ngIf="stopEndHint && !stopTimeError"><i class="ti ti-moon"></i> {{ stopEndHint }}</small>
+                </div>
+              </ng-container>
+
+              <div class="col-md-8" *ngIf="!isStopFinished">
+                <div class="stop-ongoing-banner">
+                  <i class="ti ti-info-circle"></i>
+                  <span>
+                    La parada quedará <strong>EN CURSO</strong> y aparecerá arriba en <strong>Paradas en curso</strong>.
+                    Cuando se resuelva, pulse <strong>Finalizar parada</strong> y el tiempo total se calcula solo.
+                  </span>
+                </div>
+              </div>
+
+              <div class="col-12" *ngIf="stopTimeError">
+                <div class="stop-time-error"><i class="ti ti-alert-circle"></i> {{ stopTimeError }}</div>
               </div>
             </ng-container>
 
@@ -193,7 +254,7 @@
 
         <!-- BOTÓN DE ENVÍO -->
         <div class="text-end mt-4 pt-3 border-top">
-          <button type="submit" class="btn btn-submit-news" [disabled]="novedadForm.invalid || isSubmitting">
+          <button type="submit" class="btn btn-submit-news" [disabled]="novedadForm.invalid || isSubmitting || !!stopTimeError">
             <span *ngIf="!isSubmitting" class="d-inline-flex align-items-center">
               <i class="ti ti-send me-2"></i> Registrar Novedad
             </span>

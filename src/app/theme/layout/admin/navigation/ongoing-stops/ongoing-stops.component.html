@@ -1,0 +1,129 @@
+<!-- src/app/theme/layout/admin/navigation/ongoing-stops/ongoing-stops.component.html -->
+<section class="ongoing-stops-card" *ngIf="stops.length > 0">
+  <div class="ongoing-header">
+    <span class="pulse-dot" aria-hidden="true"></span>
+    <div class="ongoing-title-block">
+      <h6 class="ongoing-title">
+        Paradas en curso <span class="ongoing-count">{{ stops.length }}</span>
+      </h6>
+      <small class="ongoing-subtitle">
+        Cuando la parada se resuelva, pulse <strong>Finalizar parada</strong> para registrar la hora de fin.
+      </small>
+    </div>
+    <button type="button" class="btn-refresh" (click)="refresh()" [disabled]="isLoading" title="Actualizar">
+      <i class="ti ti-refresh" [class.spin]="isLoading"></i>
+    </button>
+  </div>
+
+  <ul class="ongoing-list">
+    <li class="ongoing-item" *ngFor="let item of stops; trackBy: trackById">
+      <div class="ongoing-info">
+        <span class="ongoing-machine">{{ machineLabel(item) }}</span>
+        <span class="ongoing-meta">
+          <span class="stop-type-tag">{{ item.stop?.stopType || 'Parada' }}</span>
+          {{ originLabel(item) }}
+        </span>
+        <small class="ongoing-meta-sub">
+          <i class="ti ti-clock-play"></i> Inició {{ startLabel(item) }}
+          <ng-container *ngIf="item.origin?.reportedBy?.name"> · {{ item.origin?.reportedBy?.name }}</ng-container>
+        </small>
+      </div>
+
+      <div class="ongoing-elapsed" title="Tiempo transcurrido">
+        <span class="elapsed-value">{{ elapsedLabel(item) }}</span>
+        <span class="elapsed-label">detenida</span>
+      </div>
+
+      <button type="button" class="btn-finish" (click)="openFinish(item)">
+        <i class="ti ti-player-stop"></i>
+        <span>Finalizar parada</span>
+      </button>
+    </li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!--  MODAL: FINALIZAR PARADA                                     -->
+<!-- ============================================================ -->
+<div class="finish-backdrop" *ngIf="finishTarget" (click)="closeFinish()">
+  <div class="finish-modal" role="dialog" aria-labelledby="finishStopTitle" (click)="$event.stopPropagation()">
+    <div class="finish-header">
+      <div>
+        <h5 id="finishStopTitle" class="finish-title">Finalizar parada</h5>
+        <small class="finish-subtitle">{{ machineLabel(finishTarget) }} · {{ finishTarget.stop?.stopType || 'Parada' }}</small>
+      </div>
+      <button type="button" class="finish-close" (click)="closeFinish()" [disabled]="isFinishing" aria-label="Cerrar">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+
+    <div class="finish-body">
+      <div class="finish-start">
+        <i class="ti ti-clock-play"></i>
+        Inició el <strong>{{ startLabel(finishTarget) }}</strong>
+      </div>
+
+      <span class="finish-question" id="finishModeLabel">¿Cuándo terminó la parada?</span>
+      <div class="finish-mode" role="radiogroup" aria-labelledby="finishModeLabel">
+        <label class="finish-mode-option" [class.active]="finishMode === 'now'">
+          <input type="radio" name="finishMode" value="now" [checked]="finishMode === 'now'"
+                 (change)="selectFinishMode('now')" [disabled]="isFinishing">
+          <i class="ti ti-clock-check"></i>
+          <span>
+            <strong>Ahora</strong>
+            <small>Terminó en este momento ({{ nowLabel }})</small>
+          </span>
+        </label>
+        <label class="finish-mode-option" [class.active]="finishMode === 'other'">
+          <input type="radio" name="finishMode" value="other" [checked]="finishMode === 'other'"
+                 (change)="selectFinishMode('other')" [disabled]="isFinishing">
+          <i class="ti ti-clock-edit"></i>
+          <span>
+            <strong>En otra hora</strong>
+            <small>Indicar la hora real (ej: 22:00)</small>
+          </span>
+        </label>
+      </div>
+
+      <div class="finish-other" *ngIf="finishMode === 'other'">
+        <div class="finish-field">
+          <span class="form-label d-block">Día en que terminó</span>
+          <div class="date-chips">
+            <button type="button" class="date-chip" [class.active]="isFinishDaysAgo(0)" (click)="setFinishDaysAgo(0)" [disabled]="isFinishing">Hoy</button>
+            <button type="button" class="date-chip" [class.active]="isFinishDaysAgo(1)" (click)="setFinishDaysAgo(1)" [disabled]="isFinishing">Ayer</button>
+            <input id="finishDate" type="date" class="form-control date-input" aria-label="Otra fecha"
+                   [(ngModel)]="finishDate" [disabled]="isFinishing">
+          </div>
+        </div>
+        <div class="finish-field finish-time-field">
+          <label for="finishTime" class="form-label">Hora en que terminó (24h)</label>
+          <input id="finishTime" type="text" appTime24 class="form-control finish-time-input"
+                 [(ngModel)]="finishTime" [disabled]="isFinishing" (keydown.enter)="confirmFinish()">
+        </div>
+      </div>
+
+      <div class="finish-total" [class.is-invalid]="!!finishError">
+        <span class="finish-total-label">Tiempo total de parada</span>
+        <span class="finish-total-value">{{ finishPreview }}</span>
+      </div>
+      <div class="finish-error" *ngIf="finishError">
+        <i class="ti ti-alert-circle"></i> {{ finishError }}
+      </div>
+
+      <div class="finish-field mt-3">
+        <label for="finishNote" class="form-label">Observación (opcional)</label>
+        <input id="finishNote" type="text" class="form-control" [(ngModel)]="finishNote"
+               placeholder="Ej: se reemplazó el sensor" maxlength="300" [disabled]="isFinishing">
+      </div>
+
+      <div class="finish-actions">
+        <button type="button" class="btn-cancel" (click)="closeFinish()" [disabled]="isFinishing">Cancelar</button>
+        <button type="button" class="btn-confirm" (click)="confirmFinish()" [disabled]="!canConfirmFinish">
+          <span class="spinner-border spinner-border-sm me-2" *ngIf="isFinishing"></span>
+          <i class="ti ti-check me-1" *ngIf="!isFinishing"></i>
+          {{ isFinishing ? 'Guardando...' : 'Confirmar fin' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

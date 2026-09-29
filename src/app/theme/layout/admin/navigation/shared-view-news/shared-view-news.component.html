@@ -29,6 +29,9 @@
     </div>
   </div>
 
+  <!-- PARADAS EN CURSO (sin filtro de fecha; solo visible si hay paradas sin hora de fin) -->
+  <app-ongoing-stops class="d-block mt-4" [area]="effectiveArea" (finished)="onStopFinished($event)"></app-ongoing-stops>
+
   <!-- TARJETA DE CONTENIDO -->
   <div class="card view-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">
@@ -123,7 +126,10 @@
               <!-- Horario + Total -->
               <td class="cell-stacked cell-schedule">
                 <span class="cell-main-text">{{ getStopSchedule(item) }}</span>
-                <strong class="time-value">{{ getStopTotalTime(item) || '—' }}</strong>
+                <strong class="time-value" *ngIf="!isStopOngoing(item)">{{ getStopTotalTime(item) || '—' }}</strong>
+                <span class="ongoing-pill" *ngIf="isStopOngoing(item)" title="Tiempo transcurrido">
+                  <span class="ongoing-dot"></span> En curso · {{ getOngoingElapsed(item) }}
+                </span>
               </td>
 
               <!-- Estado -->
@@ -136,6 +142,15 @@
               <!-- Acciones -->
               <td class="action-col">
                 <div class="action-group">
+                  <button
+                    *ngIf="isStopOngoing(item)"
+                    type="button"
+                    class="btn-finish-stop"
+                    (click)="openFinishStop(item)"
+                    title="Registrar la hora de fin de la parada">
+                    <i class="ti ti-player-stop"></i>
+                    <span class="btn-label">Finalizar</span>
+                  </button>
                   <button
                     type="button"
                     class="btn-detail"
@@ -261,7 +276,10 @@
         <div class="detail-item">
           <span class="detail-label"><i class="ti ti-hourglass"></i> Total</span>
           <span class="detail-value">
-            <strong class="time-value">{{ getStopTotalTime(detailNews) || '—' }}</strong>
+            <strong class="time-value" *ngIf="!isStopOngoing(detailNews)">{{ getStopTotalTime(detailNews) || '—' }}</strong>
+            <span class="ongoing-pill" *ngIf="isStopOngoing(detailNews)">
+              <span class="ongoing-dot"></span> En curso · {{ getOngoingElapsed(detailNews) }}
+            </span>
           </span>
         </div>
 
@@ -274,6 +292,14 @@
       <div class="response-actions">
         <button type="button" class="btn-cancel" (click)="closeDetailModal()">
           Cerrar
+        </button>
+        <button
+          *ngIf="isStopOngoing(detailNews)"
+          type="button"
+          class="btn-finish-stop"
+          (click)="openFinishStop(detailNews)">
+          <i class="ti ti-player-stop me-1"></i>
+          Finalizar parada
         </button>
         <button
           type="button"
@@ -324,7 +350,9 @@
         <div class="summary-row">
           <span class="summary-label">Horario parada:</span>
           <span class="summary-value">
-            {{ getStopSchedule(selectedNews) }} · Total {{ getStopTotalTime(selectedNews) || '—' }}
+            {{ getStopSchedule(selectedNews) }} ·
+            <ng-container *ngIf="!isStopOngoing(selectedNews)">Total {{ getStopTotalTime(selectedNews) || '—' }}</ng-container>
+            <ng-container *ngIf="isStopOngoing(selectedNews)">lleva {{ getOngoingElapsed(selectedNews) }}</ng-container>
           </span>
         </div>
         <div class="summary-row summary-detail">
@@ -390,6 +418,28 @@
               [disabled]="responseForm.needsRedirect || isSubmittingResponse">
             <span>Cerrar novedad al responder</span>
           </label>
+        </div>
+
+        <!-- Cerrar una parada EN CURSO exige registrar su fin -->
+        <div class="stop-end-fields" *ngIf="requiresStopEnd">
+          <span class="stop-end-title">
+            <i class="ti ti-player-stop"></i> La parada sigue en curso. ¿Cuándo terminó?
+          </span>
+          <div class="stop-end-inputs">
+            <div class="form-group">
+              <label for="stopEndDate" class="form-label required">Fecha de fin</label>
+              <input id="stopEndDate" type="date" class="form-control"
+                     [(ngModel)]="responseForm.stopEndDate" name="stopEndDate" [disabled]="isSubmittingResponse">
+            </div>
+            <div class="form-group">
+              <label for="stopEndTime" class="form-label required">Hora de fin (24h)</label>
+              <input id="stopEndTime" type="text" appTime24 class="form-control"
+                     [(ngModel)]="responseForm.stopEndTime" name="stopEndTime" [disabled]="isSubmittingResponse">
+            </div>
+            <button type="button" class="btn-now" (click)="setResponseStopEndNow()" [disabled]="isSubmittingResponse">
+              <i class="ti ti-clock"></i> Ahora
+            </button>
+          </div>
         </div>
 
         <div class="redirect-fields" *ngIf="responseForm.needsRedirect">

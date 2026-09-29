@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx'; // Exportación a Excel
 import { EstadisticsService } from '../../services/estadistics.service';
 import { EstadisticNews, EstadisticNewsRequest } from '../../interfaces/estadistics.interface';
 import { displayArea } from '../../theme/layout/admin/navigation/area-display.util';
+import { formatStopSchedule } from '../../theme/layout/admin/navigation/stop-time.util';
 
 registerLocaleData(localeEs, 'es');
 
@@ -253,10 +254,7 @@ export class StadisticsNews implements OnInit {
   }
 
   public getStopSchedule(item: EstadisticNews): string {
-    const start = item.stop?.startTime || item.startTime;
-    const end = item.stop?.endTime || item.endTime;
-    if (!start && !end) return '—';
-    return `${start || '—'} - ${end || '—'}`;
+    return formatStopSchedule(item);
   }
 
   public getStopTotalTime(item: EstadisticNews): string {
@@ -316,7 +314,8 @@ export class StadisticsNews implements OnInit {
         TIENE_RESPUESTA: item.hasResponse ? 'Sí' : 'No',
         REQUIERE_REDIRECCION: item.needsRedirect ? 'Sí' : 'No',
         PARADA_INICIO: item.stop?.startTime || item.startTime || '',
-        PARADA_FIN: item.stop?.endTime || item.endTime || '',
+        PARADA_FIN: item.stop?.isOngoing ? 'EN CURSO' : item.stop?.endTime || item.endTime || '',
+        PARADA_FECHA_FIN: item.stop?.endDate || '',
         PARADA_TOTAL: this.getStopTotalTime(item),
         RESPUESTA_OBSERVACION: lastResponse?.observation || '',
         RESPUESTA_ACCION: lastResponse?.actionTaken || '',

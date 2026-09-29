@@ -1,6 +1,6 @@
 // src/app/theme/layout/admin/navigation/shared-view-news/shared-view-news.component.ts
 import { CommonModule, registerLocaleData } from '@angular/common';
-import { Component, inject, Input, LOCALE_ID, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, Input, LOCALE_ID, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import localeEs from '@angular/common/locales/es';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
@@ -14,6 +14,19 @@ import {
   SocketService
 } from '../../../../../services/socket-service';
 import { displayArea } from '../area-display.util';
+import { OngoingStopsComponent } from '../ongoing-stops/ongoing-stops.component';
+import { Time24Directive } from '../time-24.directive';
+import {
+  formatDurationLabel,
+  formatStopSchedule,
+  isoToDdMmYyyy,
+  isStopOngoing,
+  minutesBetween,
+  parseStopMoment,
+  stopStartMoment,
+  toHHmm,
+  toIsoDate
+} from '../stop-time.util';
 
 registerLocaleData(localeEs, 'es');
 
@@ -26,7 +39,7 @@ export interface CategorySummary {
 @Component({
   selector: 'app-shared-view-news',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent, Time24Directive],
   templateUrl: './shared-view-news.component.html',
   styleUrls: ['./shared-view-news.component.scss'],
   providers: [{ provide: LOCALE_ID, useValue: 'es' }]
@@ -39,6 +52,8 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
   private dashboardService = inject(DashboardServices);
   private socketService = inject(SocketService);
   private toastr = inject(ToastrService);
+
+  @ViewChild(OngoingStopsComponent) private ongoingStops?: OngoingStopsComponent;
 
   private socketSubscriptions: Subscription[] = [];
   private subscribedArea: string = '';
@@ -70,6 +85,9 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
     needsRedirect: boolean;
     redirectArea: string;
     redirectSubArea: string;
+    /** Fin de la parada (solo si está EN CURSO y se cierra al responder). */
+    stopEndDate: string;
+    stopEndTime: string;
   } = this.buildEmptyResponseForm();
 
   get effectiveArea(): string {
@@ -116,7 +134,8 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
       this.socketService.productionNewsCreated$.subscribe((event) => this.handleNewsCreated(event)),
       this.socketService.productionNewsResponded$.subscribe((event) => this.handleNewsUpserted(event)),
       this.socketService.productionNewsClosed$.subscribe((event) => this.handleNewsUpserted(event)),
-      this.socketService.productionNewsRedirected$.subscribe((event) => this.handleNewsRedirected(event))
+      this.socketService.productionNewsRedirected$.subscribe((event) => this.handleNewsRedirected(event)),
+      this.socketService.productionNewsStopFinished$.subscribe((event) => this.handleNewsUpserted(event))
     );
   }
 
@@ -363,10 +382,36 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
   }
 
   public getStopSchedule(item: ProductionNews): string {
-    const start = item.stop?.startTime || item.startTime;
-    const end = item.stop?.endTime || item.endTime;
-    if (!start && !end) return '—';
-    return `${start || '—'} - ${end || '—'}`;
+    return formatStopSchedule(item);
+  }
+
+  // ============================================================
+  //  PARADAS EN CURSO
+  // ============================================================
+
+  public isStopOngoing(item: ProductionNews | null): boolean {
+    return isStopOngoing(item);
+  }
+
+  /** Tiempo que lleva detenida una parada en curso ('1d 4h 10m'). */
+  public getOngoingElapsed(item: ProductionNews): string {
+    const start = stopStartMoment(item);
+    return start ? formatDurationLabel(minutesBetween(start, new Date())) : '—';
+  }
+
+  /** Abre el modal global para registrar el fin de la parada. */
+  public openFinishStop(item: ProductionNews): void {
+    this.closeDetailModal();
+    this.ongoingStops?.openFinish(item);
+  }
+
+  /** La parada se finalizó desde el panel: se refleja en la tabla sin recargar. */
+  public onStopFinished(news: ProductionNews): void {
+    const index = this.allNews.findIndex((n) => n._id === news._id);
+    if (index >= 0) {
+      this.allNews[index] = news;
+      this.refreshDerived();
+    }
   }
 
   public getStopTotalTime(item: ProductionNews): string {
@@ -402,8 +447,20 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
     if (item.isClosed) return;
     this.selectedNews = item;
     this.responseForm = this.buildEmptyResponseForm();
+    if (isStopOngoing(item)) this.setResponseStopEndNow();
     this.responseError = '';
     this.showResponseModal = true;
+  }
+
+  /** Al cerrar una parada EN CURSO se debe indicar su fin (por defecto, ahora). */
+  public get requiresStopEnd(): boolean {
+    return isStopOngoing(this.selectedNews) && this.responseForm.closeNews && !this.responseForm.needsRedirect;
+  }
+
+  public setResponseStopEndNow(): void {
+    const now = new Date();
+    this.responseForm.stopEndDate = toIsoDate(now);
+    this.responseForm.stopEndTime = toHHmm(now);
   }
 
   public closeResponseModal(): void {
@@ -438,6 +495,22 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
       return;
     }
 
+    let stopEnd: NewsReplyPayload['stopEnd'];
+    if (this.requiresStopEnd && this.selectedNews) {
+      const endDate = isoToDdMmYyyy(this.responseForm.stopEndDate);
+      const end = parseStopMoment(endDate, this.responseForm.stopEndTime);
+      const start = stopStartMoment(this.selectedNews);
+      if (!end) {
+        this.responseError = 'La parada sigue en curso: indique la fecha y hora en que terminó para poder cerrarla.';
+        return;
+      }
+      if (start && end <= start) {
+        this.responseError = 'El fin de la parada debe ser posterior a su inicio.';
+        return;
+      }
+      stopEnd = { endDate, endTime: this.responseForm.stopEndTime };
+    }
+
     const payload: NewsReplyPayload = {
       newsId: this.selectedNews._id,
       response: {
@@ -452,7 +525,8 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
         area: this.responseForm.needsRedirect ? this.responseForm.redirectArea.trim() : '',
         subArea: this.responseForm.needsRedirect ? this.responseForm.redirectSubArea.trim() : ''
       },
-      closeNews: this.responseForm.closeNews
+      closeNews: this.responseForm.closeNews,
+      ...(stopEnd ? { stopEnd } : {})
     };
 
     this.isSubmittingResponse = true;
@@ -466,6 +540,7 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
         }
         this.showResponseModal = false;
         this.selectedNews = null;
+        if (stopEnd) this.ongoingStops?.refresh();
         this.onDateChange();
       },
       error: (err: Error) => {
@@ -507,7 +582,9 @@ export class SharedViewNewsComponent implements OnInit, OnDestroy {
       closeNews: true,
       needsRedirect: false,
       redirectArea: '',
-      redirectSubArea: ''
+      redirectSubArea: '',
+      stopEndDate: '',
+      stopEndTime: ''
     };
   }
 

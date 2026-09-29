@@ -54,8 +54,9 @@ export interface EstadisticNewsAssignment {
 export interface EstadisticNewsStop {
     stopType?: string;
     startTime?: string;               // HH:MM
-    endTime?: string;                 // HH:MM
-    totalTime?: string;               // HH:MM
+    endDate?: string;                 // DD/MM/YYYY (paradas de varios días)
+    endTime?: string;                 // HH:MM — vacío si la parada sigue en curso
+    totalTime?: string;               // HH:MM (horas pueden superar 24)
     isOngoing: boolean;
 }
 

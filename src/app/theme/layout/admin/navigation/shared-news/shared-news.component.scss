@@ -309,3 +309,140 @@ textarea.form-control {
   font-weight: 600;
   border-color: rgba($abba-blue, 0.2) !important;
 }
+
+// =======================
+//  ESTADO DE LA PARADA (en curso / ya terminó)
+// =======================
+.stop-status-toggle {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.stop-status-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  min-height: 64px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  > i {
+    font-size: 1.6rem;
+    color: #94a3b8;
+  }
+
+  strong {
+    display: block;
+    color: $abba-dark;
+  }
+
+  small {
+    color: #64748b;
+  }
+
+  &:focus-within {
+    box-shadow: 0 0 0 3px rgba($abba-blue, 0.2);
+  }
+
+  &.active {
+    border-color: $abba-blue;
+    background: $abba-blue-light;
+
+    > i { color: $abba-blue; }
+  }
+}
+
+.btn-now {
+  border: 1.5px solid $abba-blue;
+  color: $abba-blue;
+  background: #fff;
+  font-weight: 700;
+  border-radius: 0 10px 10px 0;
+
+  &:hover {
+    background: $abba-blue;
+    color: #fff;
+  }
+}
+
+.field-help {
+  display: block;
+  margin-top: 0.3rem;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.stop-total-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, $abba-blue-light 0%, #f0f6fd 100%);
+  border: 1px solid rgba($abba-blue, 0.2);
+
+  .stop-total-label {
+    font-weight: 600;
+    color: $abba-blue-dark;
+  }
+
+  .stop-total-value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    color: $abba-blue-dark;
+
+    .total-parada-input {
+      width: 6.5rem;
+      border: 0;
+      padding: 0;
+      text-align: right;
+      font-size: 1.25rem;
+      font-weight: 800;
+      background: transparent !important;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &.is-invalid {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+}
+
+.stop-ongoing-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  height: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.875rem;
+
+  > i {
+    font-size: 1.2rem;
+    margin-top: 1px;
+  }
+}
+
+.stop-time-error {
+  color: #991b1b;
+  font-size: 0.875rem;
+}
