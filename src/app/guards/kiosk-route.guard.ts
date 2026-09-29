@@ -4,8 +4,8 @@ import { ToastrService } from 'ngx-toastr';
 import { MenuAccessService } from '../services/menu-access.service';
 
 /**
- * Cuentas de kiosco de Bodega (tablets del lector de inventario, invenbodega1..5): solo
- * pueden navegar a la LISTA BLANCA de MenuAccessService.KIOSK_ALLOWED_URLS. Ocultar el menú
+ * Cuentas de kiosco de Bodega (invenbodega1..5, carguemuelle1..2, prebodega1..2): solo
+ * pueden navegar a la LISTA BLANCA de su perfil (MenuAccessService.getKioskAllowedUrls). Ocultar el menú
  * no basta: este guard bloquea también la entrada escribiendo la URL a mano.
  *
  * Va como canActivateChild en la ruta raíz del layout (app-routing.module.ts), así cubre
@@ -24,10 +24,10 @@ export const kioskRouteGuard: CanActivateChildFn = (_childRoute, state) => {
   const segments = router.parseUrl(state.url).root.children[PRIMARY_OUTLET]?.segments ?? [];
   const path = '/' + segments.map((s) => s.path).join('/');
 
-  if (menuAccessService.KIOSK_ALLOWED_URLS.includes(path)) {
+  if (menuAccessService.getKioskAllowedUrls().includes(path)) {
     return true;
   }
 
-  inject(ToastrService).warning('Esta cuenta de kiosco solo tiene acceso al inventario de Bodega.', 'Acceso restringido');
-  return router.createUrlTree([menuAccessService.KIOSK_HOME_URL]);
+  inject(ToastrService).warning('Esta cuenta de kiosco solo tiene acceso a su sección de Bodega.', 'Acceso restringido');
+  return router.createUrlTree([menuAccessService.getKioskHomeUrl()]);
 };

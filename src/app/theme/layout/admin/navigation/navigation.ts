@@ -675,7 +675,8 @@ export const NavigationItems: NavigationItem[] = [
               }
             ]
           },
-          // Conteos de inventario (único subgrupo visible para los kioscos invenbodega1..5)
+          // Conteos de inventario (visible para los kioscos invenbodega1..5 junto con Recepción;
+          // perfiles de kiosco en menu-access.service.ts → BODEGA_KIOSK_PROFILES)
           {
             id: 'bodega-sub-inventarios',
             title: 'Inventarios',

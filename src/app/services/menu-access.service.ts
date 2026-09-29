@@ -18,6 +18,9 @@ export type AppModule =
   | 'logistics'
   | 'all';
 
+// Perfiles de las cuentas de kiosco de Bodega (ver BODEGA_KIOSK_PROFILES)
+type BodegaKioskProfile = 'INVENTARIO' | 'DESPACHOS';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -199,41 +202,81 @@ export class MenuAccessService {
     );
   }
 
-  // Cuentas de kiosco de Bodega (tablets fijas para el lector de inventario, login
-  // genérico invenbodega1..5): deben ver el collapse BODEGA y entrar al módulo
-  // 'inventories' sin importar el area/departamento que traigan del RH, porque son
-  // logins compartidos de equipo, no de una persona con área/depto asignado.
-  private readonly BODEGA_KIOSK_USERS = ['INVENBODEGA1', 'INVENBODEGA2', 'INVENBODEGA3', 'INVENBODEGA4', 'INVENBODEGA5'];
-
   // Subgrupos del collapse BODEGA en navigation.ts (id con prefijo 'bodega-sub-'): Recepción
   // de Producción, Despachos, Inventarios, Novedades y Transporte.
   private readonly BODEGA_SUBGROUP_PREFIX = 'bodega-sub-';
-  // Único subgrupo que ven los kioscos (tablets del lector de inventario).
-  private readonly BODEGA_KIOSK_SUBGROUP = 'bodega-sub-inventarios';
 
-  // LISTA BLANCA de rutas (URL exacta, sin query) a las que puede entrar un kiosco. Todo lo
-  // demás se bloquea en kioskRouteGuard, incluso escribiendo la URL a mano. Debe coincidir
-  // con el menú del kiosco: Dashboard + Bodega → Inventarios.
-  readonly KIOSK_ALLOWED_URLS: readonly string[] = [
-    '/production',
-    '/inventories/dash',
-    '/inventories/enterInventory',
-    '/inventories/finalInventoryReport'
-  ];
-  readonly KIOSK_HOME_URL = '/inventories/enterInventory';
+  // Perfiles de kiosco de Bodega (logins compartidos de equipo, no de una persona): ven el
+  // collapse BODEGA y entran al módulo 'inventories' sin importar el area/departamento que
+  // traigan del RH, pero SOLO a los subgrupos y rutas de su perfil.
+  // - subgroups: ids 'bodega-sub-*' visibles en el menú.
+  // - urls: LISTA BLANCA de rutas (URL exacta, sin query). Todo lo demás se bloquea en
+  //   kioskRouteGuard, incluso escribiendo la URL a mano; también oculta en el menú los items
+  //   que no estén aquí. Siempre incluye '/production' (Dashboard).
+  // - home: a dónde se redirige cuando intenta entrar a una ruta no permitida.
+  private readonly BODEGA_KIOSK_PROFILES: Record<BodegaKioskProfile, { subgroups: string[]; urls: string[]; home: string }> = {
+    // Tablets del lector: Recepción de Producción + Inventarios
+    INVENTARIO: {
+      subgroups: ['bodega-sub-recepcion', 'bodega-sub-inventarios'],
+      urls: [
+        '/production',
+        '/inventories/packingList',
+        '/inventories/barcodeReader',
+        '/inventories/dash',
+        '/inventories/enterInventory',
+        '/inventories/finalInventoryReport'
+      ],
+      home: '/inventories/enterInventory'
+    },
+    // Cargue en muelle y prealistamiento: Despachos. "Órdenes de Cargue" queda fuera porque es
+    // administración de Bodega (warehouseAdminGuard / WAREHOUSE_ADMIN_USERS en el backend).
+    DESPACHOS: {
+      subgroups: ['bodega-sub-despachos'],
+      urls: ['/production', '/inventories/loadingOrderPicking', '/inventories/orderPreparation'],
+      home: '/inventories/loadingOrderPicking'
+    }
+  };
 
-  /** true si la sesión actual es una cuenta de kiosco de Bodega (invenbodega1..5). */
+  // userApp (login, en MAYÚSCULAS) → perfil de kiosco
+  private readonly BODEGA_KIOSK_USERS: Record<string, BodegaKioskProfile> = {
+    INVENBODEGA1: 'INVENTARIO',
+    INVENBODEGA2: 'INVENTARIO',
+    INVENBODEGA3: 'INVENTARIO',
+    INVENBODEGA4: 'INVENTARIO',
+    INVENBODEGA5: 'INVENTARIO',
+    CARGUEMUELLE1: 'DESPACHOS',
+    CARGUEMUELLE2: 'DESPACHOS',
+    PREBODEGA1: 'DESPACHOS',
+    PREBODEGA2: 'DESPACHOS'
+  };
+
+  /** true si la sesión actual es una cuenta de kiosco de Bodega (invenbodega, carguemuelle, prebodega). */
   isKioskSession(): boolean {
-    return this.isBodegaKioskUser(this.authService.userData()?.userApp);
+    return !!this.getBodegaKioskProfile(this.authService.userData()?.userApp);
+  }
+
+  /** Rutas permitidas para el kiosco de la sesión actual (vacío si no es kiosco). */
+  getKioskAllowedUrls(): readonly string[] {
+    return this.getBodegaKioskProfile(this.authService.userData()?.userApp)?.urls ?? [];
+  }
+
+  /** Pantalla de inicio del kiosco de la sesión actual. */
+  getKioskHomeUrl(): string {
+    return this.getBodegaKioskProfile(this.authService.userData()?.userApp)?.home ?? '/production';
   }
 
   private isBodegaSubgroupNavItem(item: any): boolean {
     return item.type === 'collapse' && String(item.id || '').startsWith(this.BODEGA_SUBGROUP_PREFIX);
   }
 
-  private isBodegaKioskUser(userApp?: string): boolean {
+  private getBodegaKioskProfile(userApp?: string) {
     const code = userApp?.toUpperCase().trim() || '';
-    return this.BODEGA_KIOSK_USERS.includes(code);
+    const profile = this.BODEGA_KIOSK_USERS[code];
+    return profile ? this.BODEGA_KIOSK_PROFILES[profile] : undefined;
+  }
+
+  private isBodegaKioskUser(userApp?: string): boolean {
+    return !!this.getBodegaKioskProfile(userApp);
   }
 
   // Acceso por DEPARTAMENTO (en MAYÚSCULAS). Tiene prioridad sobre la lógica por área.
@@ -279,9 +322,10 @@ export class MenuAccessService {
     // Subgrupos del collapse BODEGA: heredan el acceso ya decidido para BODEGA (el filtro
     // recursivo de nav-content solo evalúa los hijos si el padre pasó). Va primero porque
     // las reglas por título de collapse (área, departamento, analista...) no los conocen y
-    // los ocultarían. Excepción: los kioscos solo ven su subgrupo (Inventarios).
+    // los ocultarían. Excepción: los kioscos solo ven los subgrupos de su perfil.
+    const kioskProfile = this.getBodegaKioskProfile(userData.userApp);
     if (this.isBodegaSubgroupNavItem(item)) {
-      return this.isBodegaKioskUser(userData.userApp) ? item.id === this.BODEGA_KIOSK_SUBGROUP : true;
+      return kioskProfile ? kioskProfile.subgroups.includes(item.id) : true;
     }
 
     const isStadistics = this.isStadisticsNavItem(item);
@@ -335,8 +379,13 @@ export class MenuAccessService {
     // Kiosco de Bodega: se trata como un "departamento virtual" que solo ve el
     // collapse BODEGA (además del Dashboard, siempre visible), sin importar el
     // area/departamento real que traiga del RH. Va después del filtro de Estadístico
-    // (exclusivo de Desarrollo/Gerencias/Planeación) para no heredar ese menú.
-    if (this.isBodegaKioskUser(userData.userApp)) {
+    // (exclusivo de Desarrollo/Gerencias/Planeación) para no heredar ese menú. Los items
+    // se filtran con la lista blanca de URLs del perfil (ej. Despachos sin Órdenes de Cargue).
+    if (kioskProfile) {
+      if (item.type === 'item' && item.url) {
+        const url = item.url.startsWith('/') ? item.url : `/${item.url}`;
+        return kioskProfile.urls.includes(url);
+      }
       return this.canAccessNavItemByDepartment(item, ['BODEGA']);
     }
 
