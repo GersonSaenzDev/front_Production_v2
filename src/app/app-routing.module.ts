@@ -4,6 +4,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { AdminComponent } from './theme/layout/admin/admin.component';
 import { authGuard } from './guards/auth.guard';
 import { roleGuard } from './guards/role.guard';
+import { kioskRouteGuard } from './guards/kiosk-route.guard';
 
 const routes: Routes = [
   // Rutas con Layout de Administrador
@@ -11,6 +12,8 @@ const routes: Routes = [
     path: '',
     component: AdminComponent,
     canActivate: [authGuard],
+    // Kioscos de Bodega: solo su lista blanca de rutas (ver kioskRouteGuard)
+    canActivateChild: [kioskRouteGuard],
     children: [
       {
         path: '',

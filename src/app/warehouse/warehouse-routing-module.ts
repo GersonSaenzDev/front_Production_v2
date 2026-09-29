@@ -2,6 +2,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { DashInventories } from './dash-inventories/dash-inventories';
+import { warehouseAdminGuard } from '../guards/warehouse-admin.guard';
 
 const routes: Routes = [
   {
@@ -48,6 +49,17 @@ const routes: Routes = [
     // Path completo: /inventories/barcodeReader
     path: 'barcodeReader',
     loadComponent: () => import('./barcode-reader/barcode-reader').then((c) => c.BarcodeReader)
+  },
+  {
+    // Path completo: /inventories/loadingOrders (solo administrativos de Bodega)
+    path: 'loadingOrders',
+    canActivate: [warehouseAdminGuard],
+    loadComponent: () => import('./loading-orders/loading-orders').then((c) => c.LoadingOrders)
+  },
+  {
+    // Path completo: /inventories/loadingOrderPicking (operario de prealistamiento)
+    path: 'loadingOrderPicking',
+    loadComponent: () => import('./loading-order-picking/loading-order-picking').then((c) => c.LoadingOrderPicking)
   },
 ];
 

@@ -1,0 +1,456 @@
+// =======================
+//  VARIABLES CORPORATIVAS ABBA
+// =======================
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-green: #10b981;
+$abba-green-light: #ecfdf5;
+$abba-red: #dc2626;
+$abba-red-light: #fef2f2;
+$abba-amber: #d97706;
+$abba-amber-light: #fffbeb;
+
+.picking-view-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER
+// =======================
+.picking-view-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .header-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.5rem 0.9rem;
+    font-weight: 600;
+
+    &.active {
+      background: #fff;
+      color: $abba-blue;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .header-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .stat {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .header-progress {
+    margin-top: 1rem;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+  }
+
+  .header-progress-bar {
+    height: 100%;
+    background: $abba-green;
+    transition: width 0.3s ease;
+  }
+}
+
+// =======================
+//  TARJETAS
+// =======================
+.picking-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.07);
+  border: 1px solid #eef1f6;
+}
+
+.card-title-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: $abba-blue-dark;
+  margin-bottom: 0.75rem;
+}
+
+.scan-input {
+  font-size: 1.5rem;
+  font-family: 'Consolas', monospace;
+  letter-spacing: 1px;
+  padding: 0.9rem 1rem;
+  border: 2px solid $abba-blue;
+  border-radius: 12px;
+
+  &:focus {
+    box-shadow: 0 0 0 4px rgba($abba-blue, 0.15);
+  }
+}
+
+.scan-feedback {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 2px solid transparent;
+
+  i {
+    font-size: 2rem;
+  }
+
+  &.ok {
+    background: $abba-green-light;
+    border-color: $abba-green;
+    color: #065f46;
+  }
+
+  &.error {
+    background: $abba-red-light;
+    border-color: $abba-red;
+    color: #991b1b;
+    animation: shake 0.3s;
+  }
+
+  .feedback-title {
+    font-weight: 800;
+    font-size: 1.15rem;
+  }
+
+  .feedback-serial {
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    opacity: 0.75;
+  }
+}
+
+.next-item {
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: $abba-blue-light;
+  border-left: 5px solid $abba-blue;
+
+  .next-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: $abba-gray;
+    font-weight: 700;
+  }
+
+  .next-item-ref {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: $abba-blue-dark;
+  }
+
+  .next-item-name {
+    color: $abba-gray;
+  }
+
+  .next-item-qty {
+    margin-top: 0.35rem;
+  }
+}
+
+.btn-link-action {
+  border: none;
+  background: transparent;
+  color: $abba-blue;
+  font-size: 1.2rem;
+}
+
+.close-actions {
+  margin-top: 1.5rem;
+}
+
+.btn-close-order {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 0.9rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+  background: $abba-green;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &.partial {
+    background: $abba-amber;
+  }
+
+  &:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+  }
+}
+
+// =======================
+//  TABLAS
+// =======================
+.pick-table {
+  tr.row-next td {
+    background: $abba-blue-light;
+  }
+
+  tr.row-done td {
+    background: $abba-green-light;
+    color: #047857;
+  }
+}
+
+.mini-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.mini-progress-bar {
+  height: 100%;
+  background: $abba-blue;
+  transition: width 0.3s ease;
+
+  .row-done & {
+    background: $abba-green;
+  }
+}
+
+.auth-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.auth-chip {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: $abba-gray;
+
+  &.done {
+    background: $abba-green-light;
+    color: #047857;
+  }
+}
+
+.reads-table-wrap {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.serial-cell {
+  font-family: 'Consolas', monospace;
+  font-size: 0.8rem;
+}
+
+.btn-void {
+  border: none;
+  background: transparent;
+  color: $abba-red;
+  font-size: 1.15rem;
+
+  &:disabled {
+    color: #cbd5e1;
+  }
+}
+
+// =======================
+//  ESTADOS Y RESULTADO
+// =======================
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: $abba-gray;
+
+  i {
+    font-size: 3rem;
+    color: $abba-blue;
+  }
+}
+
+.btn-primary-action {
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  background: $abba-blue;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.close-result {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: $abba-green-light;
+  border: 2px solid $abba-green;
+
+  > i {
+    font-size: 3rem;
+    color: $abba-green;
+  }
+
+  &.partial {
+    background: $abba-amber-light;
+    border-color: $abba-amber;
+
+    > i {
+      color: $abba-amber;
+    }
+  }
+
+  .close-result-body {
+    flex: 1;
+    min-width: 220px;
+  }
+}
+
+// =======================
+//  DIÁLOGOS
+// =======================
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1050;
+}
+
+.dialog-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  z-index: 1051;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.pending-list {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-left: 1.2rem;
+}
+
+.spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}

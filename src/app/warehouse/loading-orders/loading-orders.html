@@ -1,0 +1,485 @@
+<!-- src/app/warehouse/loading-orders/loading-orders.html -->
+<div class="container-fluid py-4 lo-view-container">
+  <!-- HEADER -->
+  <div class="lo-view-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-truck-loading"></i>
+      </div>
+      <div class="header-text">
+        <h3 class="header-title mb-1">Órdenes de Cargue</h3>
+        <p class="header-subtitle mb-0">Bodega — Cargue del ERP, cola de prealistamiento, cierres y auditoría</p>
+      </div>
+
+      <div class="header-actions">
+        <label class="btn-header" [class.disabled]="uploading()" title="Seleccionar archivo .PRN del ERP">
+          <i class="ti ti-file-upload"></i>
+          <span>{{ selectedFile() ? 'Cambiar archivo' : 'Seleccionar .PRN' }}</span>
+          <input type="file" accept=".prn,.PRN,.txt" hidden [disabled]="uploading()" (change)="onFileSelected($event)" />
+        </label>
+        @if (selectedFile(); as file) {
+          <span class="file-chip">
+            <i class="ti ti-file-text"></i> {{ file.name }}
+            <button type="button" class="chip-close" (click)="clearFile()" [disabled]="uploading()" aria-label="Quitar archivo">
+              <i class="ti ti-x"></i>
+            </button>
+          </span>
+          <button type="button" class="btn-header btn-header-primary" (click)="uploadFile()" [disabled]="uploading()">
+            <i class="ti" [ngClass]="uploading() ? 'ti-loader-2 spin' : 'ti-cloud-upload'"></i>
+            <span>{{ uploading() ? 'Cargando...' : 'Cargar OC' }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat">
+        <span class="stat-value">{{ queueStats().total }}</span>
+        <span class="stat-label">OC en el listado</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">{{ queueStats().pending }}</span>
+        <span class="stat-label">Pendientes</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">{{ queueStats().inPicking }}</span>
+        <span class="stat-label">En prealistamiento</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">{{ queueStats().units }}</span>
+        <span class="stat-label">Unidades solicitadas</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADO DEL CARGUE -->
+  @if (uploadMessage()) {
+    <div class="lo-card mt-4 upload-result">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="card-title-label mb-2"><i class="ti ti-report"></i> Resultado del cargue</div>
+        <button type="button" class="btn-icon" (click)="uploadMessage.set('')" aria-label="Cerrar resultado">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+      <p class="mb-3">{{ uploadMessage() }}</p>
+
+      @if (uploadResult(); as result) {
+        @for (c of result.created; track c._id) {
+          <div class="result-row ok">
+            <i class="ti ti-circle-check"></i>
+            <span>
+              OC <strong>{{ c.loadingOrder }}</strong> cargada: {{ c.totals.lines }} líneas, {{ c.totals.authorizations }} autorizaciones,
+              {{ c.totals.products }} productos, {{ c.totals.requestedQty }} unidades.
+            </span>
+          </div>
+        }
+        @for (r of result.rejected; track r.loadingOrder) {
+          <div class="result-row error">
+            <i class="ti ti-alert-octagon"></i>
+            <div class="flex-grow-1">
+              <div>
+                OC <strong>{{ r.loadingOrder }}</strong> rechazada · {{ uploadRejectLabels[r.reason] }}. Se alertó por correo a bodega.
+              </div>
+              @if (r.differences.length) {
+                <table class="table table-sm mt-2 mb-0 diff-table">
+                  <thead>
+                    <tr>
+                      <th>Autorización</th>
+                      <th>Producto</th>
+                      <th class="text-end">Cargada</th>
+                      <th class="text-end">Recibida</th>
+                      <th>Cambio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (d of r.differences; track d.prefix + d.authorization + d.product) {
+                      <tr>
+                        <td>{{ d.prefix }}-{{ d.authorization }}</td>
+                        <td>{{ d.product }}</td>
+                        <td class="text-end">{{ d.storedQty }}</td>
+                        <td class="text-end">{{ d.incomingQty }}</td>
+                        <td>{{ changeLabels[d.change] }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      @if (uploadErrors().length) {
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 diff-table">
+            <thead>
+              <tr>
+                <th>Línea</th>
+                <th>Contenido</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of uploadErrors(); track e.lineNumber) {
+                <tr>
+                  <td>{{ e.lineNumber }}</td>
+                  <td class="mono">{{ e.line }}</td>
+                  <td>{{ e.reason }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- TABS -->
+  <ul class="nav nav-tabs lo-tabs mt-4">
+    <li class="nav-item">
+      <button type="button" class="nav-link" [class.active]="activeTab() === 'orders'" (click)="setTab('orders')">
+        <i class="ti ti-list-details"></i> Órdenes
+      </button>
+    </li>
+    <li class="nav-item">
+      <button type="button" class="nav-link" [class.active]="activeTab() === 'rejections'" (click)="setTab('rejections')">
+        <i class="ti ti-shield-x"></i> Rechazos de cargue
+      </button>
+    </li>
+  </ul>
+
+  @if (activeTab() === 'orders') {
+    <div class="lo-card lo-card-tabbed">
+      <!-- FILTROS -->
+      <form class="filters" (ngSubmit)="loadOrders()">
+        <div>
+          <label for="statusFilter" class="form-label">Estado</label>
+          <select id="statusFilter" name="statusFilter" class="form-select" [(ngModel)]="statusFilter">
+            <option value="queue">Cola (pendientes y en proceso)</option>
+            <option value="closed">Cerradas (completas y parciales)</option>
+            <option value="all">Todas</option>
+            @for (s of statusOptions; track s) {
+              <option [value]="s">{{ statusLabels[s] }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label for="dateFrom" class="form-label">Cargada desde</label>
+          <input id="dateFrom" name="dateFrom" type="date" class="form-control" [(ngModel)]="dateFrom" />
+        </div>
+        <div>
+          <label for="dateTo" class="form-label">Hasta</label>
+          <input id="dateTo" name="dateTo" type="date" class="form-control" [(ngModel)]="dateTo" />
+        </div>
+        <div>
+          <label for="orderNumber" class="form-label">N.º OC</label>
+          <input id="orderNumber" name="orderNumber" type="text" inputmode="numeric" maxlength="10" class="form-control" [(ngModel)]="orderNumber" placeholder="66276" />
+        </div>
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="loadingOrders()">
+            <i class="ti" [ngClass]="loadingOrders() ? 'ti-loader-2 spin' : 'ti-search'"></i> Consultar
+          </button>
+          <button type="button" class="btn btn-light" (click)="clearFilters()" [disabled]="loadingOrders()">Limpiar</button>
+        </div>
+      </form>
+
+      <!-- LISTADO -->
+      <div class="table-responsive mt-3">
+        <table class="table align-middle lo-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Orden de Cargue</th>
+              <th>Cargada</th>
+              <th>Estado</th>
+              <th style="min-width: 170px">Avance</th>
+              <th class="text-center">Cierre parcial</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of orders(); track o._id; let i = $index) {
+              <tr>
+                <td class="text-muted">{{ i + 1 }}</td>
+                <td>
+                  <div class="fw-bold">{{ o.loadingOrder }}</div>
+                  <small class="text-muted">{{ o.totals.authorizations }} aut. · {{ o.totals.products }} productos</small>
+                </td>
+                <td>
+                  <small>{{ o.dateCreate }}</small>
+                  <small class="text-muted d-block">{{ o.createdBy?.name || o.createdBy?.userApp }}</small>
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="'status-' + o.status">{{ statusLabels[o.status] }}</span>
+                </td>
+                <td>
+                  <div class="d-flex justify-content-between small">
+                    <span>{{ o.totals.pickedQty }} / {{ o.totals.requestedQty }}</span>
+                    <span>{{ percent(o) }}%</span>
+                  </div>
+                  <div class="mini-progress">
+                    <div class="mini-progress-bar" [style.width.%]="percent(o)"></div>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <div class="form-check form-switch d-inline-block m-0">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      [id]="'partial-' + o._id"
+                      [checked]="o.allowPartialClose"
+                      [disabled]="!isEditable(o)"
+                      (click)="$event.preventDefault(); openPartialClose(o)"
+                      [attr.aria-label]="'Admite cierre parcial OC ' + o.loadingOrder"
+                    />
+                  </div>
+                </td>
+                <td class="text-end">
+                  <button type="button" class="btn-icon" (click)="openDetail(o)" [disabled]="loadingDetail()" title="Ver detalle">
+                    <i class="ti ti-eye"></i>
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  {{ loadingOrders() ? 'Consultando...' : 'No hay Órdenes de Cargue para los filtros seleccionados.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'rejections') {
+    <div class="lo-card lo-card-tabbed">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0">Reenvíos del ERP de OC ya cargadas y archivos con formato inválido (últimos 100).</p>
+        <button type="button" class="btn btn-light" (click)="loadRejections()" [disabled]="loadingRejections()">
+          <i class="ti" [ngClass]="loadingRejections() ? 'ti-loader-2 spin' : 'ti-refresh'"></i> Actualizar
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle lo-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>OC</th>
+              <th>Motivo</th>
+              <th>Archivo</th>
+              <th>Usuario</th>
+              <th>Alerta</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rejections(); track r._id) {
+              <tr>
+                <td><small>{{ r.dateCreate }}</small></td>
+                <td class="fw-semibold">{{ r.loadingOrder || '—' }}</td>
+                <td>
+                  <span class="status-badge" [ngClass]="r.reason === 'INVALID_FORMAT' ? 'status-CANCELLED' : 'status-PICKED_PARTIAL'">
+                    {{ uploadRejectLabels[r.reason] }}
+                  </span>
+                </td>
+                <td><small class="mono">{{ r.fileName }}</small></td>
+                <td><small>{{ r.rejectedBy.name || r.rejectedBy.userApp }}</small></td>
+                <td>
+                  @if (r.reason !== 'INVALID_FORMAT') {
+                    <i class="ti" [ngClass]="r.emailAlert.sent ? 'ti-mail-check text-success' : 'ti-mail-x text-danger'" [title]="r.emailAlert.sent ? 'Correo enviado' : r.emailAlert.error || 'Correo no enviado'"></i>
+                  }
+                </td>
+                <td class="text-end">
+                  @if (r.differences.length || r.formatErrors.length) {
+                    <button type="button" class="btn-icon" (click)="toggleRejection(r._id)" [attr.aria-expanded]="expandedRejection() === r._id">
+                      <i class="ti" [ngClass]="expandedRejection() === r._id ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
+                    </button>
+                  }
+                </td>
+              </tr>
+              @if (expandedRejection() === r._id) {
+                <tr class="expanded-row">
+                  <td colspan="7">
+                    @for (d of r.differences; track $index) {
+                      <div class="small">
+                        {{ d.prefix }}-{{ d.authorization }} · {{ d.product }}: {{ d.storedQty }} → {{ d.incomingQty }} ({{ changeLabels[d.change] }})
+                      </div>
+                    }
+                    @for (e of r.formatErrors; track $index) {
+                      <div class="small">Línea {{ e.lineNumber }}: <span class="mono">{{ e.line }}</span> — {{ e.reason }}</div>
+                    }
+                  </td>
+                </tr>
+              }
+            } @empty {
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  {{ loadingRejections() ? 'Consultando...' : 'No hay rechazos registrados.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- DIÁLOGO: CIERRE PARCIAL -->
+@if (partialTarget(); as target) {
+  <div class="dialog-backdrop" (click)="cancelPartialClose()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="partialTitle">
+    <h5 id="partialTitle">
+      <i class="ti ti-adjustments"></i>
+      {{ target.allowPartialClose ? 'Deshabilitar' : 'Habilitar' }} cierre parcial · OC {{ target.loadingOrder }}
+    </h5>
+    <p>
+      @if (target.allowPartialClose) {
+        El operario solo podrá cerrar la OC cuando alista el <strong>100%</strong> de las unidades.
+      } @else {
+        El operario podrá cerrar la OC <strong>incompleta</strong> (con motivo obligatorio) y se enviará al cliente solo lo alistado.
+      }
+    </p>
+    <label for="partialObservation" class="form-label">Motivo del cambio (queda en auditoría)</label>
+    <textarea id="partialObservation" class="form-control" rows="3" maxlength="300" [(ngModel)]="partialObservation"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelPartialClose()" [disabled]="savingPartial()">Cancelar</button>
+      <button type="button" class="btn btn-primary" (click)="confirmPartialClose()" [disabled]="savingPartial() || partialObservation.trim().length < 5">
+        @if (savingPartial()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Confirmar
+      </button>
+    </div>
+  </div>
+}
+
+<!-- DIÁLOGO: DETALLE -->
+@if (detail(); as d) {
+  <div class="dialog-backdrop" (click)="closeDetail()" aria-hidden="true"></div>
+  <div class="dialog-panel dialog-wide" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h5 id="detailTitle" class="mb-1">OC {{ d.loadingOrder }}</h5>
+        <span class="status-badge" [ngClass]="'status-' + d.status">{{ statusLabels[d.status] }}</span>
+        <small class="text-muted ms-2">Archivo: {{ d.sourceFile?.fileName }} · Cargada {{ d.dateCreate }}</small>
+      </div>
+      <button type="button" class="btn-icon" (click)="closeDetail()" aria-label="Cerrar detalle"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="detail-stats">
+      <div><strong>{{ d.progress.pickedQty }} / {{ d.progress.requestedQty }}</strong><span>Alistadas</span></div>
+      <div><strong>{{ d.progress.percent }}%</strong><span>Avance</span></div>
+      <div><strong>{{ d.picking?.startedAt || '—' }}</strong><span>Inicio · {{ d.picking?.startedBy?.name || '' }}</span></div>
+      <div><strong>{{ d.picking?.completedAt || '—' }}</strong><span>Cierre · {{ d.picking?.completedBy?.name || '' }}</span></div>
+      <div><strong>{{ d.summumExport?.status || '—' }}</strong><span>Archivo Summum</span></div>
+    </div>
+
+    @if (d.closure?.closeType === 'PARTIAL') {
+      <div class="closure-box">
+        <strong><i class="ti ti-alert-triangle"></i> Cierre parcial — faltaron {{ d.closure?.missingQty }} unidades</strong>
+        <div class="small">Motivo: {{ d.closure?.observation }}</div>
+      </div>
+    }
+
+    <h6 class="section-title">Productos</h6>
+    <div class="table-responsive detail-scroll">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Referencia</th>
+            <th>Autorizaciones</th>
+            <th class="text-end">Alistado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of d.pickList; track item.product) {
+            <tr [class.row-done]="item.pendingQty === 0">
+              <td class="fw-semibold">{{ item.product }}</td>
+              <td>
+                {{ item.reference || '—' }}
+                <small class="text-muted d-block">{{ item.productName }}</small>
+              </td>
+              <td>
+                @for (a of item.authorizations; track a.lineId) {
+                  <div class="small">{{ a.prefix }}-{{ a.authorization }}: {{ a.pickedQty }}/{{ a.requestedQty }}</div>
+                }
+              </td>
+              <td class="text-end fw-semibold">{{ item.pickedQty }} / {{ item.requestedQty }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <h6 class="section-title">Lecturas ({{ filteredReads().length }})</h6>
+      <select class="form-select form-select-sm w-auto" [ngModel]="readsFilter()" (ngModelChange)="readsFilter.set($event)" aria-label="Filtrar lecturas">
+        <option value="ACTIVE">Activas</option>
+        <option value="VOIDED">Anuladas</option>
+        <option value="REJECTED">Rechazadas</option>
+        <option value="ALL">Todas</option>
+      </select>
+    </div>
+    <div class="table-responsive detail-scroll">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Serial</th>
+            <th>Producto</th>
+            <th>Aut.</th>
+            <th>Lectura</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of filteredReads(); track r._id) {
+            <tr>
+              <td class="mono">{{ r.serial }}</td>
+              <td>{{ r.reference || r.product || '—' }}</td>
+              <td>{{ r.authorization ? r.prefix + '-' + r.authorization : '—' }}</td>
+              <td>
+                <small>{{ r.readAt }}</small>
+                <small class="text-muted d-block">{{ r.readBy.name || r.readBy.userApp }}</small>
+              </td>
+              <td>
+                @switch (r.status) {
+                  @case ('ACTIVE') {
+                    <span class="status-badge status-PICKED">Activa</span>
+                  }
+                  @case ('VOIDED') {
+                    <span class="status-badge status-CANCELLED" [title]="r.voided?.observation || ''">Anulada</span>
+                    <small class="d-block text-muted">{{ r.voided?.observation }}</small>
+                  }
+                  @case ('REJECTED') {
+                    <span class="status-badge status-PICKED_PARTIAL">{{ r.rejectReason ? rejectLabels[r.rejectReason] : 'Rechazada' }}</span>
+                  }
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="text-center text-muted">Sin lecturas.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h6 class="section-title">Auditoría</h6>
+    <ul class="audit-list">
+      @for (a of d.auditTrail ?? []; track $index) {
+        <li>
+          <strong>{{ a.action }}</strong> · {{ a.modifiedAt }} · {{ a.modifiedBy.name || a.modifiedBy.userApp }}
+          @if (a.observation) {
+            <div class="small text-muted">{{ a.observation }}</div>
+          }
+        </li>
+      }
+    </ul>
+  </div>
+}

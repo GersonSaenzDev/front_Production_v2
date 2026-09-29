@@ -205,6 +205,32 @@ export class MenuAccessService {
   // logins compartidos de equipo, no de una persona con área/depto asignado.
   private readonly BODEGA_KIOSK_USERS = ['INVENBODEGA1', 'INVENBODEGA2', 'INVENBODEGA3', 'INVENBODEGA4', 'INVENBODEGA5'];
 
+  // Subgrupos del collapse BODEGA en navigation.ts (id con prefijo 'bodega-sub-'): Recepción
+  // de Producción, Despachos, Inventarios, Novedades y Transporte.
+  private readonly BODEGA_SUBGROUP_PREFIX = 'bodega-sub-';
+  // Único subgrupo que ven los kioscos (tablets del lector de inventario).
+  private readonly BODEGA_KIOSK_SUBGROUP = 'bodega-sub-inventarios';
+
+  // LISTA BLANCA de rutas (URL exacta, sin query) a las que puede entrar un kiosco. Todo lo
+  // demás se bloquea en kioskRouteGuard, incluso escribiendo la URL a mano. Debe coincidir
+  // con el menú del kiosco: Dashboard + Bodega → Inventarios.
+  readonly KIOSK_ALLOWED_URLS: readonly string[] = [
+    '/production',
+    '/inventories/dash',
+    '/inventories/enterInventory',
+    '/inventories/finalInventoryReport'
+  ];
+  readonly KIOSK_HOME_URL = '/inventories/enterInventory';
+
+  /** true si la sesión actual es una cuenta de kiosco de Bodega (invenbodega1..5). */
+  isKioskSession(): boolean {
+    return this.isBodegaKioskUser(this.authService.userData()?.userApp);
+  }
+
+  private isBodegaSubgroupNavItem(item: any): boolean {
+    return item.type === 'collapse' && String(item.id || '').startsWith(this.BODEGA_SUBGROUP_PREFIX);
+  }
+
   private isBodegaKioskUser(userApp?: string): boolean {
     const code = userApp?.toUpperCase().trim() || '';
     return this.BODEGA_KIOSK_USERS.includes(code);
@@ -249,6 +275,14 @@ export class MenuAccessService {
 
     const area = userData.area?.toUpperCase().trim() || '';
     const dept = userData.departament?.toUpperCase().trim() || '';
+
+    // Subgrupos del collapse BODEGA: heredan el acceso ya decidido para BODEGA (el filtro
+    // recursivo de nav-content solo evalúa los hijos si el padre pasó). Va primero porque
+    // las reglas por título de collapse (área, departamento, analista...) no los conocen y
+    // los ocultarían. Excepción: los kioscos solo ven su subgrupo (Inventarios).
+    if (this.isBodegaSubgroupNavItem(item)) {
+      return this.isBodegaKioskUser(userData.userApp) ? item.id === this.BODEGA_KIOSK_SUBGROUP : true;
+    }
 
     const isStadistics = this.isStadisticsNavItem(item);
 

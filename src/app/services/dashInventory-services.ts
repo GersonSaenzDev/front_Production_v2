@@ -25,6 +25,23 @@ import {
   ViewInventoriesResponse,
   ViewOrderResponse
 } from '../interfaces/dashInventory.interface';
+import {
+  CompletePickingRequest,
+  CompletePickingResponse,
+  LoadingOrderAccess,
+  LoadingOrderApiResponse,
+  LoadingOrderDetailRequest,
+  LoadingOrderListRequest,
+  LoadingOrderRejection,
+  LoadingOrderSummary,
+  LoadingOrderUploadResponse,
+  LoadingOrderView,
+  NextPickItemResult,
+  PartialCloseRequest,
+  ScanSerialRequest,
+  ScanSerialResponse,
+  VoidReadRequest
+} from '../interfaces/loading-order.interface';
 import { environment } from 'src/environments/environment';
 
 @Injectable({
@@ -50,6 +67,8 @@ export class DashInventoryServices {
   private readonly VIEW_ORDER_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/viewOrder`;
   private readonly UPDATE_ORDER_ITEMS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/updateOrderItems`;
   private readonly UPDATE_BARCODE_READ_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/updateBarcodeReadController`;
+  // Órdenes de Cargue (OC) -> prealistamiento
+  private readonly LOADING_ORDERS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/loadingOrders`;
 
   private handleError(error: any) {
     console.error('DashInventoryServices: Error en la petición:', error);
@@ -216,5 +235,90 @@ export class DashInventoryServices {
    */
   updateBarcodeReadController(payload: UpdateBarcodeRequest): Observable<UpdateBarcodeResponse> {
     return this.http.post<UpdateBarcodeResponse>(this.UPDATE_BARCODE_READ_ENDPOINT, payload).pipe(catchError(this.handleError.bind(this)));
+  }
+
+  // ===================================================================================
+  // ÓRDENES DE CARGUE (OC) -> PREALISTAMIENTO
+  // ===================================================================================
+
+  /** Permisos del usuario sobre el flujo de OC. La lista de administrativos vive solo en el backend. */
+  getLoadingOrderAccess(): Observable<LoadingOrderApiResponse<LoadingOrderAccess>> {
+    return this.http
+      .get<LoadingOrderApiResponse<LoadingOrderAccess>>(`${this.LOADING_ORDERS_ENDPOINT}/access`)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * (Administrativo) Carga el archivo .PRN de Órdenes de Cargue del ERP.
+   * Sin catchError: el componente necesita el HttpErrorResponse crudo para mostrar los errores
+   * de formato por línea (400) y las OC rechazadas por duplicadas (409).
+   */
+  uploadLoadingOrder(file: File): Observable<LoadingOrderUploadResponse> {
+    const formData = new FormData();
+    formData.append('loadingOrderFile', file);
+    return this.http.post<LoadingOrderUploadResponse>(`${this.LOADING_ORDERS_ENDPOINT}/upload`, formData);
+  }
+
+  /** Primera OC de la cola (FIFO). El operario no elige la OC. 404 = no hay OC pendientes. */
+  getNextLoadingOrder(): Observable<LoadingOrderApiResponse<LoadingOrderView>> {
+    return this.http.get<LoadingOrderApiResponse<LoadingOrderView>>(`${this.LOADING_ORDERS_ENDPOINT}/next`);
+  }
+
+  /** Detalle y avance de una OC (lecturas y auditoría opcionales). */
+  getLoadingOrderDetail(payload: LoadingOrderDetailRequest): Observable<LoadingOrderApiResponse<LoadingOrderView>> {
+    return this.http
+      .post<LoadingOrderApiResponse<LoadingOrderView>>(`${this.LOADING_ORDERS_ENDPOINT}/detail`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Listado / cola de OC con filtros. */
+  listLoadingOrders(payload: LoadingOrderListRequest): Observable<LoadingOrderApiResponse<LoadingOrderSummary[]>> {
+    return this.http
+      .post<LoadingOrderApiResponse<LoadingOrderSummary[]>>(`${this.LOADING_ORDERS_ENDPOINT}/list`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Auditoría de archivos/OC rechazados en el cargue. */
+  listLoadingOrderRejections(loadingOrder?: string): Observable<LoadingOrderApiResponse<LoadingOrderRejection[]>> {
+    return this.http
+      .post<LoadingOrderApiResponse<LoadingOrderRejection[]>>(`${this.LOADING_ORDERS_ENDPOINT}/rejections`, loadingOrder ? { loadingOrder } : {})
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Define si la OC admite cierre parcial. */
+  setLoadingOrderPartialClose(payload: PartialCloseRequest): Observable<LoadingOrderApiResponse<{ _id: string; allowPartialClose: boolean }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ _id: string; allowPartialClose: boolean }>>(`${this.LOADING_ORDERS_ENDPOINT}/partialClose`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Siguiente producto a alistar, con texto para lectura por voz. */
+  getNextPickItem(loadingOrderId: string): Observable<LoadingOrderApiResponse<NextPickItemResult>> {
+    return this.http
+      .post<LoadingOrderApiResponse<NextPickItemResult>>(`${this.LOADING_ORDERS_ENDPOINT}/nextItem`, { loadingOrderId })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Lectura de un serial EAN128 (27 dígitos). Sin catchError: un rechazo de negocio llega como
+   * 409 con { msg, rejectReason } y el componente lo muestra al operario.
+   */
+  scanLoadingOrderSerial(payload: ScanSerialRequest): Observable<ScanSerialResponse> {
+    return this.http.post<ScanSerialResponse>(`${this.LOADING_ORDERS_ENDPOINT}/scan`, payload);
+  }
+
+  /** Anula una lectura de prealistamiento (motivo obligatorio; la lectura no se borra). */
+  voidLoadingOrderRead(payload: VoidReadRequest): Observable<LoadingOrderApiResponse<{ readId: string; serial: string }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ readId: string; serial: string }>>(`${this.LOADING_ORDERS_ENDPOINT}/voidRead`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Cierra el prealistamiento (parcial solo si la OC lo admite, con motivo). Sin catchError:
+   * un 409 trae los pendientes (`data.pending`) para mostrarlos.
+   */
+  completeLoadingOrderPicking(payload: CompletePickingRequest): Observable<CompletePickingResponse> {
+    return this.http.post<CompletePickingResponse>(`${this.LOADING_ORDERS_ENDPOINT}/complete`, payload);
   }
 }

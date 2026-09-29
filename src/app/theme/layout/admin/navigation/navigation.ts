@@ -622,75 +622,134 @@ export const NavigationItems: NavigationItem[] = [
         classes: 'nav-item',
         isMainParent: true,
         children: [
+          // Producto entregado por producción a bodega (LoadBarcode)
           {
-            id: 'alistamiento-pedidos-item',
-            title: 'Alistamiento Pedidos',
-            type: 'item',
-            url: 'inventories/orderPreparation',
-            breadcrumbs: false
+            id: 'bodega-sub-recepcion',
+            title: 'Recepción de Producción',
+            type: 'collapse',
+            icon: 'ti ti-package-import',
+            children: [
+              {
+                id: 'packing-list-item',
+                title: 'Packing List',
+                type: 'item',
+                url: 'inventories/packingList',
+                breadcrumbs: false
+              },
+              {
+                id: 'barcode-reader-item',
+                title: 'Lector de Código de Barras',
+                type: 'item',
+                url: 'inventories/barcodeReader',
+                breadcrumbs: false
+              }
+            ]
           },
+          // Órdenes de Cargue -> prealistamiento (y flujo .sal anterior)
           {
-            id: 'registro-novedades-bodega-item',
-            title: 'Registro Novedades',
-            type: 'item',
-            url: 'production/wineryNews',
-            breadcrumbs: false
+            id: 'bodega-sub-despachos',
+            title: 'Despachos',
+            type: 'collapse',
+            icon: 'ti ti-truck-delivery',
+            children: [
+              {
+                id: 'ordenes-cargue-item',
+                title: 'Órdenes de Cargue',
+                type: 'item',
+                url: 'inventories/loadingOrders',
+                breadcrumbs: false
+              },
+              {
+                id: 'prealistamiento-oc-item',
+                title: 'Prealistamiento OC',
+                type: 'item',
+                url: 'inventories/loadingOrderPicking',
+                breadcrumbs: false
+              },
+              {
+                id: 'alistamiento-pedidos-item',
+                title: 'Alistamiento Pedidos',
+                type: 'item',
+                url: 'inventories/orderPreparation',
+                breadcrumbs: false
+              }
+            ]
           },
+          // Conteos de inventario (único subgrupo visible para los kioscos invenbodega1..5)
           {
-            id: 'ver-novedades-bodega-item',
-            title: 'Ver Novedades',
-            type: 'item',
-            url: 'inventories/checkNews',
-            breadcrumbs: false
+            id: 'bodega-sub-inventarios',
+            title: 'Inventarios',
+            type: 'collapse',
+            icon: 'ti ti-clipboard-list',
+            children: [
+              {
+                id: 'dashboard-inventarios-item',
+                title: 'Dashboard Inventarios',
+                type: 'item',
+                url: 'inventories/dash',
+                breadcrumbs: false
+              },
+              {
+                id: 'inventario-bodega-item',
+                title: 'Inventario Bodega',
+                type: 'item',
+                url: 'inventories/enterInventory',
+                breadcrumbs: false
+              },
+              {
+                id: 'informe-final-inventario-item',
+                title: 'Informe Final Inventario',
+                type: 'item',
+                url: 'inventories/finalInventoryReport',
+                breadcrumbs: false
+              }
+            ]
           },
+          // Novedades de bodega
           {
-            id: 'dashboard-inventarios-item',
-            title: 'Dashboard Inventarios',
-            type: 'item',
-            url: 'inventories/dash',
-            breadcrumbs: false
+            id: 'bodega-sub-novedades',
+            title: 'Novedades',
+            type: 'collapse',
+            icon: 'ti ti-alert-circle',
+            children: [
+              {
+                id: 'registro-novedades-bodega-item',
+                title: 'Registro Novedades',
+                type: 'item',
+                url: 'production/wineryNews',
+                breadcrumbs: false
+              },
+              {
+                id: 'ver-novedades-bodega-item',
+                title: 'Ver Novedades',
+                type: 'item',
+                url: 'inventories/checkNews',
+                breadcrumbs: false
+              }
+            ]
           },
+          // Fletes y transportadoras
           {
-            id: 'inventario-bodega-item',
-            title: 'Inventario Bodega',
-            type: 'item',
-            url: 'inventories/enterInventory',
-            breadcrumbs: false
-          },
-          {
-            id: 'informe-final-inventario-item',
-            title: 'Informe Final Inventario',
-            type: 'item',
-            url: 'inventories/finalInventoryReport',
-            breadcrumbs: false
-          },
-          {
-            id: 'gestion-fletes-item',
-            title: 'Gestión de Fletes',
-            type: 'item',
-            url: 'clientHome/freightManagement',
-            breadcrumbs: false
-          },
-          {
-            id: 'transportadoras-item',
-            title: 'Transportadoras',
-            type: 'item',
-            url: 'clientHome/carrierManagement',
-            breadcrumbs: false
-          },
-          {
-            id: 'packing-list-item',
-            title: 'Packing List',
-            type: 'item',
-            url: 'inventories/packingList',
-            breadcrumbs: false
-          },
-          {
-            id: 'barcode-reader-item',
-            title: 'Lector de Código de Barras',
-            type: 'item',
-            url: 'inventories/barcodeReader',
-            breadcrumbs: false
+            id: 'bodega-sub-transporte',
+            title: 'Transporte',
+            type: 'collapse',
+            icon: 'ti ti-truck',
+            children: [
+              {
+                id: 'gestion-fletes-item',
+                title: 'Gestión de Fletes',
+                type: 'item',
+                url: 'clientHome/freightManagement',
+                breadcrumbs: false
+              },
+              {
+                id: 'transportadoras-item',
+                title: 'Transportadoras',
+                type: 'item',
+                url: 'clientHome/carrierManagement',
+                breadcrumbs: false
+              }
+            ]
           }
         ]
       },

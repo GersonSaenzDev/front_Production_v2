@@ -1,0 +1,310 @@
+<!-- src/app/warehouse/loading-order-picking/loading-order-picking.html -->
+<div class="container-fluid py-4 picking-view-container">
+  <!-- HEADER -->
+  <div class="picking-view-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="ti ti-barcode"></i>
+      </div>
+      <div class="header-text">
+        <h3 class="header-title mb-1">Prealistamiento de Órdenes de Cargue</h3>
+        <p class="header-subtitle mb-0">Bodega — Lectura de seriales contra la OC asignada</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-header" [class.active]="voiceEnabled()" (click)="toggleVoice()" title="Guía por voz">
+          <i class="ti" [ngClass]="voiceEnabled() ? 'ti-volume' : 'ti-volume-off'"></i>
+          <span>Voz</span>
+        </button>
+        <button type="button" class="btn-header" (click)="refreshOrder()" [disabled]="!order() || loading()" title="Actualizar avance">
+          <i class="ti ti-refresh"></i>
+          <span>Actualizar</span>
+        </button>
+      </div>
+    </div>
+
+    @if (order(); as o) {
+      <div class="header-stats">
+        <div class="stat">
+          <span class="stat-value">{{ o.loadingOrder }}</span>
+          <span class="stat-label">Orden de Cargue</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ statusLabels[o.status] }}</span>
+          <span class="stat-label">Estado</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ o.progress.pickedQty }} / {{ o.progress.requestedQty }}</span>
+          <span class="stat-label">Unidades alistadas</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ o.totals.authorizations }}</span>
+          <span class="stat-label">Autorizaciones</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ sessionReads() }}</span>
+          <span class="stat-label">Leídas en esta sesión</span>
+        </div>
+      </div>
+      <div class="header-progress" [attr.aria-label]="'Avance ' + o.progress.percent + '%'">
+        <div class="header-progress-bar" [style.width.%]="o.progress.percent"></div>
+      </div>
+    }
+  </div>
+
+  <!-- ESTADOS VACÍOS -->
+  @if (loading() && !order()) {
+    <div class="empty-state">
+      <i class="ti ti-loader-2 spin"></i>
+      <p>Consultando la cola de Órdenes de Cargue...</p>
+    </div>
+  } @else if (noPendingOrders()) {
+    <div class="empty-state">
+      <i class="ti ti-circle-check"></i>
+      <h5>No hay Órdenes de Cargue pendientes por alistar</h5>
+      <button type="button" class="btn-primary-action" (click)="loadNextOrder()">
+        <i class="ti ti-refresh"></i> Consultar de nuevo
+      </button>
+    </div>
+  }
+
+  <!-- RESULTADO DEL CIERRE -->
+  @if (closeResult(); as result) {
+    <div class="close-result" [class.partial]="result.status === 'PICKED_PARTIAL'">
+      <i class="ti" [ngClass]="result.status === 'PICKED_PARTIAL' ? 'ti-alert-triangle' : 'ti-circle-check'"></i>
+      <div class="close-result-body">
+        <h4>OC {{ result.loadingOrder }} · {{ statusLabels[result.status] }}</h4>
+        <p class="mb-1">{{ result.totalUnits }} unidades alistadas{{ result.missingQty ? ' · faltan ' + result.missingQty : '' }}.</p>
+        <p class="mb-0 text-muted small">Archivo Summum: {{ result.summumExport.msg || result.summumExport.status }}</p>
+      </div>
+      <button type="button" class="btn-primary-action" (click)="loadNextOrder()">
+        <i class="ti ti-player-track-next"></i> Tomar siguiente OC
+      </button>
+    </div>
+  }
+
+  @if (order(); as o) {
+    @if (!closeResult()) {
+      <div class="row g-4 mt-1">
+        <!-- LECTOR -->
+        <div class="col-12 col-xl-5">
+          <div class="picking-card scan-card">
+            <label for="scanInput" class="card-title-label">
+              <i class="ti ti-scan"></i> Lea el serial ({{ serialLength }} dígitos)
+            </label>
+            <input
+              #scanInput
+              id="scanInput"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              spellcheck="false"
+              class="form-control scan-input"
+              [maxlength]="serialLength + 5"
+              [(ngModel)]="scanValue"
+              (keydown.enter)="onScanSubmit()"
+              (blur)="focusScan()"
+              [disabled]="o.status !== 'PENDING' && o.status !== 'IN_PICKING'"
+              placeholder="Escanee aquí..."
+            />
+            @if (processing()) {
+              <small class="text-muted"><i class="ti ti-loader-2 spin"></i> Registrando lectura...</small>
+            }
+
+            @if (lastScan(); as s) {
+              <div class="scan-feedback" [class.ok]="s.ok" [class.error]="!s.ok" role="status" aria-live="assertive">
+                <i class="ti" [ngClass]="s.ok ? 'ti-circle-check' : 'ti-circle-x'"></i>
+                <div>
+                  <div class="feedback-title">{{ s.title }}</div>
+                  <div class="feedback-detail">{{ s.detail }}</div>
+                  <div class="feedback-serial">{{ s.serial }}</div>
+                </div>
+              </div>
+            }
+
+            @if (nextItem(); as n) {
+              @if (n.item) {
+                <div class="next-item">
+                  <div class="next-item-header">
+                    <span>Siguiente a alistar</span>
+                    <button type="button" class="btn-link-action" (click)="speakNextItem()" title="Escuchar">
+                      <i class="ti ti-speakerphone"></i>
+                    </button>
+                  </div>
+                  <div class="next-item-ref">{{ n.item.reference || n.item.product }}</div>
+                  <div class="next-item-name">{{ n.item.productName }}</div>
+                  <div class="next-item-qty">
+                    Faltan <strong>{{ n.item.pendingQty }}</strong> de {{ n.item.requestedQty }} · {{ n.remainingProducts }} producto(s) pendientes
+                  </div>
+                </div>
+              }
+            }
+
+            <!-- CIERRE -->
+            <div class="close-actions">
+              <button type="button" class="btn-close-order" [class.partial]="!isComplete()" [disabled]="!canClose() || closing()" (click)="openClose()">
+                <i class="ti" [ngClass]="isComplete() ? 'ti-checks' : 'ti-alert-triangle'"></i>
+                {{ isComplete() ? 'Prealistamiento completo' : 'Cierre parcial' }}
+              </button>
+              @if (!isComplete() && !o.allowPartialClose) {
+                <small class="text-muted d-block mt-2">
+                  <i class="ti ti-lock"></i> Faltan {{ o.progress.pendingQty }} unidades. Esta OC no admite cierre parcial.
+                </small>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- LISTA DE PREALISTAMIENTO -->
+        <div class="col-12 col-xl-7">
+          <div class="picking-card">
+            <div class="card-title-label"><i class="ti ti-list-check"></i> Productos de la OC ({{ o.totals.products }})</div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle pick-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Referencia</th>
+                    <th class="text-end">Alistado</th>
+                    <th style="min-width: 140px">Avance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of sortedPickList(); track item.product) {
+                    <tr [class.row-done]="item.pendingQty === 0" [class.row-next]="item.product === nextProduct()">
+                      <td class="fw-semibold">{{ item.product }}</td>
+                      <td>
+                        <div>{{ item.reference || '—' }}</div>
+                        <small class="text-muted">{{ item.productName }}</small>
+                        @if (item.authorizations.length > 1) {
+                          <div class="auth-chips">
+                            @for (a of item.authorizations; track a.lineId) {
+                              <span class="auth-chip" [class.done]="a.pendingQty === 0">
+                                {{ a.prefix }}-{{ a.authorization }}: {{ a.pickedQty }}/{{ a.requestedQty }}
+                              </span>
+                            }
+                          </div>
+                        }
+                      </td>
+                      <td class="text-end fw-semibold">{{ item.pickedQty }} / {{ item.requestedQty }}</td>
+                      <td>
+                        <div class="mini-progress">
+                          <div class="mini-progress-bar" [style.width.%]="percent(item)"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- LECTURAS RECIENTES -->
+          <div class="picking-card mt-4">
+            <div class="card-title-label"><i class="ti ti-history"></i> Lecturas recientes</div>
+            @if (recentReads().length === 0) {
+              <p class="text-muted mb-0">Aún no hay lecturas en esta OC.</p>
+            } @else {
+              <div class="table-responsive reads-table-wrap">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Serial</th>
+                      <th>Referencia</th>
+                      <th>Aut.</th>
+                      <th>Hora</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (r of recentReads(); track r._id) {
+                      <tr>
+                        <td class="serial-cell">{{ r.serial }}</td>
+                        <td>{{ r.reference || r.product }}</td>
+                        <td>{{ r.prefix }}-{{ r.authorization }}</td>
+                        <td>
+                          <small>{{ r.readAt }}</small>
+                          <small class="text-muted d-block">{{ r.readByName }}</small>
+                        </td>
+                        <td class="text-end">
+                          <button type="button" class="btn-void" (click)="openVoid(r)" [disabled]="o.status !== 'IN_PICKING'" title="Anular lectura">
+                            <i class="ti ti-trash-x"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- DIÁLOGO: ANULAR LECTURA -->
+@if (voidTarget(); as target) {
+  <div class="dialog-backdrop" (click)="cancelVoid()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="voidTitle">
+    <h5 id="voidTitle"><i class="ti ti-trash-x"></i> Anular lectura</h5>
+    <p class="mb-2">
+      Serial <strong class="serial-cell">{{ target.serial }}</strong><br />
+      {{ target.reference || target.product }} · Aut. {{ target.prefix }}-{{ target.authorization }}
+    </p>
+    <p class="small text-muted">La lectura no se borra: queda anulada con su motivo y la unidad vuelve a quedar pendiente.</p>
+    <label for="voidObservation" class="form-label">Motivo (obligatorio)</label>
+    <textarea id="voidObservation" class="form-control" rows="3" maxlength="300" [(ngModel)]="voidObservation"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelVoid()" [disabled]="voiding()">Cancelar</button>
+      <button type="button" class="btn btn-danger" (click)="confirmVoid()" [disabled]="voiding() || voidObservation.trim().length < 5">
+        @if (voiding()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Anular
+      </button>
+    </div>
+  </div>
+}
+
+<!-- DIÁLOGO: CIERRE -->
+@if (showCloseDialog()) {
+  <div class="dialog-backdrop" (click)="cancelClose()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="closeTitle">
+    @if (isComplete()) {
+      <h5 id="closeTitle"><i class="ti ti-checks"></i> Confirmar prealistamiento completo</h5>
+      <p>
+        Se alistaron las <strong>{{ progress()?.requestedQty }}</strong> unidades de la OC <strong>{{ order()?.loadingOrder }}</strong>.
+        Al confirmar, la OC queda lista para procesar y se genera el archivo para Summum.
+      </p>
+    } @else {
+      <h5 id="closeTitle" class="text-warning-emphasis"><i class="ti ti-alert-triangle"></i> Cierre parcial</h5>
+      <p>
+        Se enviarán al cliente <strong>{{ progress()?.pickedQty }}</strong> de {{ progress()?.requestedQty }} unidades.
+        Faltan <strong>{{ progress()?.pendingQty }}</strong>:
+      </p>
+      <ul class="pending-list">
+        @for (p of pendingItems(); track p.product) {
+          <li>{{ p.reference || p.product }} — faltan {{ p.pendingQty }} de {{ p.requestedQty }}</li>
+        }
+      </ul>
+      <label for="closeObservation" class="form-label">Motivo del cierre parcial (obligatorio)</label>
+      <textarea id="closeObservation" class="form-control" rows="3" maxlength="300" [(ngModel)]="closeObservation"></textarea>
+    }
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelClose()" [disabled]="closing()">Cancelar</button>
+      <button
+        type="button"
+        class="btn"
+        [ngClass]="isComplete() ? 'btn-success' : 'btn-warning'"
+        (click)="confirmClose()"
+        [disabled]="closing() || (!isComplete() && closeObservation.trim().length < 5)"
+      >
+        @if (closing()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Confirmar cierre
+      </button>
+    </div>
+  </div>
+}
