@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { planningGuard } from '../guards/planning.guard';
 import { Dashboard } from './assembly/dashboard/dashboard';
 
 const routes: Routes = [
@@ -21,21 +22,25 @@ const routes: Routes = [
   {
     // Path completo: /production/planningLoad (Cargue de Planeación)
     path: 'planningLoad',
+    canActivate: [planningGuard],
     loadComponent: () => import('./planning/planning-load/planning-load').then((c) => c.PlanningLoad)
   },
   {
     // Path completo: /production/planning/dashPlanning
     path: 'planning/dashPlanning',
+    canActivate: [planningGuard],
     loadComponent: () => import('./planning/dash-planning/dash-planning').then((c) => c.DashPlanning)
   },
   {
     // Path completo: /production/planning/monthly (consulta de planeación mensual registrada)
     path: 'planning/monthly',
+    canActivate: [planningGuard],
     loadComponent: () => import('./planning/planning-month/planning-month').then((c) => c.PlanningMonth)
   },
   {
     // Path completo: /production/planning/valuation (cruce planeado vs. ejecutado, valorizado con la lista de precios)
     path: 'planning/valuation',
+    canActivate: [planningGuard],
     loadComponent: () => import('./planning/planning-valuation/planning-valuation').then((c) => c.PlanningValuation)
   },
   {

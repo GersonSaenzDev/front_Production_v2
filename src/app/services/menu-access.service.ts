@@ -155,6 +155,28 @@ export class MenuAccessService {
     return this.isMaintenanceWarehouseUser(userData.userApp);
   }
 
+  // Usuarios del área de Producción autorizados a ver y usar Planeación (Cargue, Dashboard,
+  // Mensual, Valorización), identificados por userApp (username de login). El resto del área
+  // PRODUCCION y de los demás departamentos NO la ve.
+  private readonly PLANNING_PRODUCTION_USERS = ['ACPEÑA', 'JAPONTE'];
+
+  /**
+   * Acceso a Planeación: menú (grupo Planeación) y rutas /production/planning/* y
+   * /production/planningLoad (planningGuard bloquea la entrada por URL directa).
+   * Solo: Gerencia/Desarrollo, Analista de Presupuesto, departamento PLANEACION y
+   * PLANNING_PRODUCTION_USERS.
+   */
+  canAccessPlanning(): boolean {
+    const userData = this.authService.userData();
+    if (!userData) return false;
+    const area = userData.area?.toUpperCase().trim() || '';
+    const dept = userData.departament?.toUpperCase().trim() || '';
+    if (this.isManagerWithFullAccess(area, dept) || this.isBudgetAnalyst(area, dept)) return true;
+    if (dept === 'PLANEACION') return true;
+    const code = userData.userApp?.toUpperCase().trim() || '';
+    return this.PLANNING_PRODUCTION_USERS.includes(code);
+  }
+
   // Identifica el item de menú "Almacén de Mantenimiento" (url dedicada, ver navigation.ts).
   private isMaintenanceWarehouseNavItem(item: any): boolean {
     return item.type === 'item' && item.url === 'maintenance/maintenanceWarehouse';
@@ -398,6 +420,13 @@ export class MenuAccessService {
     }
 
     // Prioridad: acceso configurado por departamento
+    // Planeación (grupo, collapse "Cargue" e items sueltos): regla única compartida con
+    // planningGuard. Va antes del filtro por departamento porque los items sueltos del grupo
+    // (Dashboard, Mensual, Valorización) no son collapses y ese filtro los dejaba pasar a todos.
+    if (this.isPlanningNavItem(item)) {
+      return this.canAccessPlanning();
+    }
+
     const deptAccess = this.DEPARTMENT_ACCESS[dept];
     if (deptAccess) {
       return this.canAccessNavItemByDepartment(item, deptAccess.navTitles);
