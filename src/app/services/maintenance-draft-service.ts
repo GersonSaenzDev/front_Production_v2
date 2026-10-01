@@ -18,6 +18,9 @@ export interface MaintenanceDraft {
   requestedBy: string;
   /** Formato backend 'DD/MM/YYYY, HH:mm:ss'. */
   reportedAt: string;
+  /** Solo para Paradas de Proceso: tipo sugerido y resumen de la parada como descripción de la falla. */
+  maintenanceType?: string;
+  failureDescription?: string;
 }
 
 /**

@@ -1,9 +1,10 @@
 // src/app/maintenance/view-news/view-news.ts
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
+import { merge, Subscription } from 'rxjs';
 import { ProductionNews } from '../../interfaces/assembly.interface';
 import {
   AddInterventionRequest,
@@ -27,7 +28,13 @@ import { MaintenanceDraftService } from '../../services/maintenance-draft-servic
 import { MaintenanceServices } from '../../services/maintenance-services';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
+import { ProductionNewsRedirectedEvent, SocketService } from '../../services/socket-service';
 import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoing-stops/ongoing-stops.component';
+import {
+  formatStopSchedule,
+  isStopCategory,
+  isStopOngoing,
+} from '../../theme/layout/admin/navigation/stop-time.util';
 
 @Component({
   selector: 'app-maintenance-view-news',
@@ -36,7 +43,7 @@ import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoi
   templateUrl: './view-news.html',
   styleUrl: './view-news.scss',
 })
-export class ViewNews implements OnInit {
+export class ViewNews implements OnInit, OnDestroy {
   private maintenanceService = inject(MaintenanceServices);
   private rhStaffService = inject(RhStaffServices);
   private newsServices = inject(NewsServices);
@@ -44,6 +51,11 @@ export class ViewNews implements OnInit {
   private draftService = inject(MaintenanceDraftService);
   private router = inject(Router);
   private toastr = inject(ToastrService);
+  private socketService = inject(SocketService);
+
+  private static readonly MAINTENANCE_AREA = 'Mantenimiento';
+  private socketSub: Subscription | null = null;
+  private pendingNewsReloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly statuses: MaintenanceStatus[] = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
   readonly priorities: MaintenancePriority[] = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
@@ -61,7 +73,7 @@ export class ViewNews implements OnInit {
   orders: MaintenanceRequest[] = [];
   isLoading = false;
 
-  // Novedades entrantes de otras áreas (productionNews, category 'Reporte Mantenimiento').
+  // Novedades entrantes de otras áreas (productionNews asignadas a Mantenimiento, cualquier categoría).
   pendingNewsDate: string = this.formatDate(new Date());
   pendingNews: ProductionNews[] = [];
   filteredPendingNews: ProductionNews[] = [];
@@ -114,6 +126,75 @@ export class ViewNews implements OnInit {
     this.loadGroupedAreas();
     this.search();
     this.loadPendingNews();
+    this.listenRealtimeNews();
+  }
+
+  ngOnDestroy(): void {
+    this.socketSub?.unsubscribe();
+    if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
+  }
+
+  // ============================================================
+  //  TIEMPO REAL (socket): novedades / paradas asignadas a Mantenimiento
+  // ============================================================
+
+  private listenRealtimeNews(): void {
+    this.socketSub = new Subscription();
+
+    // Alerta inmediata cuando entra una novedad nueva (o redirigida) para Mantenimiento.
+    this.socketSub.add(
+      merge(this.socketService.productionNewsCreated$, this.socketService.productionNewsRedirected$).subscribe(
+        (event) => {
+          const news = event?.news as ProductionNews | undefined;
+          if (!news || !this.isAssignedToMaintenance(news)) return;
+          this.notifyIncomingNews(news);
+          this.schedulePendingNewsReload(news);
+        },
+      ),
+    );
+
+    // Cambios sobre novedades existentes (fin de parada, cierre, respuesta, salida por redirección).
+    this.socketSub.add(
+      merge(
+        this.socketService.productionNewsStopFinished$,
+        this.socketService.productionNewsClosed$,
+        this.socketService.productionNewsResponded$,
+        this.socketService.productionNewsRedirected$,
+      ).subscribe((event) => {
+        const news = event?.news as ProductionNews | undefined;
+        if (!news) return;
+        const leftMaintenance =
+          (event as ProductionNewsRedirectedEvent).previousArea === ViewNews.MAINTENANCE_AREA;
+        const isListed = this.pendingNews.some((n) => n._id === news._id);
+        if (isListed || leftMaintenance) this.schedulePendingNewsReload(news);
+      }),
+    );
+  }
+
+  private isAssignedToMaintenance(news: ProductionNews): boolean {
+    return news.assignment?.currentArea === ViewNews.MAINTENANCE_AREA;
+  }
+
+  private notifyIncomingNews(news: ProductionNews): void {
+    const where = [news.origin?.area, news.origin?.subArea].filter((v) => !!v).join(' / ');
+    const machine = news.origin?.machineCode ? `Máq. ${news.origin.machineCode}` : '';
+    const message = [where, machine].filter((v) => !!v).join(' · ') || news.detail;
+
+    if (this.isStop(news)) {
+      this.toastr.error(message, `Parada de Proceso${news.stop?.isOngoing ? ' EN CURSO' : ''}`, {
+        timeOut: 15000,
+        progressBar: true,
+      });
+    } else {
+      this.toastr.warning(message, news.category || 'Nueva novedad', { timeOut: 10000, progressBar: true });
+    }
+  }
+
+  /** Recarga la tabla solo si el evento corresponde a la fecha consultada (debounce para ráfagas). */
+  private schedulePendingNewsReload(news: ProductionNews): void {
+    if (news.newsDate && news.newsDate !== this.formatDateForBackend(this.pendingNewsDate)) return;
+    if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
+    this.pendingNewsReloadTimer = setTimeout(() => this.loadPendingNews(), 400);
   }
 
   private loadGroupedAreas(): void {
@@ -202,8 +283,9 @@ export class ViewNews implements OnInit {
     this.isLoadingPendingNews = true;
     this.dashboardService.viewNews(date, 'Mantenimiento').subscribe({
       next: (res) => {
-        const news = res.ok && res.msg ? res.msg : [];
-        this.pendingNews = news.filter((n) => n.category === 'Reporte Mantenimiento');
+        // El backend ya filtra por área asignada (Mantenimiento): se muestran TODAS las
+        // categorías (Reporte Mantenimiento, Parada de Proceso, etc.), no solo los reportes.
+        this.pendingNews = res.ok && res.msg ? res.msg : [];
         this.applyPendingNewsFilter();
       },
       error: (err: Error) => {
@@ -240,6 +322,8 @@ export class ViewNews implements OnInit {
       n.origin?.machineName,
       n.origin?.reportedBy?.name,
       n.origin?.reportedBy?.userApp,
+      n.stop?.stopType,
+      this.isStop(n) && this.isStopOngoing(n) ? 'en curso' : '',
       generated ? `MTTO ${generated.consecutiveMtto}` : '',
     ]
       .filter((v): v is string => !!v)
@@ -269,6 +353,8 @@ export class ViewNews implements OnInit {
       switch (field) {
         case 'reportedAt':
           return n.origin?.reportedAt || '';
+        case 'category':
+          return n.category || '';
         case 'origin':
           return `${n.origin?.area || ''} ${n.origin?.subArea || ''}`.trim();
         case 'machine':
@@ -291,9 +377,37 @@ export class ViewNews implements OnInit {
     return this.orders.find((o) => o.sourceNewsId === newsId);
   }
 
+  /** La novedad es una Parada de Proceso (valor actual o legacy). */
+  isStop(n: ProductionNews): boolean {
+    return isStopCategory(n.category);
+  }
+
+  isStopOngoing(n: ProductionNews): boolean {
+    return isStopOngoing(n);
+  }
+
+  /** Horario legible de la parada: '09:00 - 09:10', '09:00 - En curso', etc. */
+  stopSchedule(n: ProductionNews): string {
+    return formatStopSchedule(n);
+  }
+
+  /** Resumen de la parada para prellenar la descripción de la falla en la solicitud. */
+  private stopSummary(n: ProductionNews): string {
+    const stop = n.stop;
+    if (!stop) return '';
+    const parts = [
+      `Parada de Proceso (${stop.stopType || 'sin tipo'}) ${n.newsDate} ${this.stopSchedule(n)}`,
+      stop.totalTime ? `Total: ${stop.totalTime}` : '',
+      stop.finishedBy?.name ? `Finalizada por: ${stop.finishedBy.name}` : '',
+    ];
+    return parts.filter((p) => !!p).join(' · ');
+  }
+
   /** Prellena y abre "Novedades Mantenimiento" con los datos de esta novedad. */
   generateFromNews(item: ProductionNews): void {
+    const isStop = this.isStop(item);
     this.draftService.setDraft({
+      ...(isStop && { maintenanceType: 'CORRECTIVO', failureDescription: this.stopSummary(item) }),
       sourceNewsId: item._id,
       sourceReference: item.reference,
       sourceCategory: item.category,
@@ -689,7 +803,7 @@ export class ViewNews implements OnInit {
 }
 
 /** Columnas por las que se puede ordenar la tabla de novedades entrantes. */
-type PendingNewsSortField = 'reportedAt' | 'origin' | 'machine' | 'detail' | 'reportedBy' | 'status';
+type PendingNewsSortField = 'reportedAt' | 'category' | 'origin' | 'machine' | 'detail' | 'reportedBy' | 'status';
 
 /** Modelo del formulario de edición (área/departamento separados para los selects). */
 interface EditForm {

@@ -120,6 +120,8 @@ export class MaintenanceNews implements OnInit {
       description: draft.description || '',
       requestedBy: draft.requestedBy?.trim() || this.form.value.requestedBy,
       reportedAt: draft.reportedAt ? this.fromBackendDateTime(draft.reportedAt) : '',
+      ...(draft.maintenanceType && { maintenanceType: draft.maintenanceType }),
+      ...(draft.failureDescription && { failureDescription: draft.failureDescription }),
     });
 
     if (!draft.machineArea) return;
