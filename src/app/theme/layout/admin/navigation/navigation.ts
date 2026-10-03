@@ -667,10 +667,10 @@ export const NavigationItems: NavigationItem[] = [
                 breadcrumbs: false
               },
               {
-                id: 'alistamiento-pedidos-item',
-                title: 'Alistamiento Pedidos',
+                id: 'cargue-muelle-item',
+                title: 'Cargue en Muelle',
                 type: 'item',
-                url: 'inventories/orderPreparation',
+                url: 'inventories/dockLoading',
                 breadcrumbs: false
               }
             ]

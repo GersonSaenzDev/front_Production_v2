@@ -15,6 +15,10 @@
           <i class="ti" [ngClass]="voiceEnabled() ? 'ti-volume' : 'ti-volume-off'"></i>
           <span>Voz</span>
         </button>
+        <button type="button" class="btn-header btn-header-pause" (click)="openPause()" [disabled]="!canPause() || pausing()" title="Pausar esta OC sin perder las lecturas">
+          <i class="ti ti-player-pause"></i>
+          <span>Pausar OC</span>
+        </button>
         <button type="button" class="btn-header" (click)="refreshOrder()" [disabled]="!order() || loading()" title="Actualizar avance">
           <i class="ti ti-refresh"></i>
           <span>Actualizar</span>
@@ -41,6 +45,10 @@
           <span class="stat-label">Autorizaciones</span>
         </div>
         <div class="stat">
+          <span class="stat-value stat-value-sm">{{ assignmentLabel() }}</span>
+          <span class="stat-label">{{ o.assignedTo.length ? 'Asignada a' : 'Sin asignar' }}</span>
+        </div>
+        <div class="stat">
           <span class="stat-value">{{ sessionReads() }}</span>
           <span class="stat-label">Leídas en esta sesión</span>
         </div>
@@ -51,6 +59,39 @@
     }
   </div>
 
+  <!-- OC EN PAUSA -->
+  @if (pausedOrders().length) {
+    <div class="paused-panel mt-4">
+      <div class="card-title-label"><i class="ti ti-player-pause"></i> OC en pausa ({{ pausedOrders().length }})</div>
+      <div class="paused-list">
+        @for (p of pausedOrders(); track p._id) {
+          <div class="paused-item">
+            <div class="paused-info">
+              <div class="paused-order">{{ p.loadingOrder }}</div>
+              <div class="paused-meta">
+                {{ p.progress.pickedQty }} / {{ p.progress.requestedQty }} unidades · {{ p.pausedAt }}{{ p.pausedBy ? ' · ' + p.pausedBy : '' }}
+              </div>
+              @if (p.pauseObservation) {
+                <div class="paused-reason">{{ p.pauseObservation }}</div>
+              }
+              <div class="mini-progress mt-1">
+                <div class="mini-progress-bar" [style.width.%]="p.progress.percent"></div>
+              </div>
+            </div>
+            <button type="button" class="btn-resume" (click)="requestResume(p)" [disabled]="!!resumingId() || pausing()">
+              @if (resumingId() === p._id) {
+                <i class="ti ti-loader-2 spin"></i>
+              } @else {
+                <i class="ti ti-player-play"></i>
+              }
+              Retomar
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <!-- ESTADOS VACÍOS -->
   @if (loading() && !order()) {
     <div class="empty-state">
@@ -60,7 +101,7 @@
   } @else if (noPendingOrders()) {
     <div class="empty-state">
       <i class="ti ti-circle-check"></i>
-      <h5>No hay Órdenes de Cargue pendientes por alistar</h5>
+      <h5>No tiene Órdenes de Cargue asignadas ni hay OC libres por alistar</h5>
       <button type="button" class="btn-primary-action" (click)="loadNextOrder()">
         <i class="ti ti-refresh"></i> Consultar de nuevo
       </button>
@@ -74,7 +115,13 @@
       <div class="close-result-body">
         <h4>OC {{ result.loadingOrder }} · {{ statusLabels[result.status] }}</h4>
         <p class="mb-1">{{ result.totalUnits }} unidades alistadas{{ result.missingQty ? ' · faltan ' + result.missingQty : '' }}.</p>
-        <p class="mb-0 text-muted small">Archivo Summum: {{ result.summumExport.msg || result.summumExport.status }}</p>
+        @if (result.summumExport.status === 'GENERATED') {
+          <p class="mb-0 small text-success"><i class="ti ti-mail-check"></i> {{ result.summumExport.msg }} Enviado a BDCC para cargar en Summum.</p>
+        } @else {
+          <p class="mb-0 small text-danger fw-semibold">
+            <i class="ti ti-alert-triangle"></i> {{ result.summumExport.msg || 'El archivo para Summum no se generó.' }} Avise al administrativo de Bodega.
+          </p>
+        }
       </div>
       <button type="button" class="btn-primary-action" (click)="loadNextOrder()">
         <i class="ti ti-player-track-next"></i> Tomar siguiente OC
@@ -173,7 +220,12 @@
                     <tr [class.row-done]="item.pendingQty === 0" [class.row-next]="item.product === nextProduct()">
                       <td class="fw-semibold">{{ item.product }}</td>
                       <td>
-                        <div>{{ item.reference || '—' }}</div>
+                        <div>
+                          {{ item.reference || '—' }}
+                          @if (item.pendingQty > 0 && othersWorkingByProduct().get(item.product); as who) {
+                            <span class="working-chip" title="Un compañero está leyendo este producto"><i class="ti ti-user"></i> {{ who }}</span>
+                          }
+                        </div>
                         <small class="text-muted">{{ item.productName }}</small>
                         @if (item.authorizations.length > 1) {
                           <div class="auth-chips">
@@ -200,7 +252,7 @@
 
           <!-- LECTURAS RECIENTES -->
           <div class="picking-card mt-4">
-            <div class="card-title-label"><i class="ti ti-history"></i> Lecturas recientes</div>
+            <div class="card-title-label"><i class="ti ti-history"></i> Lecturas de la OC ({{ recentReads().length }})</div>
             @if (recentReads().length === 0) {
               <p class="text-muted mb-0">Aún no hay lecturas en esta OC.</p>
             } @else {
@@ -262,6 +314,36 @@
           <i class="ti ti-loader-2 spin"></i>
         }
         Anular
+      </button>
+    </div>
+  </div>
+}
+
+<!-- DIÁLOGO: PAUSA -->
+@if (showPauseDialog()) {
+  <div class="dialog-backdrop" (click)="cancelPause()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+    <h5 id="pauseTitle"><i class="ti ti-player-pause"></i> Pausar OC {{ order()?.loadingOrder }}</h5>
+    @if (pendingResume(); as target) {
+      <p class="mb-2">Para retomar la OC <strong>{{ target.loadingOrder }}</strong> primero se pone en pausa la OC actual.</p>
+    }
+    <p class="small text-muted">
+      Las {{ progress()?.pickedQty }} unidades leídas quedan guardadas. La OC sale de la cola y se retoma desde "OC en pausa".
+    </p>
+    <div class="reason-chips">
+      @for (r of pauseReasons; track r) {
+        <button type="button" class="reason-chip" [class.active]="pauseObservation === r" (click)="pauseObservation = r">{{ r }}</button>
+      }
+    </div>
+    <label for="pauseObservation" class="form-label">Motivo (obligatorio)</label>
+    <textarea id="pauseObservation" class="form-control" rows="2" maxlength="300" [(ngModel)]="pauseObservation"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelPause()" [disabled]="pausing()">Cancelar</button>
+      <button type="button" class="btn btn-warning" (click)="confirmPause()" [disabled]="pausing() || pauseObservation.trim().length < 5">
+        @if (pausing()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        {{ pendingResume() ? 'Pausar y retomar' : 'Pausar OC' }}
       </button>
     </div>
   </div>

@@ -1,0 +1,218 @@
+<!-- src/app/warehouse/dock-loading/dock-loading.html -->
+<div class="container-fluid py-4 dock-view-container">
+  <!-- HEADER -->
+  <div class="dock-view-header">
+    <div class="header-content">
+      <div class="header-icon"><i class="ti ti-truck-loading"></i></div>
+      <div class="header-text">
+        <h3 class="header-title mb-1">Cargue en Muelle</h3>
+        <p class="header-subtitle mb-0">Bodega — Punto de control: lea cada serial al subirlo al vehículo</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-header" (click)="loadOrders()" [disabled]="loadingOrders()">
+          <i class="ti ti-refresh" [class.spin]="loadingOrders()"></i><span>Actualizar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mt-1">
+    <!-- LECTOR -->
+    <div class="col-12 col-xl-5">
+      <div class="dock-card">
+        <label for="dockScanInput" class="card-title-label"><i class="ti ti-scan"></i> Lea el serial ({{ serialLength }} dígitos)</label>
+        <input
+          #scanInput
+          id="dockScanInput"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          spellcheck="false"
+          class="form-control scan-input"
+          [maxlength]="serialLength + 5"
+          [(ngModel)]="scanValue"
+          (keydown.enter)="onScanSubmit()"
+          (blur)="focusScan()"
+          placeholder="Escanee aquí..."
+        />
+        @if (processing()) {
+          <small class="text-muted"><i class="ti ti-loader-2 spin"></i> Validando contra lo prealistado...</small>
+        }
+
+        @if (orderChanged(); as c) {
+          <div class="order-changed" role="status" aria-live="assertive">
+            <i class="ti ti-arrows-exchange"></i>
+            <div>
+              <strong>Cambió de Orden de Cargue</strong>
+              <div class="small">La lectura anterior era de la OC {{ c.from }} y esta es de la OC {{ c.to }}. Verifique que suba al vehículo correcto.</div>
+            </div>
+          </div>
+        }
+
+        @if (lastOk(); as r) {
+          <div class="scan-ok" role="status" aria-live="polite">
+            <i class="ti ti-circle-check"></i>
+            <div>
+              <div class="ok-order">OC {{ r.loadingOrder }}</div>
+              <div class="ok-title">{{ r.reference }}</div>
+              <div class="ok-detail">{{ r.productName }}</div>
+              <div class="ok-serial">{{ r.serial }}</div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- OC EN CARGUE: solo las que ya tienen lecturas (no se lista lo que falta) -->
+      <div class="dock-card mt-4">
+        <div class="card-title-label"><i class="ti ti-truck"></i> OC en cargue ({{ loadingNow().length }})</div>
+        @if (loadingNow().length) {
+          <div class="loading-list">
+            @for (o of loadingNow(); track o._id) {
+              <div class="loading-item" [class.complete]="o.isComplete">
+                <div class="loading-head">
+                  <span class="tile-order">OC {{ o.loadingOrder }}</span>
+                  @if (o.isComplete) {
+                    <span class="state-chip ok"><i class="ti ti-checks"></i> 100% cargada</span>
+                  } @else {
+                    <span class="state-chip">En cargue</span>
+                  }
+                </div>
+                @if (o.hasVehicle) {
+                  <div class="loading-vehicle">
+                    <span class="tile-plate">{{ o.vehiclePlate }}</span>
+                    <span><i class="ti ti-steering-wheel"></i> {{ o.driverName }}</span>
+                  </div>
+                } @else {
+                  <div class="small text-warning-emphasis"><i class="ti ti-alert-triangle"></i> Sin vehículo asignado por el administrativo</div>
+                }
+                <div class="loading-actions">
+                  <button type="button" class="btn-complete" [disabled]="!o.isComplete || !o.hasVehicle" (click)="openDispatch(o)">
+                    <i class="ti ti-truck-delivery"></i> Despachar
+                  </button>
+                  <button type="button" class="btn-missing" (click)="openMissing(o)"><i class="ti ti-alert-triangle"></i> Reportar faltante</button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-muted mb-0">{{ loadingOrders() ? 'Consultando...' : 'Aún no hay OC en cargue. Lea el primer serial para iniciar.' }}</p>
+        }
+      </div>
+    </div>
+
+    <!-- LECTURAS DE LA SESIÓN -->
+    <div class="col-12 col-xl-7">
+      <div class="dock-card">
+        <div class="card-title-label"><i class="ti ti-history"></i> Lecturas de esta sesión</div>
+        @if (sessionReads().length === 0) {
+          <p class="text-muted mb-0">Aún no hay lecturas.</p>
+        } @else {
+          <div class="table-responsive reads-table-wrap">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Serial</th>
+                  <th>OC</th>
+                  <th>Referencia</th>
+                  <th>Hora</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of sessionReads(); track r._id) {
+                  <tr>
+                    <td class="serial-cell">{{ r.serial }}</td>
+                    <td class="fw-semibold">{{ r.loadingOrder }}</td>
+                    <td>
+                      <div>{{ r.reference }}</div>
+                      <small class="text-muted">{{ r.productName }}</small>
+                    </td>
+                    <td><small>{{ r.readAt }}</small></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTA: LECTURA ERRADA -->
+@if (alertScreen(); as a) {
+  <div class="alert-backdrop" aria-hidden="true"></div>
+  <div class="alert-panel" role="alertdialog" aria-modal="true" aria-labelledby="dockAlertTitle">
+    <i class="ti ti-alert-octagon alert-icon"></i>
+    <h3 id="dockAlertTitle">{{ a.title }}</h3>
+    <p class="alert-detail">{{ a.detail }}</p>
+    <div class="alert-serial">{{ a.serial }}</div>
+    <p class="alert-note">
+      <strong>NO suba esta unidad al vehículo.</strong> Retírela y apártela.
+      @if (a.alertRaised) {
+        <br />Se notificó al administrativo, al jefe de bodega y a Auditoría.
+      }
+    </p>
+    <button type="button" class="btn-ack" (click)="acknowledgeAlert()">Entendido, retiré la unidad</button>
+  </div>
+}
+
+<!-- DIÁLOGO: DESPACHAR (validación del vehículo) -->
+@if (dispatchTarget(); as o) {
+  <div class="dialog-backdrop" (click)="cancelDispatch()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="dispatchTitle">
+    <h5 id="dispatchTitle"><i class="ti ti-shield-check"></i> Verifique el vehículo · OC {{ o.loadingOrder }}</h5>
+    <div class="confirm-vehicle">
+      <div class="plate">{{ o.vehiclePlate }}</div>
+      <div>
+        <div class="driver"><i class="ti ti-steering-wheel"></i> {{ o.driverName }}</div>
+        <div class="meta">Documento {{ o.driverDocument }}</div>
+      </div>
+    </div>
+    <p class="mt-3 mb-2">Revise la placa del vehículo cargado y el documento del conductor. Digite la placa que ve en el vehículo:</p>
+    <form class="confirm-form" (ngSubmit)="confirmDispatch()">
+      <input
+        #plateInput
+        name="plateConfirm"
+        type="text"
+        class="form-control plate-input"
+        maxlength="8"
+        autocomplete="off"
+        spellcheck="false"
+        [(ngModel)]="plateConfirm"
+        placeholder="ABC123"
+      />
+      <div class="dialog-actions w-100">
+        <button type="button" class="btn btn-light" (click)="cancelDispatch()" [disabled]="dispatching()">Cancelar</button>
+        <button type="submit" class="btn btn-success" [disabled]="dispatching() || plateConfirm.trim().length < 5">
+          @if (dispatching()) {
+            <i class="ti ti-loader-2 spin"></i>
+          }
+          Confirmar y despachar
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- DIÁLOGO: REPORTAR FALTANTE -->
+@if (missingTarget(); as o) {
+  <div class="dialog-backdrop" (click)="cancelMissing()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="missingTitle">
+    <h5 id="missingTitle"><i class="ti ti-alert-triangle"></i> Reportar faltante · OC {{ o.loadingOrder }}</h5>
+    <p class="small text-muted">
+      Si no encuentra unidades para subir al vehículo, se notifica a Bodega y Auditoría. La OC no se puede despachar incompleta: el administrativo repone la
+      unidad desde el prealistamiento.
+    </p>
+    <label for="missingObservation" class="form-label">¿Qué falta? (obligatorio)</label>
+    <textarea id="missingObservation" class="form-control" rows="3" maxlength="300" [(ngModel)]="missingObservation"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelMissing()" [disabled]="reportingMissing()">Cancelar</button>
+      <button type="button" class="btn btn-warning" (click)="confirmMissing()" [disabled]="reportingMissing() || missingObservation.trim().length < 5">
+        @if (reportingMissing()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Reportar
+      </button>
+    </div>
+  </div>
+}

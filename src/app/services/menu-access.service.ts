@@ -19,7 +19,7 @@ export type AppModule =
   | 'all';
 
 // Perfiles de las cuentas de kiosco de Bodega (ver BODEGA_KIOSK_PROFILES)
-type BodegaKioskProfile = 'INVENTARIO' | 'DESPACHOS';
+type BodegaKioskProfile = 'INVENTARIO' | 'PREALISTAMIENTO' | 'MUELLE';
 
 @Injectable({
   providedIn: 'root'
@@ -250,27 +250,29 @@ export class MenuAccessService {
       ],
       home: '/inventories/enterInventory'
     },
-    // Cargue en muelle y prealistamiento: Despachos. "Órdenes de Cargue" queda fuera porque es
-    // administración de Bodega (warehouseAdminGuard / WAREHOUSE_ADMIN_USERS en el backend).
-    DESPACHOS: {
+    // Despachos, separado por tarea. "Órdenes de Cargue" queda fuera porque es administración
+    // de Bodega (warehouseAdminGuard / WAREHOUSE_ADMIN_USERS en el backend).
+    // Prealistamiento de OC (PREBODEGA1, PREBODEGA2, ...)
+    PREALISTAMIENTO: {
       subgroups: ['bodega-sub-despachos'],
-      urls: ['/production', '/inventories/loadingOrderPicking', '/inventories/orderPreparation'],
+      urls: ['/production', '/inventories/loadingOrderPicking'],
       home: '/inventories/loadingOrderPicking'
+    },
+    // Cargue en muelle (CARGUEMUELLE1, CARGUEMUELLE2, ...)
+    MUELLE: {
+      subgroups: ['bodega-sub-despachos'],
+      urls: ['/production', '/inventories/dockLoading'],
+      home: '/inventories/dockLoading'
     }
   };
 
-  // userApp (login, en MAYÚSCULAS) → perfil de kiosco
-  private readonly BODEGA_KIOSK_USERS: Record<string, BodegaKioskProfile> = {
-    INVENBODEGA1: 'INVENTARIO',
-    INVENBODEGA2: 'INVENTARIO',
-    INVENBODEGA3: 'INVENTARIO',
-    INVENBODEGA4: 'INVENTARIO',
-    INVENBODEGA5: 'INVENTARIO',
-    CARGUEMUELLE1: 'DESPACHOS',
-    CARGUEMUELLE2: 'DESPACHOS',
-    PREBODEGA1: 'DESPACHOS',
-    PREBODEGA2: 'DESPACHOS'
-  };
+  // userApp (login, en MAYÚSCULAS) → perfil de kiosco, por prefijo + número: sumar un operario
+  // (p. ej. PREBODEGA3) es solo crear la cuenta, sin tocar código.
+  private readonly BODEGA_KIOSK_USERS: { pattern: RegExp; profile: BodegaKioskProfile }[] = [
+    { pattern: /^INVENBODEGA\d+$/, profile: 'INVENTARIO' },
+    { pattern: /^PREBODEGA\d+$/, profile: 'PREALISTAMIENTO' },
+    { pattern: /^CARGUEMUELLE\d+$/, profile: 'MUELLE' }
+  ];
 
   /** true si la sesión actual es una cuenta de kiosco de Bodega (invenbodega, carguemuelle, prebodega). */
   isKioskSession(): boolean {
@@ -293,7 +295,7 @@ export class MenuAccessService {
 
   private getBodegaKioskProfile(userApp?: string) {
     const code = userApp?.toUpperCase().trim() || '';
-    const profile = this.BODEGA_KIOSK_USERS[code];
+    const profile = this.BODEGA_KIOSK_USERS.find((k) => k.pattern.test(code))?.profile;
     return profile ? this.BODEGA_KIOSK_PROFILES[profile] : undefined;
   }
 

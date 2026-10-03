@@ -61,6 +61,11 @@ const routes: Routes = [
     path: 'loadingOrderPicking',
     loadComponent: () => import('./loading-order-picking/loading-order-picking').then((c) => c.LoadingOrderPicking)
   },
+  {
+    // Path completo: /inventories/dockLoading (operario de cargue en muelle)
+    path: 'dockLoading',
+    loadComponent: () => import('./dock-loading/dock-loading').then((c) => c.DockLoading)
+  },
 ];
 
 @NgModule({

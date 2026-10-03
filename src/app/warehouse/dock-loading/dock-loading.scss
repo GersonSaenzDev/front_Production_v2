@@ -1,0 +1,627 @@
+// =======================
+//  VARIABLES CORPORATIVAS ABBA
+// =======================
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-green: #10b981;
+$abba-green-light: #ecfdf5;
+$abba-red: #dc2626;
+$abba-red-light: #fef2f2;
+$abba-amber: #d97706;
+$abba-amber-light: #fffbeb;
+
+.dock-view-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER + VEHÍCULO
+// =======================
+.dock-view-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .header-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.9rem;
+  }
+
+  .btn-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.5rem 0.9rem;
+    font-weight: 600;
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+// Placa estilo matrícula colombiana (amarilla, borde negro)
+.plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  padding: 0.35rem 1.1rem;
+  background: #facc15;
+  color: #111827;
+  border: 3px solid #111827;
+  border-radius: 10px;
+  font-family: 'Consolas', monospace;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+
+  &.plate-xl {
+    font-size: 3rem;
+    min-width: 240px;
+  }
+}
+
+.vehicle-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+
+  .driver {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  .meta {
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+// =======================
+//  TARJETAS
+// =======================
+.dock-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.07);
+  border: 1px solid #eef1f6;
+}
+
+.card-title-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: $abba-blue-dark;
+  margin-bottom: 0.75rem;
+}
+
+.dispatched-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.2rem;
+  border-radius: 12px;
+  background: $abba-green-light;
+  color: #047857;
+  font-weight: 700;
+}
+
+// Cola de OC
+.order-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.order-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+  background: #fff;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: $abba-blue;
+  }
+
+  &.in-progress {
+    border-color: $abba-amber;
+    background: $abba-amber-light;
+  }
+
+  .tile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .tile-order {
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: $abba-blue-dark;
+  }
+
+  .tile-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    background: $abba-blue-light;
+    color: $abba-blue;
+  }
+
+  .tile-plate {
+    align-self: flex-start;
+    padding: 0.1rem 0.7rem;
+    background: #facc15;
+    border: 2px solid #111827;
+    border-radius: 8px;
+    font-family: 'Consolas', monospace;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: #111827;
+  }
+
+  .tile-driver {
+    font-weight: 600;
+  }
+
+  .tile-meta {
+    font-size: 0.8rem;
+    color: $abba-gray;
+  }
+}
+
+.waiting-card {
+  background: #f8fafc;
+}
+
+.waiting-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.waiting-chip {
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  background: #e2e8f0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+// Confirmación del vehículo
+.confirm-vehicle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+
+  .driver {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: $abba-blue-dark;
+  }
+
+  .meta {
+    color: $abba-gray;
+  }
+}
+
+.confirm-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.plate-input {
+  max-width: 240px;
+  font-family: 'Consolas', monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  border: 2px solid $abba-blue;
+  border-radius: 12px;
+}
+
+.btn-primary-action {
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  background: $abba-blue;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+// =======================
+//  LECTURA
+// =======================
+.scan-input {
+  font-size: 1.5rem;
+  font-family: 'Consolas', monospace;
+  letter-spacing: 1px;
+  padding: 0.9rem 1rem;
+  border: 2px solid $abba-blue;
+  border-radius: 12px;
+
+  &:focus {
+    box-shadow: 0 0 0 4px rgba($abba-blue, 0.15);
+  }
+}
+
+.scan-ok {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 2px solid $abba-green;
+  background: $abba-green-light;
+
+  > i {
+    font-size: 2rem;
+    color: $abba-green;
+  }
+
+  .ok-title {
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: #047857;
+  }
+
+  .ok-serial {
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: $abba-gray;
+  }
+}
+
+.complete-banner {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: $abba-green;
+  color: #fff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dock-actions {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.btn-complete,
+.btn-missing {
+  border: none;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}
+
+.btn-complete {
+  background: $abba-green;
+  color: #fff;
+}
+
+.btn-missing {
+  background: #fff;
+  color: $abba-amber;
+  border: 2px solid $abba-amber;
+}
+
+.reads-table-wrap {
+  // Todas las lecturas con scroll propio; el encabezado queda fijo
+  max-height: 60vh;
+  overflow-y: auto;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+  }
+}
+
+.serial-cell {
+  font-family: 'Consolas', monospace;
+  font-size: 0.8rem;
+}
+
+// =======================
+//  ALERTA DE LECTURA ERRADA
+// =======================
+.alert-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(127, 29, 29, 0.75);
+  z-index: 1060;
+}
+
+.alert-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1061;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #fff;
+  border: 4px solid $abba-red;
+  border-radius: 18px;
+  padding: 1.75rem;
+  text-align: center;
+  animation: shake 0.35s ease 2;
+
+  .alert-icon {
+    font-size: 4rem;
+    color: $abba-red;
+  }
+
+  h3 {
+    color: $abba-red;
+    font-weight: 800;
+  }
+
+  .alert-detail {
+    font-size: 1.05rem;
+  }
+
+  .alert-serial {
+    font-family: 'Consolas', monospace;
+    font-size: 1rem;
+    background: $abba-red-light;
+    border-radius: 8px;
+    padding: 0.4rem;
+    word-break: break-all;
+  }
+
+  .alert-note {
+    margin: 1rem 0;
+  }
+}
+
+.btn-ack {
+  border: none;
+  border-radius: 12px;
+  padding: 0.9rem 1.4rem;
+  font-weight: 800;
+  background: $abba-red;
+  color: #fff;
+  width: 100%;
+}
+
+// =======================
+//  DIÁLOGOS
+// =======================
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1050;
+}
+
+.dialog-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  z-index: 1051;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  25% {
+    transform: translate(calc(-50% - 6px), -50%);
+  }
+  75% {
+    transform: translate(calc(-50% + 6px), -50%);
+  }
+}
+
+@media (max-width: 576px) {
+  .dock-view-header {
+    padding: 1.25rem 1rem;
+  }
+
+  .plate,
+  .plate.plate-xl {
+    font-size: 1.8rem;
+    min-width: 0;
+  }
+}
+
+// =======================
+//  PUNTO DE CONTROL (lectura sin elegir OC)
+// =======================
+.order-changed {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 2px solid $abba-amber;
+  background: $abba-amber-light;
+  color: #92400e;
+
+  > i {
+    font-size: 1.6rem;
+  }
+}
+
+.scan-ok .ok-order {
+  font-weight: 800;
+  color: $abba-blue-dark;
+}
+
+.loading-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.loading-item {
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+
+  &.complete {
+    border-color: $abba-green;
+    background: $abba-green-light;
+  }
+}
+
+.loading-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tile-order {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: $abba-blue-dark;
+}
+
+.state-chip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: $abba-blue-light;
+  color: $abba-blue;
+
+  &.ok {
+    background: $abba-green;
+    color: #fff;
+  }
+}
+
+.loading-vehicle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+
+  .tile-plate {
+    padding: 0.05rem 0.6rem;
+    background: #facc15;
+    border: 2px solid #111827;
+    border-radius: 8px;
+    font-family: 'Consolas', monospace;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: #111827;
+  }
+}
+
+.loading-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+
+  .btn-complete,
+  .btn-missing {
+    padding: 0.7rem 0.6rem;
+    font-size: 0.95rem;
+  }
+}

@@ -46,6 +46,10 @@
         <span class="stat-label">En prealistamiento</span>
       </div>
       <div class="stat">
+        <span class="stat-value">{{ queueStats().unassigned }}</span>
+        <span class="stat-label">En cola libre</span>
+      </div>
+      <div class="stat">
         <span class="stat-value">{{ queueStats().units }}</span>
         <span class="stat-label">Unidades solicitadas</span>
       </div>
@@ -142,6 +146,19 @@
       </button>
     </li>
     <li class="nav-item">
+      <button type="button" class="nav-link" [class.active]="activeTab() === 'operators'" (click)="setTab('operators')">
+        <i class="ti ti-users"></i> Operarios ({{ activeOperators().length }})
+      </button>
+    </li>
+    <li class="nav-item">
+      <button type="button" class="nav-link" [class.active]="activeTab() === 'dockAlerts'" (click)="setTab('dockAlerts')">
+        <i class="ti ti-alert-octagon"></i> Alertas de muelle
+        @if (pendingDockAlerts()) {
+          <span class="badge-alert">{{ pendingDockAlerts() }}</span>
+        }
+      </button>
+    </li>
+    <li class="nav-item">
       <button type="button" class="nav-link" [class.active]="activeTab() === 'rejections'" (click)="setTab('rejections')">
         <i class="ti ti-shield-x"></i> Rechazos de cargue
       </button>
@@ -157,6 +174,7 @@
           <select id="statusFilter" name="statusFilter" class="form-select" [(ngModel)]="statusFilter">
             <option value="queue">Cola (pendientes y en proceso)</option>
             <option value="closed">Cerradas (completas y parciales)</option>
+            <option value="dock">Muelle (prealistadas y en cargue)</option>
             <option value="all">Todas</option>
             @for (s of statusOptions; track s) {
               <option [value]="s">{{ statusLabels[s] }}</option>
@@ -193,6 +211,8 @@
               <th>Cargada</th>
               <th>Estado</th>
               <th style="min-width: 170px">Avance</th>
+              <th>Asignada a</th>
+              <th>Vehículo</th>
               <th class="text-center">Cierre parcial</th>
               <th></th>
             </tr>
@@ -221,6 +241,35 @@
                     <div class="mini-progress-bar" [style.width.%]="percent(o)"></div>
                   </div>
                 </td>
+                <td>
+                  <div class="assignee-cell">
+                    @for (a of o.assignedTo ?? []; track a.userApp) {
+                      <span class="assignee-chip" [title]="a.userApp">{{ a.name || a.userApp }}</span>
+                    } @empty {
+                      <span class="assignee-chip free">Cola libre</span>
+                    }
+                    @if (isEditable(o)) {
+                      <button type="button" class="btn-icon" (click)="openAssign(o)" title="Asignar operarios">
+                        <i class="ti ti-user-plus"></i>
+                      </button>
+                    }
+                  </div>
+                </td>
+                <td>
+                  <div class="assignee-cell">
+                    @if (o.dispatch?.vehiclePlate) {
+                      <span class="plate-chip">{{ o.dispatch?.vehiclePlate }}</span>
+                      <small class="text-muted">{{ o.dispatch?.driverName }}</small>
+                    } @else {
+                      <span class="assignee-chip free">Sin vehículo</span>
+                    }
+                    @if (canSetDispatch(o)) {
+                      <button type="button" class="btn-icon" (click)="openDispatch(o)" title="Vehículo y conductor">
+                        <i class="ti ti-truck"></i>
+                      </button>
+                    }
+                  </div>
+                </td>
                 <td class="text-center">
                   <div class="form-check form-switch d-inline-block m-0">
                     <input
@@ -243,8 +292,147 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">
+                <td colspan="9" class="text-center text-muted py-4">
                   {{ loadingOrders() ? 'Consultando...' : 'No hay Órdenes de Cargue para los filtros seleccionados.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'operators') {
+    <div class="lo-card lo-card-tabbed">
+      <p class="text-muted">
+        Operarios de prealistamiento por su <strong>usuario de login</strong>. Solo los activos se pueden asignar a una OC. Para sumar una persona: crear su cuenta
+        (ej. PREBODEGA3) y registrarla aquí. Las OC sin asignar quedan en <strong>cola libre</strong> y las toma el operario que no tenga OC asignadas.
+      </p>
+      <form class="filters" (ngSubmit)="addOperator()">
+        <div>
+          <label for="newOperatorUserApp" class="form-label">Usuario de login</label>
+          <input id="newOperatorUserApp" name="newOperatorUserApp" type="text" class="form-control text-uppercase" maxlength="40" [(ngModel)]="newOperatorUserApp" placeholder="PREBODEGA3" />
+        </div>
+        <div>
+          <label for="newOperatorName" class="form-label">Nombre para mostrar</label>
+          <input id="newOperatorName" name="newOperatorName" type="text" class="form-control" maxlength="120" [(ngModel)]="newOperatorName" placeholder="Prealistamiento 3" />
+        </div>
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="savingOperator() || !newOperatorUserApp.trim()">
+            <i class="ti" [ngClass]="savingOperator() ? 'ti-loader-2 spin' : 'ti-user-plus'"></i> Registrar
+          </button>
+        </div>
+      </form>
+
+      <div class="table-responsive mt-3">
+        <table class="table align-middle lo-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Nombre</th>
+              <th class="text-center">OC abiertas asignadas</th>
+              <th>Actualizado</th>
+              <th class="text-center">Activo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (op of operators(); track op._id) {
+              <tr [class.text-muted]="!op.active">
+                <td class="fw-bold mono">{{ op.userApp }}</td>
+                <td>{{ op.name || '—' }}</td>
+                <td class="text-center fw-semibold">{{ op.openOrders }}</td>
+                <td><small>{{ op.lastUpdate || op.dateCreate }}</small></td>
+                <td class="text-center">
+                  <div class="form-check form-switch d-inline-block m-0">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      [checked]="op.active"
+                      [disabled]="savingOperator()"
+                      (click)="$event.preventDefault(); toggleOperator(op)"
+                      [attr.aria-label]="'Activo ' + op.userApp"
+                    />
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                  {{ loadingOperators() ? 'Consultando...' : 'Aún no hay operarios registrados.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'dockAlerts') {
+    <div class="lo-card lo-card-tabbed">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0">Lecturas erradas, faltantes y descuadres del Cargue en Muelle. Cada alerta se notifica por correo; registre aquí el hallazgo.</p>
+        <button type="button" class="btn btn-light" (click)="loadDockAlerts()" [disabled]="loadingDockAlerts()">
+          <i class="ti" [ngClass]="loadingDockAlerts() ? 'ti-loader-2 spin' : 'ti-refresh'"></i> Actualizar
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle lo-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>OC / Vehículo</th>
+              <th>Alerta</th>
+              <th>Serial / detalle</th>
+              <th>Operario</th>
+              <th>Correo</th>
+              <th>Revisión</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of dockAlerts(); track a._id) {
+              <tr [class.alert-pending]="!a.review.reviewed">
+                <td><small>{{ a.dateCreate }}</small></td>
+                <td>
+                  <div class="fw-semibold">{{ a.loadingOrder || 'Sin OC (no prealistado)' }}</div>
+                  @if (a.vehiclePlate) {
+                    <span class="plate-chip">{{ a.vehiclePlate }}</span>
+                  }
+                  <small class="d-block text-muted">{{ a.driverName }}</small>
+                </td>
+                <td><span class="status-badge status-CANCELLED">{{ dockAlertLabels[a.type] }}</span></td>
+                <td>
+                  @if (a.serial) {
+                    <small class="mono d-block">{{ a.serial }}</small>
+                  }
+                  @if (a.otherLoadingOrder) {
+                    <small class="d-block">Prealistado en OC <strong>{{ a.otherLoadingOrder }}</strong></small>
+                  }
+                  <small class="text-muted">{{ a.detail }}</small>
+                </td>
+                <td><small>{{ a.reportedBy.name || a.reportedBy.userApp }}</small></td>
+                <td>
+                  @if (a.emailAlert.grouped) {
+                    <i class="ti ti-mail-forward text-muted" title="Agrupada con el correo anterior de esta OC"></i>
+                  } @else {
+                    <i class="ti" [ngClass]="a.emailAlert.sent ? 'ti-mail-check text-success' : 'ti-mail-x text-danger'" [title]="a.emailAlert.sent ? 'Correo enviado' : a.emailAlert.error || 'Correo no enviado'"></i>
+                  }
+                </td>
+                <td>
+                  @if (a.review.reviewed) {
+                    <small class="d-block"><i class="ti ti-check text-success"></i> {{ a.review.by?.name || a.review.by?.userApp }}</small>
+                    <small class="text-muted">{{ a.review.observation }}</small>
+                  } @else {
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="openReview(a)">Registrar revisión</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  {{ loadingDockAlerts() ? 'Consultando...' : 'No hay alertas de muelle.' }}
                 </td>
               </tr>
             }
@@ -328,6 +516,103 @@
   }
 </div>
 
+<!-- DIÁLOGO: ASIGNAR OPERARIOS -->
+@if (assignTarget(); as target) {
+  <div class="dialog-backdrop" (click)="cancelAssign()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="assignTitle">
+    <h5 id="assignTitle"><i class="ti ti-user-plus"></i> Asignar OC {{ target.loadingOrder }}</h5>
+    <p class="small text-muted mb-2">
+      {{ target.totals.pickedQty }} / {{ target.totals.requestedQty }} unidades · {{ statusLabels[target.status] }}. Con varios operarios leen la OC en paralelo. Sin
+      ninguno queda en cola libre. Las lecturas hechas se conservan.
+    </p>
+    @if (activeOperators().length) {
+      <div class="operator-options">
+        @for (op of activeOperators(); track op._id) {
+          <label class="operator-option" [class.selected]="assignSelection().includes(op.userApp)">
+            <input type="checkbox" class="form-check-input" [checked]="assignSelection().includes(op.userApp)" (change)="toggleAssignee(op.userApp)" />
+            <span class="flex-grow-1">
+              <strong>{{ op.name || op.userApp }}</strong>
+              <small class="d-block text-muted">{{ op.userApp }}</small>
+            </span>
+            <small class="text-muted">{{ op.openOrders }} OC abiertas</small>
+          </label>
+        }
+      </div>
+    } @else {
+      <p class="text-warning-emphasis">No hay operarios activos. Regístrelos en la pestaña Operarios.</p>
+    }
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelAssign()" [disabled]="savingAssign()">Cancelar</button>
+      <button type="button" class="btn btn-primary" (click)="confirmAssign()" [disabled]="savingAssign()">
+        @if (savingAssign()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        {{ assignSelection().length ? 'Asignar (' + assignSelection().length + ')' : 'Dejar en cola libre' }}
+      </button>
+    </div>
+  </div>
+}
+
+<!-- DIÁLOGO: VEHÍCULO Y CONDUCTOR -->
+@if (dispatchTarget(); as target) {
+  <div class="dialog-backdrop" (click)="cancelDispatch()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="dispatchTitle">
+    <h5 id="dispatchTitle"><i class="ti ti-truck"></i> Vehículo y conductor · OC {{ target.loadingOrder }}</h5>
+    <p class="small text-muted">El operario de muelle verá siempre estos datos y debe digitar la placa del vehículo para iniciar el cargue.</p>
+    <div class="row g-2">
+      <div class="col-6">
+        <label for="dispatchPlate" class="form-label">Placa</label>
+        <input id="dispatchPlate" type="text" class="form-control text-uppercase mono" maxlength="8" [(ngModel)]="dispatchForm.vehiclePlate" placeholder="ABC123" />
+      </div>
+      <div class="col-6">
+        <label for="dispatchCarrier" class="form-label">Transportadora (opcional)</label>
+        <input id="dispatchCarrier" type="text" class="form-control" maxlength="120" [(ngModel)]="dispatchForm.carrier" />
+      </div>
+      <div class="col-12">
+        <label for="dispatchDriver" class="form-label">Nombre del conductor</label>
+        <input id="dispatchDriver" type="text" class="form-control" maxlength="120" [(ngModel)]="dispatchForm.driverName" />
+      </div>
+      <div class="col-6">
+        <label for="dispatchDocument" class="form-label">Documento</label>
+        <input id="dispatchDocument" type="text" inputmode="numeric" class="form-control" maxlength="20" [(ngModel)]="dispatchForm.driverDocument" />
+      </div>
+      <div class="col-6">
+        <label for="dispatchPhone" class="form-label">Celular (opcional)</label>
+        <input id="dispatchPhone" type="tel" class="form-control" maxlength="20" [(ngModel)]="dispatchForm.driverPhone" />
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelDispatch()" [disabled]="savingDispatch()">Cancelar</button>
+      <button type="button" class="btn btn-primary" (click)="confirmDispatch()" [disabled]="savingDispatch() || !dispatchFormValid">
+        @if (savingDispatch()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Guardar
+      </button>
+    </div>
+  </div>
+}
+
+<!-- DIÁLOGO: REVISIÓN DE ALERTA DE MUELLE -->
+@if (reviewTarget(); as target) {
+  <div class="dialog-backdrop" (click)="cancelReview()" aria-hidden="true"></div>
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+    <h5 id="reviewTitle"><i class="ti ti-alert-octagon"></i> {{ dockAlertLabels[target.type] }} · OC {{ target.loadingOrder }}</h5>
+    <p class="small mb-2">{{ target.detail }}</p>
+    <label for="reviewObservation" class="form-label">Hallazgo / acción tomada (obligatorio)</label>
+    <textarea id="reviewObservation" class="form-control" rows="3" maxlength="500" [(ngModel)]="reviewObservation"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelReview()" [disabled]="savingReview()">Cancelar</button>
+      <button type="button" class="btn btn-danger" (click)="confirmReview()" [disabled]="savingReview() || reviewObservation.trim().length < 5">
+        @if (savingReview()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Marcar revisada
+      </button>
+    </div>
+  </div>
+}
+
 <!-- DIÁLOGO: CIERRE PARCIAL -->
 @if (partialTarget(); as target) {
   <div class="dialog-backdrop" (click)="cancelPartialClose()" aria-hidden="true"></div>
@@ -375,13 +660,107 @@
       <div><strong>{{ d.progress.percent }}%</strong><span>Avance</span></div>
       <div><strong>{{ d.picking?.startedAt || '—' }}</strong><span>Inicio · {{ d.picking?.startedBy?.name || '' }}</span></div>
       <div><strong>{{ d.picking?.completedAt || '—' }}</strong><span>Cierre · {{ d.picking?.completedBy?.name || '' }}</span></div>
-      <div><strong>{{ d.summumExport?.status || '—' }}</strong><span>Archivo Summum</span></div>
+      <div><strong>{{ d.summumExport ? summumLabels[d.summumExport.status] : '—' }}</strong><span>Archivo Summum</span></div>
     </div>
+
+    <!-- ARCHIVO .SAL PARA SUMMUM (salida contable) -->
+    @if (d.summumExport?.status === 'GENERATED' || d.summumExport?.status === 'FORMAT_ERROR') {
+      <div class="summum-box" [class.error]="d.summumExport?.status === 'FORMAT_ERROR'">
+        @if (d.summumExport?.status === 'GENERATED') {
+          <div class="flex-grow-1">
+            <strong><i class="ti ti-file-export"></i> {{ d.summumExport?.fileName }}</strong>
+            <div class="small">
+              {{ d.summumExport?.totalUnits }} unidades · versión {{ d.summumExport?.version }} · {{ d.summumExport?.generatedAt }}
+              @if ((d.summumExport?.version ?? 0) > 1) {
+                <span class="text-warning-emphasis">(reemplaza la versión anterior)</span>
+              }
+            </div>
+            <div class="small">
+              @if (d.summumExport?.email?.sent) {
+                <i class="ti ti-mail-check text-success"></i> Enviado a {{ d.summumExport?.email?.recipients?.join(', ') }}
+              } @else if (d.summumExport?.email?.error) {
+                <i class="ti ti-mail-x text-danger"></i> No se pudo enviar: {{ d.summumExport?.email?.error }}
+              } @else {
+                <i class="ti ti-mail-forward text-muted"></i> Envío en curso...
+              }
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-primary" (click)="downloadSummumFile()" [disabled]="summumBusy()">
+            <i class="ti ti-download"></i> Descargar .sal
+          </button>
+          <button type="button" class="btn btn-sm btn-primary" (click)="resendSummumFile()" [disabled]="summumBusy()">
+            <i class="ti" [ngClass]="summumBusy() ? 'ti-loader-2 spin' : 'ti-send'"></i> Reenviar a BDCC
+          </button>
+        } @else {
+          <div>
+            <strong class="text-danger"><i class="ti ti-alert-triangle"></i> El archivo para Summum NO se generó</strong>
+            <div class="small">{{ d.summumExport?.msg }}</div>
+          </div>
+        }
+      </div>
+    }
 
     @if (d.closure?.closeType === 'PARTIAL') {
       <div class="closure-box">
         <strong><i class="ti ti-alert-triangle"></i> Cierre parcial — faltaron {{ d.closure?.missingQty }} unidades</strong>
         <div class="small">Motivo: {{ d.closure?.observation }}</div>
+      </div>
+    }
+
+    @if (d.dispatch?.vehiclePlate) {
+      <div class="dispatch-box">
+        <span class="plate-chip">{{ d.dispatch?.vehiclePlate }}</span>
+        <span><i class="ti ti-steering-wheel"></i> {{ d.dispatch?.driverName }} · Doc. {{ d.dispatch?.driverDocument }}</span>
+        @if (detailInDock() || d.status === 'DISPATCHED') {
+          <span class="ms-auto small">
+            Cargadas al vehículo: <strong>{{ loadedSet().size }} / {{ d.progress.pickedQty }}</strong>
+          </span>
+        }
+      </div>
+    }
+
+    <!-- REPOSICIÓN: la OC volvió a prealistamiento tras retirar una unidad -->
+    @if (detailInPicking() && d.dispatch?.vehiclePlate) {
+      <div class="replenish-box">
+        <strong><i class="ti ti-replace"></i> Reponer unidades · faltan {{ d.progress.pendingQty }}</strong>
+        <p class="small mb-2">Lea la unidad de reemplazo (mismos controles del prealistamiento). Al completar, cierre el prealistamiento y el muelle podrá terminar el cargue.</p>
+        <form class="replenish-form" (ngSubmit)="replenish()">
+          <input
+            name="replenishSerial"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            class="form-control mono"
+            maxlength="32"
+            [(ngModel)]="replenishSerial"
+            [disabled]="replenishing()"
+            placeholder="Serial de 27 dígitos"
+          />
+          <button type="submit" class="btn btn-primary" [disabled]="replenishing() || !replenishSerial.trim()">
+            <i class="ti" [ngClass]="replenishing() ? 'ti-loader-2 spin' : 'ti-scan'"></i> Leer
+          </button>
+        </form>
+        @if (d.progress.pendingQty > 0 && d.allowPartialClose) {
+          <input
+            type="text"
+            class="form-control form-control-sm mt-2"
+            maxlength="300"
+            [(ngModel)]="pickingCloseObservation"
+            placeholder="Motivo del cierre parcial (si no se repone todo)"
+            aria-label="Motivo del cierre parcial"
+          />
+        }
+        <button
+          type="button"
+          class="btn btn-success mt-2"
+          (click)="closePicking()"
+          [disabled]="closingPicking() || d.progress.pickedQty === 0 || (d.progress.pendingQty > 0 && !d.allowPartialClose)"
+        >
+          @if (closingPicking()) {
+            <i class="ti ti-loader-2 spin"></i>
+          }
+          Cerrar prealistamiento y volver al muelle
+        </button>
       </div>
     }
 
@@ -434,6 +813,10 @@
             <th>Aut.</th>
             <th>Lectura</th>
             <th>Estado</th>
+            @if (detailInDock()) {
+              <th>Muelle</th>
+              <th></th>
+            }
           </tr>
         </thead>
         <tbody>
@@ -460,6 +843,24 @@
                   }
                 }
               </td>
+              @if (detailInDock()) {
+                <td>
+                  @if (r.status === 'ACTIVE') {
+                    @if (loadedSet().has(r.serial)) {
+                      <span class="status-badge status-PICKED"><i class="ti ti-truck"></i> Cargada</span>
+                    } @else {
+                      <span class="status-badge status-CANCELLED">Sin cargar</span>
+                    }
+                  }
+                </td>
+                <td class="text-end">
+                  @if (r.status === 'ACTIVE') {
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="openRemove(r)" title="Retirar la unidad de la OC (vuelve a prealistamiento)">
+                      <i class="ti ti-package-export"></i> Retirar
+                    </button>
+                  }
+                </td>
+              }
             </tr>
           } @empty {
             <tr>
@@ -481,5 +882,32 @@
         </li>
       }
     </ul>
+  </div>
+}
+
+<!-- DIÁLOGO: RETIRAR UNIDAD -->
+@if (removeTarget(); as target) {
+  <div class="dialog-backdrop dialog-over" (click)="cancelRemove()" aria-hidden="true"></div>
+  <div class="dialog-panel dialog-over" role="dialog" aria-modal="true" aria-labelledby="removeTitle">
+    <h5 id="removeTitle" class="text-danger"><i class="ti ti-package-export"></i> Retirar unidad de la OC</h5>
+    <p class="mb-2">
+      Serial <strong class="mono">{{ target.serial }}</strong><br />
+      {{ target.reference || target.product }} · Aut. {{ target.prefix }}-{{ target.authorization }}
+    </p>
+    <p class="small text-muted">
+      La unidad sale de la OC (si estaba en el vehículo, se baja) y la OC <strong>vuelve a prealistamiento</strong>. Debe leerse una unidad de reemplazo y cerrar el
+      prealistamiento; luego el muelle carga el reemplazo. Ninguna unidad sale sin su lectura de cargue.
+    </p>
+    <label for="removeObservation" class="form-label">Motivo (obligatorio, queda en auditoría)</label>
+    <textarea id="removeObservation" class="form-control" rows="3" maxlength="300" [(ngModel)]="removeObservation"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelRemove()" [disabled]="removing()">Cancelar</button>
+      <button type="button" class="btn btn-danger" (click)="confirmRemove()" [disabled]="removing() || removeObservation.trim().length < 5">
+        @if (removing()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Retirar unidad
+      </button>
+    </div>
   </div>
 }

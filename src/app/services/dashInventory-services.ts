@@ -26,7 +26,14 @@ import {
   ViewOrderResponse
 } from '../interfaces/dashInventory.interface';
 import {
+  AssignLoadingOrderRequest,
   CompletePickingRequest,
+  DispatchInfoRequest,
+  DockAlert,
+  DockOrder,
+  DockScanResponse,
+  DockView,
+  LoadingOrderDispatch,
   CompletePickingResponse,
   LoadingOrderAccess,
   LoadingOrderApiResponse,
@@ -38,6 +45,11 @@ import {
   LoadingOrderView,
   NextPickItemResult,
   PartialCloseRequest,
+  PausePickingRequest,
+  PausedLoadingOrder,
+  PickingOperator,
+  LoadingOrderAssignee,
+  SavePickingOperatorRequest,
   ScanSerialRequest,
   ScanSerialResponse,
   VoidReadRequest
@@ -311,6 +323,128 @@ export class DashInventoryServices {
   voidLoadingOrderRead(payload: VoidReadRequest): Observable<LoadingOrderApiResponse<{ readId: string; serial: string }>> {
     return this.http
       .post<LoadingOrderApiResponse<{ readId: string; serial: string }>>(`${this.LOADING_ORDERS_ENDPOINT}/voidRead`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Pausa el prealistamiento (motivo obligatorio): la OC sale de la cola y conserva sus lecturas. */
+  pauseLoadingOrderPicking(payload: PausePickingRequest): Observable<LoadingOrderApiResponse<{ _id: string; loadingOrder: string; status: string }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ _id: string; loadingOrder: string; status: string }>>(`${this.LOADING_ORDERS_ENDPOINT}/pause`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Retoma una OC en pausa; devuelve la vista de la OC para seguir leyendo. */
+  resumeLoadingOrderPicking(loadingOrderId: string): Observable<LoadingOrderApiResponse<LoadingOrderView>> {
+    return this.http
+      .post<LoadingOrderApiResponse<LoadingOrderView>>(`${this.LOADING_ORDERS_ENDPOINT}/resume`, { loadingOrderId })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Operarios de prealistamiento con sus OC abiertas asignadas. */
+  getPickingOperators(onlyActive = false): Observable<LoadingOrderApiResponse<PickingOperator[]>> {
+    return this.http
+      .get<LoadingOrderApiResponse<PickingOperator[]>>(`${this.LOADING_ORDERS_ENDPOINT}/operators`, { params: { onlyActive } })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Registra, renombra, activa o desactiva un operario. */
+  savePickingOperator(payload: SavePickingOperatorRequest): Observable<LoadingOrderApiResponse<PickingOperator>> {
+    return this.http
+      .post<LoadingOrderApiResponse<PickingOperator>>(`${this.LOADING_ORDERS_ENDPOINT}/operators`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Asigna la OC a operarios (reemplaza la asignación; [] = cola libre). */
+  assignLoadingOrder(payload: AssignLoadingOrderRequest): Observable<LoadingOrderApiResponse<{ _id: string; assignedTo: LoadingOrderAssignee[] }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ _id: string; assignedTo: LoadingOrderAssignee[] }>>(`${this.LOADING_ORDERS_ENDPOINT}/assign`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  // ============================================================
+  //  CARGUE EN MUELLE
+  // ============================================================
+
+  /** (Administrativo) Placa del vehículo y conductor de la OC. */
+  setLoadingOrderDispatchInfo(payload: DispatchInfoRequest): Observable<LoadingOrderApiResponse<{ _id: string; dispatch: LoadingOrderDispatch }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ _id: string; dispatch: LoadingOrderDispatch }>>(`${this.LOADING_ORDERS_ENDPOINT}/dispatchInfo`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Reenvía a BDCC el archivo .sal vigente de la OC. */
+  resendSummumExport(loadingOrderId: string): Observable<LoadingOrderApiResponse<null>> {
+    return this.http
+      .post<LoadingOrderApiResponse<null>>(`${this.LOADING_ORDERS_ENDPOINT}/summumExport/resend`, { loadingOrderId })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Contenido del archivo .sal vigente de la OC (para descargarlo). */
+  getSummumExportFile(loadingOrderId: string): Observable<LoadingOrderApiResponse<{ fileName: string; content: string; version: number }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ fileName: string; content: string; version: number }>>(`${this.LOADING_ORDERS_ENDPOINT}/summumExport/file`, { loadingOrderId })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Retira una unidad prealistada; la OC vuelve a prealistamiento para reponerla. */
+  removePickedUnit(readId: string, observation: string): Observable<LoadingOrderApiResponse<{ loadingOrderId: string; serial: string; wasLoaded: boolean }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ loadingOrderId: string; serial: string; wasLoaded: boolean }>>(`${this.LOADING_ORDERS_ENDPOINT}/removeUnit`, { readId, observation })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** OC prealistadas / en cargue con su vehículo (sin cantidades). */
+  getDockOrders(): Observable<LoadingOrderApiResponse<DockOrder[]>> {
+    return this.http
+      .get<LoadingOrderApiResponse<DockOrder[]>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/orders`)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  getDockDetail(loadingOrderId: string): Observable<LoadingOrderApiResponse<DockView>> {
+    return this.http
+      .post<LoadingOrderApiResponse<DockView>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/detail`, { loadingOrderId })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Lectura en muelle sin elegir OC (el backend ubica la OC prealistada del serial). Sin
+   * catchError: un rechazo llega como 409 con { msg, rejectReason, alertRaised }.
+   */
+  dockScanSerial(serial: string): Observable<DockScanResponse> {
+    return this.http.post<DockScanResponse>(`${this.LOADING_ORDERS_ENDPOINT}/dock/scan`, { serial });
+  }
+
+  reportDockMissing(loadingOrderId: string, observation: string): Observable<LoadingOrderApiResponse<null>> {
+    return this.http
+      .post<LoadingOrderApiResponse<null>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/missing`, { loadingOrderId, observation })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Despacha la OC: cargue 100% igual a lo prealistado + placa digitada igual a la asignada. */
+  completeDockLoading(loadingOrderId: string, vehiclePlate: string): Observable<LoadingOrderApiResponse<{ _id: string; status: string }>> {
+    return this.http
+      .post<LoadingOrderApiResponse<{ _id: string; status: string }>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/complete`, { loadingOrderId, vehiclePlate })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Alertas del muelle. */
+  getDockAlerts(onlyPending = false): Observable<LoadingOrderApiResponse<DockAlert[]>> {
+    return this.http
+      .post<LoadingOrderApiResponse<DockAlert[]>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/alerts`, { onlyPending })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Marca una alerta como revisada con su hallazgo. */
+  reviewDockAlert(alertId: string, observation: string): Observable<LoadingOrderApiResponse<DockAlert>> {
+    return this.http
+      .post<LoadingOrderApiResponse<DockAlert>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/alerts/review`, { alertId, observation })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** OC en pausa con su avance. */
+  getPausedLoadingOrders(): Observable<LoadingOrderApiResponse<PausedLoadingOrder[]>> {
+    return this.http
+      .get<LoadingOrderApiResponse<PausedLoadingOrder[]>>(`${this.LOADING_ORDERS_ENDPOINT}/paused`)
       .pipe(catchError(this.handleError.bind(this)));
   }
 

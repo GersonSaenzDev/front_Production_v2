@@ -82,6 +82,11 @@ $abba-amber-light: #fffbeb;
       color: $abba-blue;
     }
 
+    &.btn-header-pause:not(:disabled) {
+      background: $abba-amber;
+      border-color: $abba-amber;
+    }
+
     &:disabled {
       opacity: 0.5;
     }
@@ -320,8 +325,105 @@ $abba-amber-light: #fffbeb;
 }
 
 .reads-table-wrap {
-  max-height: 360px;
+  // Todas las lecturas de la OC con scroll propio; el encabezado queda fijo al desplazarse
+  max-height: 60vh;
   overflow-y: auto;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+  }
+}
+
+// =======================
+//  OC EN PAUSA
+// =======================
+.paused-panel {
+  background: $abba-amber-light;
+  border: 1px solid rgba($abba-amber, 0.35);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+
+  .card-title-label {
+    color: $abba-amber;
+  }
+}
+
+.paused-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.paused-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #f3e3c3;
+}
+
+.paused-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.paused-order {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: $abba-blue-dark;
+}
+
+.paused-meta,
+.paused-reason {
+  font-size: 0.8rem;
+  color: $abba-gray;
+}
+
+.paused-reason {
+  font-style: italic;
+}
+
+.btn-resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+  color: #fff;
+  background: $abba-green;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.reason-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.reason-chip {
+  border: 1px solid #d6dbe4;
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+
+  &.active {
+    background: $abba-amber;
+    border-color: $abba-amber;
+    color: #fff;
+  }
 }
 
 .serial-cell {
@@ -453,4 +555,22 @@ $abba-amber-light: #fffbeb;
   75% {
     transform: translateX(4px);
   }
+}
+
+.stat-value.stat-value-sm {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.working-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: $abba-amber-light;
+  color: $abba-amber;
 }

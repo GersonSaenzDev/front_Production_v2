@@ -10,7 +10,10 @@ body {
 .pc-container {
   $temp: $header-height + 61;
   position: relative;
-  top: $header-height;
+  // margin-top (no `top`): `top` desplaza visualmente sin mover el flujo, y el footer
+  // (.pc-footer) quedaba montado ~80px sobre el final del contenido de TODAS las vistas,
+  // ocultando las últimas filas de tablas y listas.
+  margin-top: $header-height;
   margin-left: $sidebar-width;
   margin-right: 20px;
   min-height: calc(100vh - #{$temp});

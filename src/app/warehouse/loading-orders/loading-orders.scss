@@ -276,6 +276,10 @@ $abba-amber-light: #fffbeb;
     background: $abba-blue-light;
     color: $abba-blue;
   }
+  &.status-PAUSED {
+    background: $abba-amber-light;
+    color: $abba-amber;
+  }
 
   &.status-PICKED,
   &.status-DISPATCHED {
@@ -394,5 +398,135 @@ $abba-amber-light: #fffbeb;
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+// =======================
+//  ASIGNACIÓN DE OPERARIOS
+// =======================
+.assignee-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.assignee-chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: $abba-blue-light;
+  color: $abba-blue;
+
+  &.free {
+    background: #f1f5f9;
+    color: $abba-gray;
+  }
+}
+
+.operator-options {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.operator-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+
+  &.selected {
+    border-color: $abba-blue;
+    background: $abba-blue-light;
+  }
+}
+
+// =======================
+//  CARGUE EN MUELLE
+// =======================
+.plate-chip {
+  display: inline-block;
+  padding: 0 0.5rem;
+  background: #facc15;
+  border: 2px solid #111827;
+  border-radius: 6px;
+  font-family: 'Consolas', monospace;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #111827;
+}
+
+.badge-alert {
+  display: inline-block;
+  min-width: 1.4rem;
+  margin-left: 0.3rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: $abba-red;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.alert-pending {
+  background: #fff5f5;
+}
+
+.dispatch-box,
+.replenish-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.replenish-box {
+  display: block;
+  background: $abba-amber-light;
+  border-color: rgba($abba-amber, 0.4);
+}
+
+.replenish-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 480px;
+}
+
+// Diálogo encima del detalle de la OC
+.dialog-backdrop.dialog-over {
+  z-index: 1060;
+}
+
+.dialog-panel.dialog-over {
+  z-index: 1061;
+}
+
+.summum-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: $abba-blue-light;
+  border: 1px solid rgba($abba-blue, 0.25);
+
+  &.error {
+    background: $abba-red-light;
+    border-color: rgba($abba-red, 0.4);
   }
 }
