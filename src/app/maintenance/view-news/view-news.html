@@ -1,12 +1,13 @@
 <div class="container-fluid py-3">
   <!-- ================= PARADAS EN CURSO (solo visible si hay paradas sin hora de fin) ================= -->
-  <app-ongoing-stops [area]="'Mantenimiento'"></app-ongoing-stops>
+  <app-ongoing-stops [area]="'Mantenimiento'" [actionLabel]="ongoingStopActionLabel"
+    (action)="onOngoingStopAction($event)" (finished)="loadPendingNews()"></app-ongoing-stops>
 
   <!-- ================= NOVEDADES ENTRANTES DE OTRAS ÁREAS ================= -->
   <div class="card shadow-sm mb-3">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Novedades entrantes de otras áreas</h5>
-      <small>Reportes y paradas de proceso asignados a Mantenimiento, pendientes de convertir en solicitud.</small>
+      <small>Reportes de la fecha + todas las paradas de proceso en curso (fijadas arriba).</small>
     </div>
 
     <div class="card-body">
@@ -35,7 +36,7 @@
       </div>
 
       <div class="table-responsive">
-        <table class="table table-sm table-hover align-middle">
+        <table class="table table-sm table-hover align-middle incoming-table">
           <thead class="table-light">
             <tr>
               <th role="button" (click)="sortPendingNewsBy('reportedAt')">
@@ -59,7 +60,7 @@
               <th role="button" (click)="sortPendingNewsBy('status')">
                 Estado <span class="text-muted">{{ pendingNewsSortIcon('status') }}</span>
               </th>
-              <th class="text-end">Acciones</th>
+              <th class="text-end col-actions">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -73,11 +74,14 @@
                 Sin novedades para la fecha o la búsqueda seleccionada.
               </td>
             </tr>
-            <tr *ngFor="let n of filteredPendingNews">
-              <td>{{ n.origin?.reportedAt || '—' }}</td>
+            <tr *ngFor="let n of filteredPendingNews" [class.row-ongoing-stop]="isOngoingStop(n)">
+              <td class="col-reported">{{ n.origin?.reportedAt || '—' }}</td>
               <td>
                 <span class="badge" [class.bg-danger]="isStop(n)" [class.bg-info]="!isStop(n)"
                   [class.text-dark]="!isStop(n)">{{ n.category }}</span>
+                <span class="badge bg-danger-subtle text-danger d-block mt-1 ongoing-tag" *ngIf="isOngoingStop(n)">
+                  <i class="ti ti-alert-triangle"></i> EN CURSO
+                </span>
               </td>
               <td>
                 <div>{{ n.origin?.area }}</div>
@@ -87,8 +91,8 @@
                 <div>{{ n.origin?.machineCode || '—' }}</div>
                 <small class="text-muted">{{ n.origin?.machineName }}</small>
               </td>
-              <td [title]="n.detail">
-                <div>{{ n.detail }}</div>
+              <td class="col-detail" [title]="n.detail">
+                <div class="detail-text">{{ n.detail }}</div>
                 <small class="d-block" *ngIf="isStop(n)"
                   [class.text-danger]="isStopOngoing(n)" [class.text-muted]="!isStopOngoing(n)">
                   <i class="ti ti-clock"></i>
@@ -99,12 +103,13 @@
               </td>
               <td>{{ n.origin?.reportedBy?.name || '—' }}</td>
               <td>
-                <span class="badge bg-success" *ngIf="generatedFrom(n._id) as gen">
-                  Generada · MTTO #{{ gen.consecutiveMtto }}
-                </span>
+                <button type="button" class="badge bg-success border-0" *ngIf="generatedFrom(n._id) as gen"
+                  (click)="openEdit(gen)" title="Editar / asignar responsable">
+                  Generada · MTTO #{{ gen.consecutiveMtto }} <i class="ti ti-pencil"></i>
+                </button>
                 <span class="badge bg-warning text-dark" *ngIf="!generatedFrom(n._id)">Pendiente</span>
               </td>
-              <td class="text-end">
+              <td class="text-end col-actions">
                 <button class="btn btn-sm btn-outline-primary" (click)="generateFromNews(n)">
                   <i class="ti me-1" [class.ti-refresh]="generatedFrom(n._id)"
                     [class.ti-tool]="!generatedFrom(n._id)"></i>
@@ -177,7 +182,7 @@
               <th>Asignado a</th>
               <th>Programada</th>
               <th>Vo.Bo</th>
-              <th class="text-end">Acciones</th>
+              <th class="text-end col-actions">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -208,7 +213,7 @@
                   [class.bg-light]="!o.requesterApproval" [class.text-dark]="!o.requesterApproval"
                   title="Solicitante">R</span>
               </td>
-              <td class="text-end text-nowrap">
+              <td class="text-end text-nowrap col-actions">
                 <button class="btn btn-sm btn-outline-info me-1" (click)="openDetail(o)" title="Ver detalle">
                   <i class="ti ti-eye"></i>
                 </button>

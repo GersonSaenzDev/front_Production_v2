@@ -84,7 +84,39 @@ label { font-weight: 600; color: #3b5998; margin-bottom: 0.5rem; display: block;
   .summary-count { font-size: 0.8rem; color: #777; }
 }
 
-.summary-card.row-parada {
+.summary-card// Columna de acciones fija a la derecha: el botón queda visible sin desplazar en horizontal.
+.table .col-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background-color: #fff;
+  box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.15);
+  max-width: none;
+  overflow: visible;
+}
+.table thead .col-actions { background-color: #f8f9fa; }
+.table tbody tr:hover .col-actions { background-color: #f0f4ff; }
+
+// Novedades entrantes: texto en varias líneas para que la tabla quepa en el monitor.
+.incoming-table {
+  th, td { white-space: normal; }
+  .col-reported { min-width: 110px; max-width: 130px; }
+  .col-detail { min-width: 220px; max-width: 320px; }
+  .detail-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ongoing-tag { width: fit-content; }
+  tbody tr.row-ongoing-stop,
+  tbody tr.row-ongoing-stop .col-actions { background-color: #fdecec; }
+  tbody tr.row-ongoing-stop:hover,
+  tbody tr.row-ongoing-stop:hover .col-actions { background-color: #fbdada; }
+  tbody tr.row-ongoing-stop td:first-child { box-shadow: inset 4px 0 0 #dc3545; }
+}
+
+.row-parada {
   background-color: rgba(239, 83, 80, 0.2);
   border-left-color: #ef5350;
   .summary-time { color: #D32F2F; }
@@ -123,6 +155,38 @@ label { font-weight: 600; color: #3b5998; margin-bottom: 0.5rem; display: block;
   thead th { background-color: #f8f9fa; color: #3b5998; font-weight: 600; }
   tbody tr { transition: background-color 0.2s ease; }
   tbody tr:hover { background-color: #f0f4ff; }
+}
+
+// Columna de acciones fija a la derecha: el botón queda visible sin desplazar en horizontal.
+.table .col-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background-color: #fff;
+  box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.15);
+  max-width: none;
+  overflow: visible;
+}
+.table thead .col-actions { background-color: #f8f9fa; }
+.table tbody tr:hover .col-actions { background-color: #f0f4ff; }
+
+// Novedades entrantes: texto en varias líneas para que la tabla quepa en el monitor.
+.incoming-table {
+  th, td { white-space: normal; }
+  .col-reported { min-width: 110px; max-width: 130px; }
+  .col-detail { min-width: 220px; max-width: 320px; }
+  .detail-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ongoing-tag { width: fit-content; }
+  tbody tr.row-ongoing-stop,
+  tbody tr.row-ongoing-stop .col-actions { background-color: #fdecec; }
+  tbody tr.row-ongoing-stop:hover,
+  tbody tr.row-ongoing-stop:hover .col-actions { background-color: #fbdada; }
+  tbody tr.row-ongoing-stop td:first-child { box-shadow: inset 4px 0 0 #dc3545; }
 }
 
 .row-parada { background-color: rgba(239, 83, 80, 0.2); &:hover { background-color: rgba(239, 83, 80, 0.3); } }

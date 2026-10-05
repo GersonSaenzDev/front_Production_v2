@@ -177,8 +177,26 @@ $stop-red-light: #fef2f2;
   &:hover { background: $stop-red-dark; }
 }
 
+// Acción secundaria opcional (input actionLabel): mismo tamaño táctil que Finalizar.
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 2px solid #04489a;
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  background: #fff;
+  color: #04489a;
+  font-weight: 700;
+  min-height: 44px;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover { background: #04489a; color: #fff; }
+}
+
 @media (max-width: 575.98px) {
   .ongoing-elapsed { align-items: flex-start; }
+  .btn-action,
   .btn-finish {
     width: 100%;
     justify-content: center;

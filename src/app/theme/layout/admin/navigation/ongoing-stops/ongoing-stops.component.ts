@@ -54,6 +54,13 @@ export class OngoingStopsComponent implements OnInit, OnChanges, OnDestroy {
   @Input() area: string = '';
   /** Emite la novedad actualizada cuando se registra el fin de una parada. */
   @Output() finished = new EventEmitter<ProductionNews>();
+  /**
+   * Acción secundaria opcional por parada (p.ej. Mantenimiento: "Generar solicitud" / "Asignar").
+   * Devuelve el texto del botón; si no se define, el botón no se muestra.
+   */
+  @Input() actionLabel: ((item: ProductionNews) => string) | null = null;
+  /** Emite la parada sobre la que se pulsó la acción secundaria. */
+  @Output() action = new EventEmitter<ProductionNews>();
 
   private newsServices = inject(NewsServices);
   private socketService = inject(SocketService);

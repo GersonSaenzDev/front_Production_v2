@@ -76,6 +76,8 @@ export class ViewNews implements OnInit, OnDestroy {
   // Novedades entrantes de otras áreas (productionNews asignadas a Mantenimiento, cualquier categoría).
   pendingNewsDate: string = this.formatDate(new Date());
   pendingNews: ProductionNews[] = [];
+  // Paradas EN CURSO (sin importar la fecha): son prioridad, se fijan arriba en la tabla.
+  ongoingStops: ProductionNews[] = [];
   filteredPendingNews: ProductionNews[] = [];
   pendingNewsSearchTerm = '';
   pendingNewsSortField: PendingNewsSortField = 'reportedAt';
@@ -165,7 +167,7 @@ export class ViewNews implements OnInit, OnDestroy {
         if (!news) return;
         const leftMaintenance =
           (event as ProductionNewsRedirectedEvent).previousArea === ViewNews.MAINTENANCE_AREA;
-        const isListed = this.pendingNews.some((n) => n._id === news._id);
+        const isListed = this.filteredPendingNews.some((n) => n._id === news._id) || this.isStop(news);
         if (isListed || leftMaintenance) this.schedulePendingNewsReload(news);
       }),
     );
@@ -190,9 +192,13 @@ export class ViewNews implements OnInit, OnDestroy {
     }
   }
 
-  /** Recarga la tabla solo si el evento corresponde a la fecha consultada (debounce para ráfagas). */
+  /**
+   * Recarga la tabla si el evento corresponde a la fecha consultada o es una parada
+   * (las paradas en curso se muestran sin importar la fecha). Debounce para ráfagas.
+   */
   private schedulePendingNewsReload(news: ProductionNews): void {
-    if (news.newsDate && news.newsDate !== this.formatDateForBackend(this.pendingNewsDate)) return;
+    const otherDate = !!news.newsDate && news.newsDate !== this.formatDateForBackend(this.pendingNewsDate);
+    if (otherDate && !this.isStop(news)) return;
     if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
     this.pendingNewsReloadTimer = setTimeout(() => this.loadPendingNews(), 400);
   }
@@ -228,7 +234,9 @@ export class ViewNews implements OnInit, OnDestroy {
     this.isLoading = true;
     this.maintenanceService.listMaintenance(filters).subscribe({
       next: (res) => {
-        this.orders = res?.ok && res.data ? res.data : [];
+        // Más recientes primero por id (ObjectId = orden de creación); dateCreate es texto DD/MM/YYYY.
+        const data = res?.ok && res.data ? [...res.data] : [];
+        this.orders = data.sort((a, b) => String(b.id).localeCompare(String(a.id)));
       },
       error: (err: Error) => {
         this.orders = [];
@@ -295,18 +303,54 @@ export class ViewNews implements OnInit, OnDestroy {
       },
       complete: () => (this.isLoadingPendingNews = false),
     });
+    this.loadOngoingStops();
+  }
+
+  /** Paradas en curso visibles para Mantenimiento, sin filtro de fecha (pueden durar días). */
+  private loadOngoingStops(): void {
+    this.newsServices.getOngoingStops(ViewNews.MAINTENANCE_AREA).subscribe({
+      next: (res) => {
+        this.ongoingStops = res.ok ? res.msg : [];
+        this.applyPendingNewsFilter();
+      },
+      error: (err) => console.error('Error cargando paradas en curso:', err),
+    });
   }
 
   /** Filtro de texto libre (buscador inteligente) sobre cualquier dato visible de la novedad. */
   applyPendingNewsFilter(): void {
-    const term = this.pendingNewsSearchTerm.trim().toLowerCase();
-    const list = !term
-      ? [...this.pendingNews]
-      : this.pendingNews.filter((n) => this.pendingNewsHaystack(n).includes(term));
+    // Novedades de la fecha + paradas en curso de cualquier fecha (sin duplicar).
+    const ids = new Set(this.pendingNews.map((n) => n._id));
+    const all = [...this.pendingNews, ...this.ongoingStops.filter((s) => !ids.has(s._id))];
 
+    const term = this.pendingNewsSearchTerm.trim().toLowerCase();
+    const list = !term ? all : all.filter((n) => this.pendingNewsHaystack(n).includes(term));
+
+    // Paradas en curso siempre primero (prioridad); dentro de cada grupo, el orden elegido.
     const dir = this.pendingNewsSortDirection === 'asc' ? 1 : -1;
-    list.sort((a, b) => dir * this.comparePendingNews(a, b, this.pendingNewsSortField));
+    const rank = (n: ProductionNews): number => (this.isOngoingStop(n) ? 0 : 1);
+    list.sort(
+      (a, b) => rank(a) - rank(b) || dir * this.comparePendingNews(a, b, this.pendingNewsSortField),
+    );
     this.filteredPendingNews = list;
+  }
+
+  /** Parada de Proceso que sigue abierta (sin hora de fin). */
+  isOngoingStop(n: ProductionNews): boolean {
+    return this.isStop(n) && this.isStopOngoing(n);
+  }
+
+  /** Texto del botón de acción en el panel de paradas en curso. */
+  readonly ongoingStopActionLabel = (n: ProductionNews): string => {
+    const generated = this.generatedFrom(n._id);
+    return generated ? `Asignar MTTO #${generated.consecutiveMtto}` : 'Generar solicitud';
+  };
+
+  /** Desde una parada en curso: si ya tiene MTTO se abre la asignación; si no, se genera la solicitud. */
+  onOngoingStopAction(n: ProductionNews): void {
+    const generated = this.generatedFrom(n._id);
+    if (generated) this.openEdit(generated);
+    else this.generateFromNews(n);
   }
 
   /** Texto plano (concatenado) sobre el que corre la búsqueda: cualquier dato que el usuario tenga a mano. */

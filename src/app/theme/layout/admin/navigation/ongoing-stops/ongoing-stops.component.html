@@ -34,6 +34,11 @@
         <span class="elapsed-label">detenida</span>
       </div>
 
+      <button type="button" class="btn-action" *ngIf="actionLabel" (click)="action.emit(item)">
+        <i class="ti ti-tool"></i>
+        <span>{{ actionLabel(item) }}</span>
+      </button>
+
       <button type="button" class="btn-finish" (click)="openFinish(item)">
         <i class="ti ti-player-stop"></i>
         <span>Finalizar parada</span>
