@@ -110,7 +110,7 @@ export class MenuAccessService {
   // bodega (Dashboard Inventarios, novedades, etc.). Permiso ADITIVO: no reemplaza
   // el menú propio del área/depto, solo suma el grupo Logística → Bodega. Se
   // identifican por userApp (username de login), sin importar area/departamento.
-  private readonly BODEGA_VIEWER_USERS = ['ACPEÑA'];
+  private readonly BODEGA_VIEWER_USERS = ['ACPEÑA', 'EJBARRAGAN'];
 
   private isBodegaViewerUser(userApp?: string): boolean {
     const code = userApp?.toUpperCase().trim() || '';
