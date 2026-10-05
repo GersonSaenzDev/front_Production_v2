@@ -8,6 +8,10 @@
   color: $header-color;
   min-height: $header-height;
   position: fixed;
+  // `top: 0` explícito: sin él el header fijo toma su posición estática, y el
+  // margin-top de .pc-container colapsa y lo empuja hacia abajo (hueco arriba
+  // por donde se ve pasar el contenido al hacer scroll).
+  top: 0;
   left: 0;
   right: 0;
   z-index: 1025;
