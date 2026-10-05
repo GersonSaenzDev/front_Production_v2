@@ -6,8 +6,11 @@
       <h6 class="ongoing-title">
         Paradas en curso <span class="ongoing-count">{{ stops.length }}</span>
       </h6>
-      <small class="ongoing-subtitle">
+      <small class="ongoing-subtitle" *ngIf="!readOnly">
         Cuando la parada se resuelva, pulse <strong>Finalizar parada</strong> para registrar la hora de fin.
+      </small>
+      <small class="ongoing-subtitle" *ngIf="readOnly">
+        Paradas de proceso activas{{ allAreas ? ' en todas las áreas' : '' }}. El área que reportó registra el fin cuando se resuelva.
       </small>
     </div>
     <button type="button" class="btn-refresh" (click)="refresh()" [disabled]="isLoading" title="Actualizar">
@@ -39,7 +42,7 @@
         <span>{{ actionLabel(item) }}</span>
       </button>
 
-      <button type="button" class="btn-finish" (click)="openFinish(item)">
+      <button type="button" class="btn-finish" *ngIf="!readOnly" (click)="openFinish(item)">
         <i class="ti ti-player-stop"></i>
         <span>Finalizar parada</span>
       </button>

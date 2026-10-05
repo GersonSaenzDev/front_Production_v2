@@ -8,7 +8,14 @@ import * as XLSX from 'xlsx'; // Exportación a Excel
 import { EstadisticsService } from '../../services/estadistics.service';
 import { EstadisticNews, EstadisticNewsRequest } from '../../interfaces/estadistics.interface';
 import { displayArea } from '../../theme/layout/admin/navigation/area-display.util';
-import { formatStopSchedule } from '../../theme/layout/admin/navigation/stop-time.util';
+import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoing-stops/ongoing-stops.component';
+import {
+  formatDurationLabel,
+  formatStopSchedule,
+  isStopOngoing,
+  minutesBetween,
+  stopStartMoment
+} from '../../theme/layout/admin/navigation/stop-time.util';
 
 registerLocaleData(localeEs, 'es');
 
@@ -23,7 +30,7 @@ export interface CategorySummary {
 @Component({
   selector: 'app-stadistics-news',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent],
   templateUrl: './news.html',
   styleUrls: ['./news.scss'],
   providers: [{ provide: LOCALE_ID, useValue: 'es' }]
@@ -181,6 +188,9 @@ export class StadisticsNews implements OnInit {
         .toLowerCase();
       return haystack.includes(term);
     });
+    // Paradas en curso primero (estado crítico); el resto conserva el orden de creación.
+    const rank = (n: EstadisticNews): number => (this.isStopOngoing(n) && !n.isClosed ? 0 : 1);
+    this.filteredNews.sort((a, b) => rank(a) - rank(b));
     this.currentPage = 1;
     this.updatePagination();
   }
@@ -228,12 +238,14 @@ export class StadisticsNews implements OnInit {
   }
 
   public getStatusClass(item: EstadisticNews): string {
+    if (!item.isClosed && isStopOngoing(item)) return 'status-ongoing';
     if (item.isClosed) return 'status-closed';
     if (item.hasResponse) return 'status-responded';
     return 'status-pending';
   }
 
   public getStatusLabel(item: EstadisticNews): string {
+    if (!item.isClosed && isStopOngoing(item)) return 'Parada en curso';
     if (item.isClosed) return 'Cerrada';
     if (item.hasResponse) return 'Respondida';
     return 'Pendiente';
@@ -255,6 +267,16 @@ export class StadisticsNews implements OnInit {
 
   public getStopSchedule(item: EstadisticNews): string {
     return formatStopSchedule(item);
+  }
+
+  public isStopOngoing(item: EstadisticNews): boolean {
+    return isStopOngoing(item);
+  }
+
+  /** Tiempo transcurrido de una parada EN CURSO ('3h 45m'). */
+  public getOngoingElapsed(item: EstadisticNews): string {
+    const start = stopStartMoment(item);
+    return start ? formatDurationLabel(minutesBetween(start, new Date())) : '—';
   }
 
   public getStopTotalTime(item: EstadisticNews): string {

@@ -52,6 +52,10 @@ const CLOCK_TICK_MS = 30_000;
 export class OngoingStopsComponent implements OnInit, OnChanges, OnDestroy {
   /** Área o subárea a consultar (mismo scope que la consulta de novedades). */
   @Input() area: string = '';
+  /** true: muestra las paradas en curso de TODAS las áreas (ignora `area`). */
+  @Input() allAreas = false;
+  /** true: solo visualización (sin "Finalizar parada"); p.ej. Estadística. */
+  @Input() readOnly = false;
   /** Emite la novedad actualizada cuando se registra el fin de una parada. */
   @Output() finished = new EventEmitter<ProductionNews>();
   /**
@@ -96,7 +100,7 @@ export class OngoingStopsComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['area']) this.refresh();
+    if (changes['area'] || changes['allAreas']) this.refresh();
   }
 
   ngOnDestroy(): void {
@@ -107,12 +111,12 @@ export class OngoingStopsComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Recarga la lista de paradas en curso (p.ej. tras registrar una nueva). */
   refresh(): void {
-    if (!this.area) {
+    if (!this.area && !this.allAreas) {
       this.stops = [];
       return;
     }
     this.isLoading = true;
-    this.newsServices.getOngoingStops(this.area).subscribe({
+    this.newsServices.getOngoingStops(this.area, this.allAreas).subscribe({
       next: (res) => {
         this.stops = res.msg;
         this.now = new Date();
@@ -166,6 +170,7 @@ export class OngoingStopsComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Abre el modal con fecha/hora de fin = ahora (el caso más común). */
   openFinish(item: ProductionNews): void {
+    if (this.readOnly) return;
     this.finishTarget = item;
     this.finishNote = '';
     this.selectFinishMode('now');

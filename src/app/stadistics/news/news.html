@@ -91,6 +91,9 @@
     </div>
   </div>
 
+  <!-- PARADAS EN CURSO de todas las áreas (solo visualización; sin fecha; visible solo si hay) -->
+  <app-ongoing-stops class="d-block mt-4" [allAreas]="true" [readOnly]="true"></app-ongoing-stops>
+
   <!-- TARJETA DE CONTENIDO -->
   <div class="card view-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">
@@ -158,7 +161,8 @@
               </td>
             </tr>
 
-            <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)">
+            <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)"
+                [class.row-ongoing-stop]="isStopOngoing(item)">
               <!-- Categoría + Tipo Parada · subtítulo con fecha de reporte -->
               <td class="cell-stacked">
                 <div class="cell-main">
@@ -185,7 +189,13 @@
               <!-- Horario + Total -->
               <td class="cell-stacked cell-schedule">
                 <span class="cell-main-text">{{ getStopSchedule(item) }}</span>
-                <strong class="time-value">{{ getStopTotalTime(item) || '—' }}</strong>
+                @if (isStopOngoing(item)) {
+                  <span class="ongoing-pill" title="Tiempo transcurrido">
+                    <span class="ongoing-dot"></span> En curso · {{ getOngoingElapsed(item) }}
+                  </span>
+                } @else {
+                  <strong class="time-value">{{ getStopTotalTime(item) || '—' }}</strong>
+                }
               </td>
 
               <!-- Estado -->
@@ -312,7 +322,13 @@
         <div class="detail-item">
           <span class="detail-label"><i class="ti ti-hourglass"></i> Total</span>
           <span class="detail-value">
-            <strong class="time-value">{{ getStopTotalTime(detailNews) || '—' }}</strong>
+            @if (isStopOngoing(detailNews)) {
+              <span class="ongoing-pill">
+                <span class="ongoing-dot"></span> En curso · {{ getOngoingElapsed(detailNews) }}
+              </span>
+            } @else {
+              <strong class="time-value">{{ getStopTotalTime(detailNews) || '—' }}</strong>
+            }
           </span>
         </div>
 

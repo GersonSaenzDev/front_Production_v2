@@ -89,8 +89,9 @@ export class NewsServices {
      * @param {string} area - Área o subárea a consultar (mismo scope que viewNews).
      * @returns {Observable<OngoingStopsResponse>}
      */
-    getOngoingStops(area: string): Observable<OngoingStopsResponse> {
-        return this.http.post<OngoingStopsResponse>(this.ONGOING_STOPS_ENDPOINT, { area })
+    getOngoingStops(area: string, allAreas: boolean = false): Observable<OngoingStopsResponse> {
+        const body = allAreas ? { allAreas: true } : { area };
+        return this.http.post<OngoingStopsResponse>(this.ONGOING_STOPS_ENDPOINT, body)
             .pipe(
                 catchError(this.handleError.bind(this)),
                 map(response => ({ ok: response?.ok, msg: response?.ok && Array.isArray(response.msg) ? response.msg : [] }))

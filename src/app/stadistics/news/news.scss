@@ -596,6 +596,39 @@ $abba-dark: #1e1e1e;
   &.status-pending   { background: #fef3c7; color: #92400e; }
   &.status-responded { background: #dbeafe; color: $abba-blue-dark; }
   &.status-closed    { background: #dcfce7; color: #166534; }
+  &.status-ongoing   { background: #dc2626; color: #fff; }
+}
+
+// =======================
+//  PARADA EN CURSO (estado crítico)
+// =======================
+.news-table tbody tr.row-ongoing-stop td {
+  background: #fef2f2;
+}
+
+.ongoing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .ongoing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #dc2626;
+    animation: ongoing-blink 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes ongoing-blink {
+  50% { opacity: 0.25; }
 }
 
 // =======================
