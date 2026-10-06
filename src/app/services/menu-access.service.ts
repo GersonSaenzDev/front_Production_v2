@@ -457,8 +457,11 @@ export class MenuAccessService {
     return true;
   }
 
+  // Toda el área GERENCIA (cualquier departamento: Gerencias, Desarrollador de Proyectos,
+  // etc.) tiene acceso total, excepto ANALISTA DE PRESUPUESTO, que tiene su acceso
+  // restringido propio (ver isBudgetAnalyst).
   private isManagerWithFullAccess(area: string, dept: string): boolean {
-    return area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS');
+    return area === 'GERENCIA' && !this.isBudgetAnalyst(area, dept);
   }
 
   // ANALISTA DE PRESUPUESTO solo puede ver/entrar al menú Estadístico.
@@ -592,7 +595,7 @@ export class MenuAccessService {
       return true;
     }
 
-    if (area === 'GERENCIA' && (dept === 'DESARROLLADOR DE PROYECTOS' || dept === 'GERENCIAS')) {
+    if (this.isManagerWithFullAccess(area, dept)) {
       return true;
     }
 
