@@ -637,6 +637,13 @@ export const NavigationItems: NavigationItem[] = [
                 breadcrumbs: false
               },
               {
+                id: 'entry-validation-item',
+                title: 'Validación Ingreso Bodega',
+                type: 'item',
+                url: 'inventories/entryValidation',
+                breadcrumbs: false
+              },
+              {
                 id: 'barcode-reader-item',
                 title: 'Lector de Código de Barras',
                 type: 'item',

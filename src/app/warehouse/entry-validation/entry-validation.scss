@@ -1,0 +1,467 @@
+@use 'sass:color';
+
+// =======================
+//  VARIABLES CORPORATIVAS ABBA
+// =======================
+$abba-blue: #004a99;
+$abba-blue-dark: #003366;
+$abba-blue-light: #e8f0fb;
+$abba-gray: #575756;
+$abba-green: #10b981;
+$abba-red: #dc2626;
+
+.entry-view-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+// =======================
+//  HEADER PRINCIPAL
+// =======================
+.entry-view-header {
+  background: linear-gradient(135deg, $abba-blue 0%, $abba-blue-dark 100%);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba($abba-blue, 0.25);
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .header-icon {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .header-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.45rem;
+  }
+
+  .header-subtitle {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+
+    .filter-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 0.4rem;
+    }
+
+    .filter-input {
+      background-color: rgba(255, 255, 255, 0.95);
+      border-radius: 10px;
+      padding: 0.6rem 0.9rem;
+      color: $abba-blue-dark;
+      font-weight: 600;
+      font-size: 0.92rem;
+      min-width: 160px;
+      color-scheme: light;
+    }
+  }
+
+  .file-info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .btn-link-light {
+    background: none;
+    border: none;
+    color: #fff;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    padding: 0;
+  }
+}
+
+.btn-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
+  padding: 0.6rem 1.05rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.95);
+  color: $abba-blue-dark;
+  transition: all 0.25s ease;
+
+  &:hover:not(:disabled):not(.disabled) {
+    background: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  }
+
+  &:disabled,
+  &.disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+  display: inline-block;
+}
+
+// =======================
+//  TARJETAS
+// =======================
+.view-card {
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: $abba-gray;
+
+  i {
+    font-size: 3rem;
+    color: $abba-blue;
+  }
+
+  h5 {
+    margin-top: 0.75rem;
+    color: $abba-blue-dark;
+    font-weight: 700;
+  }
+}
+
+.summary-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.summary-card {
+  background: #fff;
+  border: 1px solid $abba-blue-light;
+  border-left: 5px solid $abba-gray;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  min-width: 200px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: 0 4px 12px rgba($abba-blue, 0.05);
+
+  .summary-time {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: $abba-gray;
+  }
+
+  .summary-category {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: $abba-gray;
+  }
+
+  .summary-count {
+    font-size: 0.78rem;
+    color: color.adjust($abba-gray, $lightness: 18%);
+  }
+
+  &.row-checked {
+    border-left-color: $abba-green;
+    .summary-time {
+      color: color.adjust($abba-green, $lightness: -12%);
+    }
+  }
+
+  &.row-missing {
+    border-left-color: $abba-red;
+    .summary-time {
+      color: $abba-red;
+    }
+  }
+}
+
+// =======================
+//  TOOLBAR
+// =======================
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid $abba-blue-light;
+  margin-bottom: 1rem;
+}
+
+.tab-switch {
+  display: inline-flex;
+  background: $abba-blue-light;
+  border-radius: 10px;
+  padding: 4px;
+
+  button {
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    padding: 0.5rem 0.9rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: $abba-blue-dark;
+
+    &.active {
+      background: #fff;
+      box-shadow: 0 2px 8px rgba($abba-blue, 0.15);
+    }
+  }
+
+  .badge-count {
+    margin-left: 0.35rem;
+    font-size: 0.75rem;
+    background: $abba-blue;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+  }
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+
+  > i {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $abba-gray;
+  }
+
+  input {
+    padding: 0.6rem 2.25rem;
+    border-radius: 10px;
+  }
+
+  .btn-clear {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: $abba-gray;
+  }
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  border: 1px solid transparent;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &.btn-green {
+    background: $abba-green;
+    color: #fff;
+  }
+
+  &.btn-outline {
+    background: #fff;
+    border-color: $abba-blue;
+    color: $abba-blue;
+  }
+}
+
+.active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: $abba-blue-light;
+  color: $abba-blue-dark;
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+
+  button {
+    border: none;
+    background: none;
+    color: $abba-blue-dark;
+    padding: 0;
+  }
+}
+
+.loading-state {
+  padding: 2rem;
+  text-align: center;
+  color: $abba-gray;
+}
+
+// =======================
+//  TABLAS (lista completa, thead sticky)
+// =======================
+.table-scroll {
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid $abba-blue-light;
+  border-radius: 12px;
+
+  &.table-scroll-sm {
+    max-height: 45vh;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: $abba-blue-light;
+    color: $abba-blue-dark;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+
+  tfoot td {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    border-top: 2px solid $abba-blue-light;
+  }
+
+  td {
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+
+  .name-cell {
+    white-space: normal;
+    min-width: 220px;
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+  }
+
+  .clickable {
+    cursor: pointer;
+  }
+
+  .row-selected td {
+    background: color.adjust($abba-blue-light, $lightness: -3%);
+  }
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  color: $abba-blue-dark;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  font-size: 0.85rem;
+  color: $abba-gray;
+}
+
+.chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &.chip-blue {
+    background: $abba-blue-light;
+    color: $abba-blue;
+  }
+
+  &.chip-red {
+    background: color.adjust($abba-red, $lightness: 45%);
+    color: $abba-red;
+  }
+}
+
+@media (max-width: 576px) {
+  .entry-view-header {
+    padding: 1.25rem 1rem;
+  }
+
+  .search-box {
+    min-width: 100%;
+  }
+}

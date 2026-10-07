@@ -476,3 +476,46 @@ export interface CleanDuplicateBarcodesResponse {
   totalBarcodesDuplicados?: number;
   totalMarcados?: number;
 }
+
+/**
+ * @description Body de POST /assembly/packingList/entryValidation (Validación Ingreso Bodega).
+ * El front lee el Excel "Listado de Series Por Producto" del ERP y envía solo los seriales.
+ */
+export interface WarehouseEntryValidationPayload {
+  month: string;
+  dateIni?: string;
+  dateEnd?: string;
+  serials: string[];
+}
+
+/** Unidad de LoadBarcode que NO aparece en el archivo del ERP. */
+export interface WarehouseEntryMissingUnit {
+  _id: string;
+  barcode: string;
+  productCode: string;
+  consecutiveProduct: string;
+  productName?: string;
+  reference?: string;
+  EAN?: string;
+  processDate: string;
+  date: string;
+  hour: string;
+  originalFile?: string;
+  packingList?: { summum?: { reconciled?: boolean; document?: string } };
+}
+
+export interface WarehouseEntryValidationResponse {
+  ok: boolean;
+  msg: string;
+  data?: {
+    month: string;
+    dateIni: string;
+    dateEnd: string;
+    fileSerials: number;
+    totalUnits: number;
+    foundInFile: number;
+    missingCount: number;
+    withoutSerial: number;
+    missing: WarehouseEntryMissingUnit[];
+  };
+}

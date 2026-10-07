@@ -21,7 +21,9 @@ import {
     SummumReconcileResponse,
     PackingListRevokePayload,
     LoadAssemblyResponse,
-    CleanDuplicateBarcodesResponse
+    CleanDuplicateBarcodesResponse,
+    WarehouseEntryValidationPayload,
+    WarehouseEntryValidationResponse
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -48,6 +50,7 @@ export class DashboardServices {
   private readonly PACKING_LIST_CROSS_VALIDATE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/crossValidate`;
   private readonly PACKING_LIST_SUMMUM_RECONCILE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/summumReconcile`;
   private readonly PACKING_LIST_REVOKE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/revoke`;
+  private readonly PACKING_LIST_ENTRY_VALIDATION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/entryValidation`;
   private readonly LOAD_ASSEMBLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/loadAssembly`;
   private readonly CLEAN_DUPLICATE_BARCODES_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/cleanDuplicateBarcodes`;
 
@@ -335,6 +338,16 @@ export class DashboardServices {
    */
   revokePackingListVerification(payload: PackingListRevokePayload): Observable<PackingListCheckResponse> {
     return this.http.post<PackingListCheckResponse>(this.PACKING_LIST_REVOKE_ENDPOINT, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * @description Validación Ingreso Bodega: devuelve las unidades de LoadBarcode del mes/rango
+   * que NO aparecen en el "Listado de Series Por Producto" del ERP. Solo lectura.
+   * @param {WarehouseEntryValidationPayload} payload - `{ month, dateIni?, dateEnd?, serials }`.
+   */
+  validateWarehouseEntry(payload: WarehouseEntryValidationPayload): Observable<WarehouseEntryValidationResponse> {
+    return this.http.post<WarehouseEntryValidationResponse>(this.PACKING_LIST_ENTRY_VALIDATION_ENDPOINT, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 

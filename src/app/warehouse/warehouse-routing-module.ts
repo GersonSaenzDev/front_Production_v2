@@ -46,6 +46,11 @@ const routes: Routes = [
     loadComponent: () => import('./packing-list/packing-list').then((c) => c.PackingList)
   },
   {
+    // Path completo: /inventories/entryValidation (seriales del mes que no están en el ERP)
+    path: 'entryValidation',
+    loadComponent: () => import('./entry-validation/entry-validation').then((c) => c.EntryValidation)
+  },
+  {
     // Path completo: /inventories/barcodeReader
     path: 'barcodeReader',
     loadComponent: () => import('./barcode-reader/barcode-reader').then((c) => c.BarcodeReader)

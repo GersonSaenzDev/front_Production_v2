@@ -243,6 +243,7 @@ export class MenuAccessService {
       urls: [
         '/production',
         '/inventories/packingList',
+        '/inventories/entryValidation',
         '/inventories/barcodeReader',
         '/inventories/dash',
         '/inventories/enterInventory',
