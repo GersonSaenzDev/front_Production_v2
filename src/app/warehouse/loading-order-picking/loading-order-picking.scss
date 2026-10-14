@@ -193,6 +193,12 @@ $abba-amber-light: #fffbeb;
     animation: shake 0.3s;
   }
 
+  &.queued {
+    background: $abba-amber-light;
+    border-color: $abba-amber;
+    color: #92400e;
+  }
+
   .feedback-title {
     font-weight: 800;
     font-size: 1.15rem;
@@ -202,6 +208,71 @@ $abba-amber-light: #fffbeb;
     font-family: 'Consolas', monospace;
     font-size: 0.8rem;
     opacity: 0.75;
+  }
+}
+
+// =======================
+//  SINCRONIZACIÓN (cola offline)
+// =======================
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+
+  i {
+    font-size: 1.2rem;
+  }
+
+  &.sending {
+    background: $abba-blue-light;
+    color: $abba-blue-dark;
+  }
+
+  &.offline {
+    background: $abba-amber-light;
+    border: 1px solid $abba-amber;
+    color: #92400e;
+  }
+}
+
+.sync-rejected {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  border: 2px solid $abba-red;
+  background: $abba-red-light;
+  color: #991b1b;
+
+  .sync-rejected-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .sync-rejected-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 220px;
+    overflow-y: auto;
+
+    li {
+      display: flex;
+      flex-direction: column;
+      padding: 0.35rem 0;
+      border-top: 1px solid rgba($abba-red, 0.2);
+    }
+  }
+
+  .sync-rejected-reason {
+    font-size: 0.8rem;
   }
 }
 

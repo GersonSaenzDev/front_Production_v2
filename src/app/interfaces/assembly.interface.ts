@@ -479,13 +479,13 @@ export interface CleanDuplicateBarcodesResponse {
 
 /**
  * @description Body de POST /assembly/packingList/entryValidation (Validación Ingreso Bodega).
- * El front lee el Excel "Listado de Series Por Producto" del ERP y envía solo los seriales.
+ * El front lee el Excel "Listado de Series Por Producto" del ERP (1 o N meses) y envía la llave
+ * producto(5)+serial con su mes de ingreso en el ERP: [['00005|260900426', '2026-09'], ...].
  */
 export interface WarehouseEntryValidationPayload {
-  month: string;
-  dateIni?: string;
-  dateEnd?: string;
-  serials: string[];
+  dateIni: string;
+  dateEnd: string;
+  items: [string, string][];
 }
 
 /** Unidad de LoadBarcode que NO aparece en el archivo del ERP. */
@@ -504,18 +504,52 @@ export interface WarehouseEntryMissingUnit {
   packingList?: { summum?: { reconciled?: boolean; document?: string } };
 }
 
+/** Unidad que sí está en el archivo, pero el ERP la ingresó en un mes distinto al del sistema. */
+export interface WarehouseEntryCrossMonthUnit extends WarehouseEntryMissingUnit {
+  key: string;
+  systemMonth: string;
+  fileMonth: string;
+}
+
+/** Llave del archivo sin unidad en el rango: fecha en que entró al sistema, o null si no existe. */
+export interface WarehouseEntryOutOfRangeKey {
+  key: string;
+  fileMonth: string;
+  systemDate: string | null;
+  systemHour: string | null;
+  productCode: string | null;
+  reference: string | null;
+  productName: string | null;
+}
+
+export interface WarehouseEntryMonthSummary {
+  month: string;
+  systemUnits: number;
+  foundInFile: number;
+  missingCount: number;
+  crossMonthCount: number;
+  references: number;
+}
+
 export interface WarehouseEntryValidationResponse {
   ok: boolean;
   msg: string;
   data?: {
-    month: string;
     dateIni: string;
     dateEnd: string;
-    fileSerials: number;
-    totalUnits: number;
-    foundInFile: number;
-    missingCount: number;
-    withoutSerial: number;
+    fileKeys: number;
+    totals: {
+      systemUnits: number;
+      foundInFile: number;
+      missingCount: number;
+      crossMonthCount: number;
+      references: number;
+      withoutSerial: number;
+    };
+    months: WarehouseEntryMonthSummary[];
     missing: WarehouseEntryMissingUnit[];
+    crossMonth: WarehouseEntryCrossMonthUnit[];
+    notInRange: WarehouseEntryOutOfRangeKey[];
+    lookupSkipped: boolean;
   };
 }

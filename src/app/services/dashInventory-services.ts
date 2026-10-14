@@ -50,6 +50,7 @@ import {
   PickingOperator,
   LoadingOrderAssignee,
   SavePickingOperatorRequest,
+  DeletePickingOperatorsResult,
   ScanSerialRequest,
   ScanSerialResponse,
   VoidReadRequest
@@ -166,7 +167,11 @@ export class DashInventoryServices {
     return this.http.post<TeamItemsResponse>(this.GLOBALCOUNT_TEAMITEMS, body).pipe(catchError(this.handleError.bind(this)));
   }
 
-  getNotCompliant(dateIni: string, dateEnd: string, payload: { teamKey: string; page?: number; limit?: number }): Observable<NotCompliantResponse> {
+  getNotCompliant(
+    dateIni: string,
+    dateEnd: string,
+    payload: { teamKey: string; page?: number; limit?: number }
+  ): Observable<NotCompliantResponse> {
     const body = { dateIni, dateEnd, ...payload };
     return this.http.post<NotCompliantResponse>(this.GLOBALCOUNT_NOTCOMPLIANT, body).pipe(catchError(this.handleError.bind(this)));
   }
@@ -293,12 +298,16 @@ export class DashInventoryServices {
   /** (Administrativo) Auditoría de archivos/OC rechazados en el cargue. */
   listLoadingOrderRejections(loadingOrder?: string): Observable<LoadingOrderApiResponse<LoadingOrderRejection[]>> {
     return this.http
-      .post<LoadingOrderApiResponse<LoadingOrderRejection[]>>(`${this.LOADING_ORDERS_ENDPOINT}/rejections`, loadingOrder ? { loadingOrder } : {})
+      .post<
+        LoadingOrderApiResponse<LoadingOrderRejection[]>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/rejections`, loadingOrder ? { loadingOrder } : {})
       .pipe(catchError(this.handleError.bind(this)));
   }
 
   /** (Administrativo) Define si la OC admite cierre parcial. */
-  setLoadingOrderPartialClose(payload: PartialCloseRequest): Observable<LoadingOrderApiResponse<{ _id: string; allowPartialClose: boolean }>> {
+  setLoadingOrderPartialClose(
+    payload: PartialCloseRequest
+  ): Observable<LoadingOrderApiResponse<{ _id: string; allowPartialClose: boolean }>> {
     return this.http
       .post<LoadingOrderApiResponse<{ _id: string; allowPartialClose: boolean }>>(`${this.LOADING_ORDERS_ENDPOINT}/partialClose`, payload)
       .pipe(catchError(this.handleError.bind(this)));
@@ -327,9 +336,13 @@ export class DashInventoryServices {
   }
 
   /** Pausa el prealistamiento (motivo obligatorio): la OC sale de la cola y conserva sus lecturas. */
-  pauseLoadingOrderPicking(payload: PausePickingRequest): Observable<LoadingOrderApiResponse<{ _id: string; loadingOrder: string; status: string }>> {
+  pauseLoadingOrderPicking(
+    payload: PausePickingRequest
+  ): Observable<LoadingOrderApiResponse<{ _id: string; loadingOrder: string; status: string }>> {
     return this.http
-      .post<LoadingOrderApiResponse<{ _id: string; loadingOrder: string; status: string }>>(`${this.LOADING_ORDERS_ENDPOINT}/pause`, payload)
+      .post<
+        LoadingOrderApiResponse<{ _id: string; loadingOrder: string; status: string }>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/pause`, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 
@@ -354,8 +367,28 @@ export class DashInventoryServices {
       .pipe(catchError(this.handleError.bind(this)));
   }
 
+  /** (Administrativo) Elimina un operario. El backend responde 409 si tiene OC abiertas asignadas. */
+  deletePickingOperator(userApp: string): Observable<LoadingOrderApiResponse<DeletePickingOperatorsResult>> {
+    return this.http
+      .delete<
+        LoadingOrderApiResponse<DeletePickingOperatorsResult>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/operators/${encodeURIComponent(userApp)}`)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Elimina TODOS los operarios (todo o nada: 409 si alguno tiene OC abiertas). */
+  deleteAllPickingOperators(): Observable<LoadingOrderApiResponse<DeletePickingOperatorsResult>> {
+    return this.http
+      .delete<
+        LoadingOrderApiResponse<DeletePickingOperatorsResult>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/operators`, { body: { confirm: 'ELIMINAR' } })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
   /** (Administrativo) Asigna la OC a operarios (reemplaza la asignación; [] = cola libre). */
-  assignLoadingOrder(payload: AssignLoadingOrderRequest): Observable<LoadingOrderApiResponse<{ _id: string; assignedTo: LoadingOrderAssignee[] }>> {
+  assignLoadingOrder(
+    payload: AssignLoadingOrderRequest
+  ): Observable<LoadingOrderApiResponse<{ _id: string; assignedTo: LoadingOrderAssignee[] }>> {
     return this.http
       .post<LoadingOrderApiResponse<{ _id: string; assignedTo: LoadingOrderAssignee[] }>>(`${this.LOADING_ORDERS_ENDPOINT}/assign`, payload)
       .pipe(catchError(this.handleError.bind(this)));
@@ -366,9 +399,13 @@ export class DashInventoryServices {
   // ============================================================
 
   /** (Administrativo) Placa del vehículo y conductor de la OC. */
-  setLoadingOrderDispatchInfo(payload: DispatchInfoRequest): Observable<LoadingOrderApiResponse<{ _id: string; dispatch: LoadingOrderDispatch }>> {
+  setLoadingOrderDispatchInfo(
+    payload: DispatchInfoRequest
+  ): Observable<LoadingOrderApiResponse<{ _id: string; dispatch: LoadingOrderDispatch }>> {
     return this.http
-      .post<LoadingOrderApiResponse<{ _id: string; dispatch: LoadingOrderDispatch }>>(`${this.LOADING_ORDERS_ENDPOINT}/dispatchInfo`, payload)
+      .post<
+        LoadingOrderApiResponse<{ _id: string; dispatch: LoadingOrderDispatch }>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/dispatchInfo`, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 
@@ -382,14 +419,21 @@ export class DashInventoryServices {
   /** (Administrativo) Contenido del archivo .sal vigente de la OC (para descargarlo). */
   getSummumExportFile(loadingOrderId: string): Observable<LoadingOrderApiResponse<{ fileName: string; content: string; version: number }>> {
     return this.http
-      .post<LoadingOrderApiResponse<{ fileName: string; content: string; version: number }>>(`${this.LOADING_ORDERS_ENDPOINT}/summumExport/file`, { loadingOrderId })
+      .post<
+        LoadingOrderApiResponse<{ fileName: string; content: string; version: number }>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/summumExport/file`, { loadingOrderId })
       .pipe(catchError(this.handleError.bind(this)));
   }
 
   /** (Administrativo) Retira una unidad prealistada; la OC vuelve a prealistamiento para reponerla. */
-  removePickedUnit(readId: string, observation: string): Observable<LoadingOrderApiResponse<{ loadingOrderId: string; serial: string; wasLoaded: boolean }>> {
+  removePickedUnit(
+    readId: string,
+    observation: string
+  ): Observable<LoadingOrderApiResponse<{ loadingOrderId: string; serial: string; wasLoaded: boolean }>> {
     return this.http
-      .post<LoadingOrderApiResponse<{ loadingOrderId: string; serial: string; wasLoaded: boolean }>>(`${this.LOADING_ORDERS_ENDPOINT}/removeUnit`, { readId, observation })
+      .post<
+        LoadingOrderApiResponse<{ loadingOrderId: string; serial: string; wasLoaded: boolean }>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/removeUnit`, { readId, observation })
       .pipe(catchError(this.handleError.bind(this)));
   }
 
@@ -423,7 +467,9 @@ export class DashInventoryServices {
   /** Despacha la OC: cargue 100% igual a lo prealistado + placa digitada igual a la asignada. */
   completeDockLoading(loadingOrderId: string, vehiclePlate: string): Observable<LoadingOrderApiResponse<{ _id: string; status: string }>> {
     return this.http
-      .post<LoadingOrderApiResponse<{ _id: string; status: string }>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/complete`, { loadingOrderId, vehiclePlate })
+      .post<
+        LoadingOrderApiResponse<{ _id: string; status: string }>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/dock/complete`, { loadingOrderId, vehiclePlate })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

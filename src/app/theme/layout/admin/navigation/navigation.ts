@@ -733,6 +733,20 @@ export const NavigationItems: NavigationItem[] = [
                 type: 'item',
                 url: 'inventories/checkNews',
                 breadcrumbs: false
+              },
+              {
+                id: 'novedades-bodega-item',
+                title: 'Novedades Bodega',
+                type: 'item',
+                url: 'inventories/warehouseNews',
+                breadcrumbs: false
+              },
+              {
+                id: 'visualizar-novedades-bodega-item',
+                title: 'Visualizar Novedades Bodega',
+                type: 'item',
+                url: 'inventories/warehouseViewNews',
+                breadcrumbs: false
               }
             ]
           },

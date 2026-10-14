@@ -107,6 +107,12 @@ export class LoadingOrders implements OnInit {
   readonly activeOperators = computed(() => this.operators().filter((o) => o.active));
   newOperatorUserApp = '';
   newOperatorName = '';
+  /** Operario a eliminar, o 'ALL' para eliminar todos (renovar el personal). */
+  readonly deleteOperatorTarget = signal<PickingOperator | 'ALL' | null>(null);
+  readonly deletingOperators = signal(false);
+  /** Operarios que bloquean la eliminación de todos (el backend lo valida de nuevo). */
+  readonly operatorsWithOpenOrders = computed(() => this.operators().filter((o) => o.openOrders > 0));
+  deleteAllConfirmText = '';
   readonly assignTarget = signal<LoadingOrderSummary | null>(null);
   readonly assignSelection = signal<string[]>([]);
   readonly savingAssign = signal(false);
@@ -368,6 +374,44 @@ export class LoadingOrders implements OnInit {
       });
   }
 
+  openDeleteOperator(op: PickingOperator): void {
+    this.deleteOperatorTarget.set(op);
+  }
+
+  openDeleteAllOperators(): void {
+    if (!this.operators().length) return;
+    this.deleteAllConfirmText = '';
+    this.deleteOperatorTarget.set('ALL');
+  }
+
+  cancelDeleteOperators(): void {
+    this.deleteOperatorTarget.set(null);
+  }
+
+  /** Bloqueado si hay OC abiertas asignadas: primero se reasignan (el backend responde 409). */
+  confirmDeleteOperators(): void {
+    const target = this.deleteOperatorTarget();
+    if (!target) return;
+    const deleteAll = target === 'ALL';
+    if (deleteAll && this.deleteAllConfirmText.trim().toUpperCase() !== 'ELIMINAR') return;
+
+    this.deletingOperators.set(true);
+    const request$ = deleteAll
+      ? this.inventoryService.deleteAllPickingOperators()
+      : this.inventoryService.deletePickingOperator(target.userApp);
+    request$.pipe(finalize(() => this.deletingOperators.set(false))).subscribe({
+      next: (res) => {
+        this.toastr.success(res.msg, 'Operarios');
+        this.deleteOperatorTarget.set(null);
+        this.loadOperators();
+      },
+      error: (err: Error) => {
+        this.toastr.error(err.message, 'Operarios', { timeOut: 10000 });
+        this.loadOperators();
+      }
+    });
+  }
+
   // ============================================================
   //  ASIGNACIÓN DE OC
   // ============================================================
@@ -453,7 +497,9 @@ export class LoadingOrders implements OnInit {
       .subscribe({
         next: (res) => {
           this.toastr.success(res.msg, 'Vehículo y conductor');
-          this.orders.update((list) => list.map((o) => (o._id === target._id ? { ...o, dispatch: { ...o.dispatch, ...res.data.dispatch } } : o)));
+          this.orders.update((list) =>
+            list.map((o) => (o._id === target._id ? { ...o, dispatch: { ...o.dispatch, ...res.data.dispatch } } : o))
+          );
           this.dispatchTarget.set(null);
         },
         error: (err: Error) => this.toastr.error(err.message, 'Vehículo y conductor')
@@ -657,7 +703,10 @@ export class LoadingOrders implements OnInit {
           this.loadOrders();
         },
         error: (err: HttpErrorResponse) => {
-          this.toastr.error((err.error as { msg?: string } | null)?.msg || 'No se pudo cerrar el prealistamiento.', 'Cerrar prealistamiento');
+          this.toastr.error(
+            (err.error as { msg?: string } | null)?.msg || 'No se pudo cerrar el prealistamiento.',
+            'Cerrar prealistamiento'
+          );
           this.reloadDetail(d._id);
         }
       });

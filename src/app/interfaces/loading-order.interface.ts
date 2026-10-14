@@ -388,6 +388,12 @@ export interface SavePickingOperatorRequest {
   active: boolean;
 }
 
+/** Respuesta de DELETE /loadingOrders/operators[/:userApp]. */
+export interface DeletePickingOperatorsResult {
+  deleted: string[];
+  deletedCount: number;
+}
+
 export interface AssignLoadingOrderRequest {
   loadingOrderId: string;
   /** userApp de los operarios; [] = cola libre */

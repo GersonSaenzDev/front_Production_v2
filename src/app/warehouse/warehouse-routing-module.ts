@@ -21,6 +21,16 @@ const routes: Routes = [
     loadComponent: () => import('./check-news/check-news').then((c) => c.CheckNews)
   },
   {
+    // Path completo: /inventories/warehouseNews (formulario global de novedades, área Bodega)
+    path: 'warehouseNews',
+    loadComponent: () => import('./warehouse-news/warehouse-news').then((c) => c.WarehouseNews)
+  },
+  {
+    // Path completo: /inventories/warehouseViewNews (visor global de novedades, área Bodega)
+    path: 'warehouseViewNews',
+    loadComponent: () => import('./warehouse-view-news/warehouse-view-news').then((c) => c.WarehouseViewNews)
+  },
+  {
     // Path completo: /production/productionNews
     path: 'configInventories',
     loadComponent: () => import('./configure-inventories/configure-inventories').then((c) => c.ConfigureInventories)

@@ -8,39 +8,18 @@
       </div>
       <div class="header-text">
         <h3 class="header-title mb-1">Validación Ingreso Bodega</h3>
-        <p class="header-subtitle mb-0">Seriales escaneados en el mes que aún no aparecen en el Listado de Series del ERP</p>
+        <p class="header-subtitle mb-0">Listado de Series del ERP (1 o varios meses) frente a lo escaneado en el sistema</p>
       </div>
 
       <div class="header-actions">
-        <div class="filter-group" *ngIf="monthOptions.length > 1">
-          <label for="entryMonth" class="filter-label">Mes</label>
-          <select id="entryMonth" class="form-select filter-input" [(ngModel)]="selectedMonth" (ngModelChange)="onMonthChange()">
-            <option *ngFor="let option of monthOptions" [value]="option.month">{{ option.month }} ({{ option.rows | number }})</option>
-          </select>
-        </div>
-
-        <div class="filter-group" *ngIf="selectedMonth">
+        <div class="filter-group" *ngIf="entries.length">
           <label for="entryDateIni" class="filter-label">Desde</label>
-          <input
-            type="date"
-            id="entryDateIni"
-            class="form-control filter-input"
-            [min]="monthStart"
-            [max]="monthEnd"
-            [(ngModel)]="dateIni"
-          />
+          <input type="date" id="entryDateIni" class="form-control filter-input" [max]="dateEnd" [(ngModel)]="dateIni" />
         </div>
 
-        <div class="filter-group" *ngIf="selectedMonth">
+        <div class="filter-group" *ngIf="entries.length">
           <label for="entryDateEnd" class="filter-label">Hasta</label>
-          <input
-            type="date"
-            id="entryDateEnd"
-            class="form-control filter-input"
-            [min]="monthStart"
-            [max]="monthEnd"
-            [(ngModel)]="dateEnd"
-          />
+          <input type="date" id="entryDateEnd" class="form-control filter-input" [min]="dateIni" [(ngModel)]="dateEnd" />
         </div>
 
         <label
@@ -59,7 +38,7 @@
           />
         </label>
 
-        <button type="button" class="btn-header" *ngIf="fileRows.length" (click)="validate()" [disabled]="isValidating">
+        <button type="button" class="btn-header" *ngIf="entries.length" (click)="validate()" [disabled]="isValidating">
           <i class="ti" [ngClass]="isValidating ? 'ti-loader-2 spin' : 'ti-refresh'"></i>
           <span>Validar</span>
         </button>
@@ -69,13 +48,14 @@
     <div class="file-info" *ngIf="fileName">
       <i class="ti ti-file-spreadsheet"></i>
       <span><strong>{{ fileName }}</strong></span>
-      <span *ngIf="selectedMonthInfo">· {{ selectedMonth }} · corte del archivo: {{ selectedMonthInfo.maxDate }}</span>
+      <span>· {{ fileRowsCount | number }} filas · {{ entries.length | number }} unidades (producto + serial)</span>
+      <span>· {{ fileMonths[0] }}{{ fileMonths.length > 1 ? ' a ' + fileMonths[fileMonths.length - 1] : '' }}</span>
+      <span>· corte del archivo: {{ fileMaxDate }}</span>
       <button
         type="button"
         class="btn-link-light"
-        *ngIf="selectedMonthInfo"
         (click)="resetRangeToFile(); validate()"
-        title="Volver al rango por defecto (día 1 al corte del archivo)"
+        title="Volver al rango por defecto (día 1 del primer mes al corte del archivo)"
       >
         Restablecer rango
       </button>
@@ -83,42 +63,135 @@
   </div>
 
   <!-- ESTADO INICIAL -->
-  <div class="card view-card border-0 mt-4" *ngIf="!fileRows.length">
+  <div class="card view-card border-0 mt-4" *ngIf="!entries.length">
     <div class="card-body empty-state">
       <i class="ti ti-file-upload"></i>
       <h5>Carga el Listado de Series Por Producto</h5>
       <p class="mb-0">
-        Se toma el mes de la columna
+        Puede traer uno o varios meses. Se cruza por
+        <strong>Producto + No. Serial</strong>
+        contra lo escaneado, se compara el mes de ingreso (columna
         <strong>Fecha</strong>
-        y se cruzan sus
-        <strong>No. Serial</strong>
-        contra lo escaneado en el picking. El archivo puede ser acumulado: se carga completo cada día.
+        ) con el mes del serial (AAMM#####) y con el mes en que entró al sistema.
       </p>
     </div>
   </div>
 
-  <ng-container *ngIf="fileRows.length">
-    <!-- KPI -->
-    <div class="summary-counters">
+  <ng-container *ngIf="entries.length">
+    <!-- KPI (mes seleccionado o total) -->
+    <div class="summary-counters" *ngIf="monthIndicator as kpi">
       <div class="summary-card row-default">
-        <span class="summary-time">{{ (result?.fileSerials ?? 0) | number }}</span>
-        <span class="summary-category">Seriales en archivo</span>
-        <span class="summary-count">Únicos en el listado del ERP</span>
+        <span class="summary-time">{{ kpi.fileUnits | number }}</span>
+        <span class="summary-category">Archivo ERP</span>
+        <span class="summary-count">Unidades ingresadas {{ selectedMonth || 'en el archivo' }}</span>
       </div>
       <div class="summary-card row-default">
-        <span class="summary-time">{{ (result?.totalUnits ?? 0) | number }}</span>
-        <span class="summary-category">Escaneados</span>
-        <span class="summary-count">{{ result ? result.dateIni + ' a ' + result.dateEnd : 'En el rango' }}</span>
+        <span class="summary-time">{{ kpi.systemUnits | number }}</span>
+        <span class="summary-category">Sistema</span>
+        <span class="summary-count">Escaneadas {{ selectedMonth || 'en el rango' }}</span>
       </div>
-      <div class="summary-card row-checked">
-        <span class="summary-time">{{ (result?.foundInFile ?? 0) | number }}</span>
-        <span class="summary-category">En el ERP</span>
-        <span class="summary-count">Escaneados presentes en el archivo</span>
+      <div class="summary-card" [ngClass]="kpi.difference === 0 ? 'row-checked' : 'row-warning'">
+        <span class="summary-time">{{ kpi.difference > 0 ? '+' : '' }}{{ kpi.difference | number }}</span>
+        <span class="summary-category">Diferencia</span>
+        <span class="summary-count">Archivo − Sistema</span>
       </div>
       <div class="summary-card row-missing">
-        <span class="summary-time">{{ (result?.missingCount ?? 0) | number }}</span>
+        <span class="summary-time">{{ kpi.missingCount | number }}</span>
         <span class="summary-category">No ingresados</span>
-        <span class="summary-count">Escaneados que NO están en el archivo</span>
+        <span class="summary-count">En el sistema, no en el archivo</span>
+      </div>
+      <div class="summary-card row-missing">
+        <span class="summary-time">{{ kpi.errorCount | number }}</span>
+        <span class="summary-category">Seriales con error</span>
+        <span class="summary-count">Mes/año inexistente o posterior</span>
+      </div>
+      <div class="summary-card row-warning">
+        <span class="summary-time">{{ kpi.lagCount | number }}</span>
+        <span class="summary-category">Desfase de mes</span>
+        <span class="summary-count">Serial o sistema en otro mes</span>
+      </div>
+      <div class="summary-card row-default">
+        <span class="summary-time">{{ kpi.fileReferences | number }} / {{ kpi.systemReferences | number }}</span>
+        <span class="summary-category">Referencias únicas</span>
+        <span class="summary-count">Archivo / Sistema</span>
+      </div>
+    </div>
+
+    <!-- INDICADORES POR MES -->
+    <div class="card view-card border-0 mt-4" *ngIf="monthIndicators.length && !isValidating">
+      <div class="card-body p-4">
+        <div class="section-head">
+          <div>
+            <h5 class="section-title mb-1">Archivo vs Sistema por mes</h5>
+            <p class="section-subtitle mb-0">
+              Archivo = mes de ingreso en el ERP (columna Fecha). Sistema = mes en que se escaneó. Clic en un mes para filtrar todo.
+            </p>
+          </div>
+          <button type="button" class="chip chip-blue border-0" *ngIf="selectedMonth" (click)="selectMonth(selectedMonth)">
+            {{ selectedMonth }}
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+
+        <div class="table-scroll table-scroll-sm">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th class="text-end">Archivo ERP</th>
+                <th class="text-end">Sistema</th>
+                <th class="text-end">Diferencia</th>
+                <th class="text-end">En ERP</th>
+                <th class="text-end">No ingresados</th>
+                <th class="text-end">Ingreso otro mes</th>
+                <th class="text-end">Desfase serial</th>
+                <th class="text-end">Errores serial</th>
+                <th class="text-end">No existen</th>
+                <th class="text-end">Refs archivo / sistema</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let m of monthIndicators; trackBy: trackByKey"
+                class="clickable"
+                [class.row-selected]="selectedMonth === m.month"
+                (click)="selectMonth(m.month)"
+              >
+                <td class="fw-semibold">{{ m.month }}</td>
+                <td class="text-end">{{ m.fileUnits | number }}</td>
+                <td class="text-end">{{ m.systemUnits | number }}</td>
+                <td
+                  class="text-end fw-bold"
+                  [ngClass]="m.difference === 0 ? 'text-success' : m.difference > 0 ? 'text-warning' : 'text-danger'"
+                >
+                  {{ m.difference > 0 ? '+' : '' }}{{ m.difference | number }}
+                </td>
+                <td class="text-end">{{ m.foundInFile | number }}</td>
+                <td class="text-end" [class.cell-alert]="m.missingCount">{{ m.missingCount | number }}</td>
+                <td class="text-end" [class.cell-warning]="m.crossMonthCount">{{ m.crossMonthCount | number }}</td>
+                <td class="text-end" [class.cell-warning]="m.lagCount">{{ m.lagCount | number }}</td>
+                <td class="text-end" [class.cell-alert]="m.errorCount">{{ m.errorCount | number }}</td>
+                <td class="text-end" [class.cell-alert]="m.notInSystemCount">{{ m.notInSystemCount | number }}</td>
+                <td class="text-end">{{ m.fileReferences | number }} / {{ m.systemReferences | number }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr *ngIf="totalIndicator as t">
+                <td class="fw-bold">Total</td>
+                <td class="text-end fw-bold">{{ t.fileUnits | number }}</td>
+                <td class="text-end fw-bold">{{ t.systemUnits | number }}</td>
+                <td class="text-end fw-bold">{{ t.difference > 0 ? '+' : '' }}{{ t.difference | number }}</td>
+                <td class="text-end fw-bold">{{ t.foundInFile | number }}</td>
+                <td class="text-end fw-bold">{{ t.missingCount | number }}</td>
+                <td class="text-end fw-bold">{{ t.crossMonthCount | number }}</td>
+                <td class="text-end fw-bold">{{ t.lagCount | number }}</td>
+                <td class="text-end fw-bold">{{ t.errorCount | number }}</td>
+                <td class="text-end fw-bold">{{ t.notInSystemCount | number }}</td>
+                <td class="text-end fw-bold">{{ t.fileReferences | number }} / {{ t.systemReferences | number }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -127,13 +200,25 @@
         <!-- TOOLBAR -->
         <div class="toolbar">
           <div class="tab-switch">
-            <button type="button" [class.active]="activeTab === 'missing'" (click)="activeTab = 'missing'">
+            <button type="button" [class.active]="activeTab === 'missing'" (click)="setTab('missing')">
               No ingresados
-              <span class="badge-count">{{ filteredMissing.length | number }}</span>
+              <span class="badge-count">{{ missingBySearch.length | number }}</span>
             </button>
-            <button type="button" [class.active]="activeTab === 'file'" (click)="activeTab = 'file'">
+            <button type="button" [class.active]="activeTab === 'errors'" (click)="setTab('errors')">
+              Seriales con error
+              <span class="badge-count badge-red">{{ errorsBySearch.length | number }}</span>
+            </button>
+            <button type="button" [class.active]="activeTab === 'lag'" (click)="setTab('lag')">
+              Desfase de mes
+              <span class="badge-count badge-amber">{{ lagBySearch.length | number }}</span>
+            </button>
+            <button type="button" [class.active]="activeTab === 'notInSystem'" (click)="setTab('notInSystem')">
+              No existen en sistema
+              <span class="badge-count badge-red">{{ notInSystemBySearch.length | number }}</span>
+            </button>
+            <button type="button" [class.active]="activeTab === 'file'" (click)="setTab('file')">
               Archivo ERP
-              <span class="badge-count">{{ filteredFileRows.length | number }}</span>
+              <span class="badge-count">{{ entriesBySearch.length | number }}</span>
             </button>
           </div>
 
@@ -142,31 +227,44 @@
             <input
               type="text"
               class="form-control"
-              placeholder="Buscar: serial, código, referencia, nombre, EAN, fecha, hora, documento, tercero..."
+              placeholder="Buscar: serial, código, referencia, nombre, fecha, estado, documento, tercero..."
               [(ngModel)]="searchTerm"
-              (ngModelChange)="applyFilters()"
+              (ngModelChange)="onSearchChange()"
             />
             <button type="button" class="btn-clear" *ngIf="searchTerm || referenceFilter" (click)="clearSearch()" title="Limpiar">
               <i class="ti ti-x"></i>
             </button>
           </div>
 
-          <div class="toolbar-actions" *ngIf="activeTab === 'missing'">
-            <button type="button" class="btn-action btn-green" (click)="downloadSerials()" [disabled]="!downloadableSerials.length">
+          <div class="toolbar-actions">
+            <button
+              type="button"
+              class="btn-action btn-green"
+              *ngIf="activeTab === 'missing'"
+              (click)="downloadSerials()"
+              [disabled]="!downloadableSerials.length"
+            >
               <i class="ti ti-file-text"></i>
               <span>Plano seriales ({{ downloadableSerials.length | number }})</span>
             </button>
-            <button type="button" class="btn-action btn-outline" (click)="downloadDetail()" [disabled]="!filteredMissing.length">
+            <button type="button" class="btn-action btn-outline" (click)="downloadAnalysis()" [disabled]="!result">
               <i class="ti ti-file-spreadsheet"></i>
-              <span>Detalle Excel</span>
+              <span>Exportar análisis</span>
             </button>
           </div>
         </div>
 
-        <div class="active-filter" *ngIf="referenceFilter && activeTab === 'missing'">
-          Filtrando por referencia
-          <strong>{{ referenceFilter }}</strong>
-          <button type="button" (click)="toggleReferenceFilter(referenceFilter)"><i class="ti ti-x"></i></button>
+        <div class="d-flex flex-wrap gap-2">
+          <div class="active-filter" *ngIf="selectedMonth">
+            Mes
+            <strong>{{ selectedMonth }}</strong>
+            <button type="button" (click)="selectMonth(selectedMonth)"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="active-filter" *ngIf="referenceFilter">
+            Referencia
+            <strong>{{ referenceFilter }}</strong>
+            <button type="button" (click)="toggleReferenceFilter(referenceFilter)"><i class="ti ti-x"></i></button>
+          </div>
         </div>
 
         <div class="loading-state" *ngIf="isValidating">
@@ -174,11 +272,12 @@
           Validando contra lo escaneado...
         </div>
 
-        <!-- TABLA: NO INGRESADOS -->
+        <!-- TABLA: NO INGRESADOS (sistema, no en el archivo) -->
         <ng-container *ngIf="!isValidating && activeTab === 'missing'">
-          <div class="alert alert-success mb-0" *ngIf="result && !result.missingCount">
+          <div class="alert alert-success mb-0" *ngIf="result && !missingBySearch.length && !searchTerm">
             <i class="ti ti-circle-check"></i>
-            Todo lo escaneado entre {{ result.dateIni }} y {{ result.dateEnd }} está en el archivo del ERP.
+            Todo lo escaneado entre {{ result.dateIni }} y {{ result.dateEnd }}{{ selectedMonth ? ' (' + selectedMonth + ')' : '' }} está en
+            el archivo del ERP.
           </div>
 
           <div class="table-scroll" *ngIf="filteredMissing.length">
@@ -190,7 +289,7 @@
                   <th>Código</th>
                   <th>Referencia</th>
                   <th>Producto</th>
-                  <th>Fecha</th>
+                  <th>Fecha sistema</th>
                   <th>Hora</th>
                   <th>Barcode</th>
                   <th>Vale Summum</th>
@@ -214,59 +313,108 @@
             </table>
           </div>
 
-          <p class="text-muted mt-3 mb-0" *ngIf="result?.missingCount && !filteredMissing.length">
-            Ningún registro coincide con la búsqueda.
-          </p>
+          <p class="text-muted mt-3 mb-0" *ngIf="missingBySearch.length === 0 && searchTerm">Ningún registro coincide con la búsqueda.</p>
         </ng-container>
 
-        <!-- TABLA: ARCHIVO ERP -->
-        <ng-container *ngIf="!isValidating && activeTab === 'file'">
-          <div class="table-scroll" *ngIf="filteredFileRows.length; else noFileRows">
+        <!-- TABLAS DEL ARCHIVO: errores, desfase, no existen, archivo completo -->
+        <ng-container *ngIf="!isValidating && activeTab !== 'missing'">
+          <div class="alert alert-success mb-0" *ngIf="!filteredEntries.length && !searchTerm && activeTab !== 'file'">
+            <i class="ti ti-circle-check"></i>
+            {{ activeTab === 'errors' ? 'Ningún serial con mes o año inválido.' : activeTab === 'lag' ? 'Todos los seriales corresponden al
+            mes de ingreso.' : 'Todas las unidades del archivo existen en el sistema.' }}
+          </div>
+
+          <p class="text-muted small mb-2" *ngIf="activeTab === 'file' && filteredEntries.length > fileRenderLimit">
+            Mostrando {{ fileRenderLimit | number }} de {{ filteredEntries.length | number }} unidades. Usa la búsqueda o el mes para
+            acotar; "Exportar análisis" trae el detalle de las incidencias.
+          </p>
+
+          <div class="table-scroll" *ngIf="filteredEntries.length">
             <table class="table table-hover align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Fecha</th>
+                  <th>#</th>
+                  <th>Serial</th>
+                  <th>Estado</th>
+                  <th>Año</th>
+                  <th>Mes serial</th>
+                  <th>Ingreso ERP</th>
+                  <th>Fecha sistema</th>
                   <th>Producto</th>
                   <th>Producto Alt</th>
                   <th>Nombre</th>
-                  <th>No. Serial</th>
-                  <th>Tercero</th>
-                  <th>Comprobante</th>
                   <th>Documento</th>
-                  <th>Hora Nov</th>
+                  <th>Tercero</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of filteredFileRows">
-                  <td>{{ row.date }}</td>
-                  <td class="mono">{{ row.productCode }}</td>
-                  <td>{{ row.productAlt }}</td>
-                  <td class="name-cell">{{ row.productName }}</td>
-                  <td class="mono fw-semibold">{{ row.serial }}</td>
-                  <td class="name-cell">{{ row.thirdParty || (row.nit !== '0' ? row.nit : '') }}</td>
-                  <td>{{ row.voucher }}</td>
-                  <td>{{ row.document }}</td>
-                  <td>{{ row.noveltyHour }}</td>
+                <tr
+                  *ngFor="let entry of visibleEntries; let i = index; trackBy: trackByEntry"
+                  [class.row-error]="entry.isError"
+                  [class.row-lag]="!entry.isError && isLag(entry)"
+                >
+                  <td class="text-muted">{{ i + 1 }}</td>
+                  <td class="mono fw-semibold">
+                    <span [class.serial-bad]="entry.serialStatus === 'invalidYear' || entry.serialStatus === 'invalidFormat'">
+                      {{ entry.serial.slice(0, 2) }}
+                    </span>
+                    <span [class.serial-bad]="entry.serialStatus === 'invalidMonth' || entry.serialStatus === 'future'">
+                      {{ entry.serial.slice(2, 4) }}
+                    </span>
+                    <span>{{ entry.serial.slice(4) }}</span>
+                  </td>
+                  <td>
+                    <span
+                      class="chip"
+                      [ngClass]="entry.isError ? 'chip-red' : isLag(entry) ? 'chip-amber' : 'chip-green'"
+                      [title]="entry.serialIssue"
+                    >
+                      {{ statusLabels[entry.serialStatus] }}
+                    </span>
+                    <div class="small text-muted" *ngIf="entry.serialIssue">{{ entry.serialIssue }}</div>
+                  </td>
+                  <td>{{ entry.serialYear || '—' }}</td>
+                  <td>{{ entry.serialMonth || '—' }}</td>
+                  <td>{{ entry.entryDate }}</td>
+                  <td>
+                    <span class="chip chip-red" *ngIf="entry.systemDate === null">No existe</span>
+                    <span *ngIf="entry.systemDate">{{ entry.systemDate }}</span>
+                    <span *ngIf="entry.systemDate === '' && entry.systemMonth">{{ entry.systemMonth }}</span>
+                    <span
+                      class="chip chip-amber ms-1"
+                      *ngIf="entry.systemMonth && entry.systemMonth !== entry.entryMonth"
+                      title="El sistema lo tiene en otro mes"
+                    >
+                      otro mes
+                    </span>
+                  </td>
+                  <td class="mono">{{ entry.productCode }}</td>
+                  <td>{{ entry.productAlt }}</td>
+                  <td class="name-cell">{{ entry.productName }}</td>
+                  <td>{{ entry.document }}</td>
+                  <td class="name-cell">{{ entry.thirdParty }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <ng-template #noFileRows>
-            <p class="text-muted mt-3 mb-0">Ningún registro del archivo coincide con la búsqueda.</p>
-          </ng-template>
+
+          <p class="text-muted mt-3 mb-0" *ngIf="!filteredEntries.length && searchTerm">Ningún registro coincide con la búsqueda.</p>
         </ng-container>
       </div>
     </div>
 
-    <!-- CONSOLIDADO POR REFERENCIA (datos de nuestra colección) -->
+    <!-- CONSOLIDADO POR REFERENCIA (de la pestaña activa) -->
     <div class="card view-card border-0 mt-4" *ngIf="!isValidating && referenceSummaries.length">
       <div class="card-body p-4">
         <div class="section-head">
           <div>
-            <h5 class="section-title mb-1">No ingresados por referencia</h5>
-            <p class="section-subtitle mb-0">Cantidad por referencia según lo escaneado. Clic en una fila para filtrar el detalle.</p>
+            <h5 class="section-title mb-1">
+              {{ activeTab === 'missing' ? 'No ingresados' : activeTab === 'errors' ? 'Seriales con error' : activeTab === 'lag' ? 'Desfase
+              de mes' : activeTab === 'notInSystem' ? 'No existen en sistema' : 'Archivo ERP' }} por referencia
+            </h5>
+            <p class="section-subtitle mb-0">Referencias únicas y cantidad. Clic en una fila para filtrar el detalle.</p>
           </div>
-          <span class="chip chip-red">{{ referenceSummaries.length }} referencias</span>
+          <span class="chip chip-blue">{{ referenceSummaries.length | number }} referencias</span>
         </div>
 
         <div class="table-scroll table-scroll-sm">
@@ -295,7 +443,7 @@
             <tfoot>
               <tr>
                 <td colspan="3" class="fw-bold">Total</td>
-                <td class="text-end fw-bold">{{ filteredMissing.length | number }}</td>
+                <td class="text-end fw-bold">{{ (activeTab === 'missing' ? filteredMissing.length : filteredEntries.length) | number }}</td>
               </tr>
             </tfoot>
           </table>

@@ -9,6 +9,7 @@ $abba-blue-light: #e8f0fb;
 $abba-gray: #575756;
 $abba-green: #10b981;
 $abba-red: #dc2626;
+$abba-amber: #d97706;
 
 .entry-view-container {
   font-family: 'Inter', system-ui, sans-serif;
@@ -232,6 +233,13 @@ $abba-red: #dc2626;
       color: $abba-red;
     }
   }
+
+  &.row-warning {
+    border-left-color: $abba-amber;
+    .summary-time {
+      color: $abba-amber;
+    }
+  }
 }
 
 // =======================
@@ -249,6 +257,7 @@ $abba-red: #dc2626;
 
 .tab-switch {
   display: inline-flex;
+  flex-wrap: wrap;
   background: $abba-blue-light;
   border-radius: 10px;
   padding: 4px;
@@ -275,6 +284,14 @@ $abba-red: #dc2626;
     color: #fff;
     border-radius: 999px;
     padding: 0.1rem 0.5rem;
+
+    &.badge-red {
+      background: $abba-red;
+    }
+
+    &.badge-amber {
+      background: $abba-amber;
+    }
   }
 }
 
@@ -418,6 +435,41 @@ $abba-red: #dc2626;
   .row-selected td {
     background: color.adjust($abba-blue-light, $lightness: -3%);
   }
+
+  // Seriales con error: fila roja con borde, fácil de ubicar para el seguimiento.
+  .row-error td {
+    background: color.adjust($abba-red, $lightness: 46%);
+  }
+
+  .row-error td:first-child {
+    box-shadow: inset 4px 0 0 $abba-red;
+  }
+
+  .row-lag td {
+    background: color.adjust($abba-amber, $lightness: 50%);
+  }
+
+  .row-lag td:first-child {
+    box-shadow: inset 4px 0 0 $abba-amber;
+  }
+
+  // Parte del serial (año o mes) que genera el error.
+  .serial-bad {
+    color: #fff;
+    background: $abba-red;
+    border-radius: 4px;
+    padding: 0 0.2rem;
+  }
+
+  .cell-alert {
+    color: $abba-red;
+    font-weight: 700;
+  }
+
+  .cell-warning {
+    color: $abba-amber;
+    font-weight: 700;
+  }
 }
 
 .section-head {
@@ -453,6 +505,16 @@ $abba-red: #dc2626;
   &.chip-red {
     background: color.adjust($abba-red, $lightness: 45%);
     color: $abba-red;
+  }
+
+  &.chip-amber {
+    background: color.adjust($abba-amber, $lightness: 48%);
+    color: color.adjust($abba-amber, $lightness: -8%);
+  }
+
+  &.chip-green {
+    background: color.adjust($abba-green, $lightness: 50%);
+    color: color.adjust($abba-green, $lightness: -12%);
   }
 }
 
