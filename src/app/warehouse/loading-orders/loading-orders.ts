@@ -100,6 +100,12 @@ export class LoadingOrders implements OnInit {
   readonly savingPartial = signal(false);
   partialObservation = '';
 
+  // Anulación (OC de prueba o cargada por error)
+  readonly cancelTarget = signal<LoadingOrderSummary | null>(null);
+  readonly cancelling = signal(false);
+  cancelObservation = '';
+  cancelConfirmOrder = '';
+
   // Operarios y asignación
   readonly operators = signal<PickingOperator[]>([]);
   readonly loadingOperators = signal(false);
@@ -290,6 +296,45 @@ export class LoadingOrders implements OnInit {
 
   isEditable(order: LoadingOrderSummary): boolean {
     return order.status === 'PENDING' || order.status === 'IN_PICKING' || order.status === 'PAUSED';
+  }
+
+  // ============================================================
+  //  ANULACIÓN DE LA OC
+  // ============================================================
+  /** Solo antes de cerrar el prealistamiento (el backend lo valida de nuevo). */
+  openCancelOrder(order: LoadingOrderSummary): void {
+    if (!this.isEditable(order)) return;
+    this.cancelObservation = '';
+    this.cancelConfirmOrder = '';
+    this.cancelTarget.set(order);
+  }
+
+  closeCancelOrder(): void {
+    this.cancelTarget.set(null);
+  }
+
+  confirmCancelOrder(): void {
+    const target = this.cancelTarget();
+    const observation = this.cancelObservation.trim();
+    const confirmOrder = this.cancelConfirmOrder.trim();
+    if (!target || observation.length < 5 || confirmOrder !== target.loadingOrder) return;
+
+    this.cancelling.set(true);
+    this.inventoryService
+      .cancelLoadingOrder({ loadingOrderId: target._id, confirmOrder, observation })
+      .pipe(finalize(() => this.cancelling.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.toastr.success(res.msg, 'Anular OC');
+          this.cancelTarget.set(null);
+          this.loadOrders();
+          this.loadOperators();
+        },
+        error: (err: Error) => {
+          this.toastr.error(err.message, 'Anular OC', { timeOut: 10000 });
+          this.loadOrders();
+        }
+      });
   }
 
   // ============================================================

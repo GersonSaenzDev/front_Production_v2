@@ -298,10 +298,22 @@
                 />
               </div>
             </td>
-            <td class="text-end">
+            <td class="text-end text-nowrap">
               <button type="button" class="btn-icon" (click)="openDetail(o)" [disabled]="loadingDetail()" title="Ver detalle">
                 <i class="ti ti-eye"></i>
               </button>
+              @if (isEditable(o)) {
+              <button
+                type="button"
+                class="btn-icon text-danger"
+                (click)="openCancelOrder(o)"
+                [disabled]="cancelling()"
+                title="Anular OC (prueba o cargada por error)"
+                [attr.aria-label]="'Anular OC ' + o.loadingOrder"
+              >
+                <i class="ti ti-ban"></i>
+              </button>
+              }
             </td>
           </tr>
           } @empty {
@@ -841,6 +853,18 @@
     </strong>
     <div class="small">Motivo: {{ d.closure?.observation }}</div>
   </div>
+  } @if (d.status === 'CANCELLED' && d.cancellation; as c) {
+  <div class="closure-box">
+    <strong>
+      <i class="ti ti-ban"></i>
+      OC anulada el {{ c.cancelledAt }} por {{ c.cancelledBy.name || c.cancelledBy.userApp }}
+    </strong>
+    <div class="small">Motivo: {{ c.observation }}</div>
+    <div class="small">
+      Estaba {{ c.previousStatus ? statusLabels[c.previousStatus].toLowerCase() : '—' }}{{ c.releasedUnits ? ' · ' + c.releasedUnits + '
+      unidades leídas liberadas en bodega' : '' }}.
+    </div>
+  </div>
   } @if (d.dispatch?.vehiclePlate) {
   <div class="dispatch-box">
     <span class="plate-chip">{{ d.dispatch?.vehiclePlate }}</span>
@@ -1138,6 +1162,62 @@
       @if (deletingOperators()) {
       <i class="ti ti-loader-2 spin"></i>
       } {{ target === 'ALL' ? 'Eliminar todos' : 'Eliminar' }}
+    </button>
+  </div>
+</div>
+}
+
+<!-- DIÁLOGO: ANULAR OC -->
+@if (cancelTarget(); as target) {
+<div class="dialog-backdrop" (click)="closeCancelOrder()" aria-hidden="true"></div>
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="cancelOrderTitle">
+  <h5 id="cancelOrderTitle" class="text-danger">
+    <i class="ti ti-ban"></i>
+    Anular OC {{ target.loadingOrder }}
+  </h5>
+  <p class="mb-2">
+    Use esta opción solo para una OC de prueba o cargada por error. La OC sale de todas las colas (Prealistamiento y Muelle) y queda como
+    <strong>Anulada</strong>
+    , con su motivo, en la auditoría.
+  </p>
+  <ul class="small text-muted mb-3">
+    @if (target.totals.pickedQty) {
+    <li>
+      Sus
+      <strong>{{ target.totals.pickedQty }}</strong>
+      unidades leídas se anulan y vuelven a quedar disponibles en bodega.
+    </li>
+    }
+    <li>Si el número es correcto, podrá volver a cargar el .PRN corregido con el mismo número de OC.</li>
+    <li>Esta acción no se puede deshacer.</li>
+  </ul>
+  <label for="cancelObservation" class="form-label">Motivo (obligatorio)</label>
+  <textarea id="cancelObservation" class="form-control mb-3" rows="2" maxlength="300" [(ngModel)]="cancelObservation"></textarea>
+  <label for="cancelConfirmOrder" class="form-label">
+    Escriba el número de la OC
+    <strong class="mono">{{ target.loadingOrder }}</strong>
+    para confirmar
+  </label>
+  <input
+    id="cancelConfirmOrder"
+    type="text"
+    inputmode="numeric"
+    class="form-control mono"
+    autocomplete="off"
+    maxlength="10"
+    [(ngModel)]="cancelConfirmOrder"
+  />
+  <div class="dialog-actions">
+    <button type="button" class="btn btn-light" (click)="closeCancelOrder()" [disabled]="cancelling()">Cancelar</button>
+    <button
+      type="button"
+      class="btn btn-danger"
+      (click)="confirmCancelOrder()"
+      [disabled]="cancelling() || cancelObservation.trim().length < 5 || cancelConfirmOrder.trim() !== target.loadingOrder"
+    >
+      @if (cancelling()) {
+      <i class="ti ti-loader-2 spin"></i>
+      } Anular OC
     </button>
   </div>
 </div>

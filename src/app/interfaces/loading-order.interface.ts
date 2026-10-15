@@ -181,6 +181,7 @@ export interface LoadingOrderView {
   assignedTo: LoadingOrderAssignee[];
   dispatch?: LoadingOrderDispatch;
   closure?: LoadingOrderClosure;
+  cancellation?: LoadingOrderCancellation;
   dateCreate: string;
   sourceFile?: { fileName: string };
   totals: LoadingOrderTotals;
@@ -204,6 +205,7 @@ export interface LoadingOrderSummary {
   assignedTo?: LoadingOrderAssignee[];
   dispatch?: LoadingOrderDispatch;
   closure?: LoadingOrderClosure;
+  cancellation?: LoadingOrderCancellation;
   totals: LoadingOrderTotals;
   picking?: LoadingOrderPicking;
   summumExport?: LoadingOrderSummumExport;
@@ -400,6 +402,30 @@ export interface AssignLoadingOrderRequest {
   operators: string[];
 }
 
+/** Anulación de la OC (solo antes de cerrar el prealistamiento). */
+export interface LoadingOrderCancellation {
+  cancelledAt: string;
+  cancelledBy: LoadingOrderActor;
+  observation: string;
+  previousStatus: LoadingOrderStatus | '';
+  /** Unidades leídas que volvieron a estar disponibles en bodega */
+  releasedUnits: number;
+}
+
+export interface CancelLoadingOrderRequest {
+  loadingOrderId: string;
+  /** Número de la OC escrito por el usuario para confirmar */
+  confirmOrder: string;
+  observation: string;
+}
+
+export interface CancelLoadingOrderResult {
+  _id: string;
+  loadingOrder: string;
+  status: LoadingOrderStatus;
+  releasedUnits: number;
+}
+
 export interface PartialCloseRequest {
   loadingOrderId: string;
   allowPartialClose: boolean;
@@ -419,7 +445,7 @@ export const LOADING_ORDER_STATUS_LABELS: Record<LoadingOrderStatus, string> = {
   PICKED_PARTIAL: 'Alistada parcial',
   LOADING: 'En cargue',
   DISPATCHED: 'Despachada',
-  CANCELLED: 'Cancelada'
+  CANCELLED: 'Anulada'
 };
 
 export const LOADING_ORDER_REJECT_LABELS: Record<LoadingOrderRejectReason, string> = {

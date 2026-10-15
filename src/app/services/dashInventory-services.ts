@@ -51,6 +51,8 @@ import {
   LoadingOrderAssignee,
   SavePickingOperatorRequest,
   DeletePickingOperatorsResult,
+  CancelLoadingOrderRequest,
+  CancelLoadingOrderResult,
   ScanSerialRequest,
   ScanSerialResponse,
   VoidReadRequest
@@ -364,6 +366,13 @@ export class DashInventoryServices {
   savePickingOperator(payload: SavePickingOperatorRequest): Observable<LoadingOrderApiResponse<PickingOperator>> {
     return this.http
       .post<LoadingOrderApiResponse<PickingOperator>>(`${this.LOADING_ORDERS_ENDPOINT}/operators`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Anula una OC de prueba o cargada por error (solo antes de cerrar el prealistamiento). */
+  cancelLoadingOrder(payload: CancelLoadingOrderRequest): Observable<LoadingOrderApiResponse<CancelLoadingOrderResult>> {
+    return this.http
+      .post<LoadingOrderApiResponse<CancelLoadingOrderResult>>(`${this.LOADING_ORDERS_ENDPOINT}/cancel`, payload)
       .pipe(catchError(this.handleError.bind(this)));
   }
 
