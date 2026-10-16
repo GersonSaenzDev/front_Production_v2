@@ -46,6 +46,11 @@ const routes: Routes = [
         loadChildren: () => import('./quality/quality-module').then((m) => m.QualityModule)
       },
       {
+        path: 'customer-service',
+        canActivate: [roleGuard],
+        loadChildren: () => import('./customer-service/customer-service-module').then((m) => m.CustomerServiceModule)
+      },
+      {
         path: 'engineering',
         canActivate: [roleGuard],
         loadChildren: () => import('./engineering/engineering-module').then((m) => m.EngineeringModule)

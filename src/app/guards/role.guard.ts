@@ -12,7 +12,7 @@ export const roleGuard: CanActivateFn = (route, state) => {
   
   if (path) {
     // Si la ruta coincide con uno de nuestros módulos, verificamos
-    const validModules = ['production', 'inventories', 'printing', 'clientHome', 'quality', 'engineering', 'health-safety', 'human-resources', 'maintenance', 'machining', 'logistics'];
+    const validModules = ['production', 'inventories', 'printing', 'clientHome', 'quality', 'customer-service', 'engineering', 'health-safety', 'human-resources', 'maintenance', 'machining', 'logistics'];
     if (validModules.includes(path)) {
       const module = path as AppModule;
       if (menuAccessService.hasAccessTo(module)) {

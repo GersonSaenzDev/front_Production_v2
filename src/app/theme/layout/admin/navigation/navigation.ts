@@ -1042,6 +1042,38 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    id: 'servicio-cliente-group',
+    title: 'Servicio al Cliente',
+    type: 'group',
+    icon: 'ti ti-headset',
+    children: [
+      {
+        id: 'servicio-cliente-collapse',
+        title: 'Servicio al Cliente',
+        type: 'collapse',
+        icon: 'ti ti-headset',
+        classes: 'nav-item',
+        isMainParent: true,
+        children: [
+          {
+            id: 'servicio-cliente-novedades',
+            title: 'Novedades Servicio al Cliente',
+            type: 'item',
+            url: 'customer-service/customerServiceNews',
+            breadcrumbs: true
+          },
+          {
+            id: 'servicio-cliente-view-news',
+            title: 'Visualizar Novedades',
+            type: 'item',
+            url: 'customer-service/viewNews',
+            breadcrumbs: true
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'sst-group',
     title: 'SST',
     type: 'group',
