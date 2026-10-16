@@ -103,14 +103,22 @@ $abba-amber: #d97706;
     color: rgba(255, 255, 255, 0.85);
   }
 
-  .btn-link-light {
-    background: none;
-    border: none;
-    color: #fff;
-    text-decoration: underline;
-    font-size: 0.85rem;
-    padding: 0;
+  .date-pill {
+    background: rgba(255, 255, 255, 0.95);
+    color: $abba-blue-dark;
+    border-radius: 999px;
+    padding: 0.15rem 0.65rem;
+    font-weight: 700;
   }
+}
+
+.tab-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: color.adjust($abba-amber, $lightness: -8%);
+  margin-bottom: 0.75rem;
 }
 
 .btn-header {

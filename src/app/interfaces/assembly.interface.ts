@@ -479,12 +479,13 @@ export interface CleanDuplicateBarcodesResponse {
 
 /**
  * @description Body de POST /assembly/packingList/entryValidation (Validación Ingreso Bodega).
- * El front lee el Excel "Listado de Series Por Producto" del ERP (1 o N meses) y envía la llave
- * producto(5)+serial con su mes de ingreso en el ERP: [['00005|260900426', '2026-09'], ...].
+ * El front lee el Excel "Listado de Series Por Producto" del ERP (1 o N días) y envía sus fechas y
+ * la llave producto(5)+serial con su fecha de ingreso en el ERP: [['00137|261000001', '2026-10-15'], ...].
  */
 export interface WarehouseEntryValidationPayload {
-  dateIni: string;
-  dateEnd: string;
+  /** Fechas (YYYY-MM-DD) que trae el archivo: se valida día por día solo contra esas. */
+  dates: string[];
+  /** [ 'producto5|serial', 'YYYY-MM-DD' (fecha de ingreso en el ERP) ] */
   items: [string, string][];
 }
 
@@ -504,17 +505,17 @@ export interface WarehouseEntryMissingUnit {
   packingList?: { summum?: { reconciled?: boolean; document?: string } };
 }
 
-/** Unidad que sí está en el archivo, pero el ERP la ingresó en un mes distinto al del sistema. */
-export interface WarehouseEntryCrossMonthUnit extends WarehouseEntryMissingUnit {
+/** Unidad que sí está en el archivo, pero el ERP la ingresó en otra fecha del archivo. */
+export interface WarehouseEntryCrossDayUnit extends WarehouseEntryMissingUnit {
   key: string;
-  systemMonth: string;
-  fileMonth: string;
+  systemDate: string;
+  fileDate: string;
 }
 
-/** Llave del archivo sin unidad en el rango: fecha en que entró al sistema, o null si no existe. */
+/** Llave del archivo sin unidad en sus fechas: fecha en que entró al sistema, o null si no existe. */
 export interface WarehouseEntryOutOfRangeKey {
   key: string;
-  fileMonth: string;
+  fileDate: string;
   systemDate: string | null;
   systemHour: string | null;
   productCode: string | null;
@@ -522,12 +523,12 @@ export interface WarehouseEntryOutOfRangeKey {
   productName: string | null;
 }
 
-export interface WarehouseEntryMonthSummary {
-  month: string;
+export interface WarehouseEntryDaySummary {
+  date: string;
   systemUnits: number;
   foundInFile: number;
   missingCount: number;
-  crossMonthCount: number;
+  crossDayCount: number;
   references: number;
 }
 
@@ -535,20 +536,19 @@ export interface WarehouseEntryValidationResponse {
   ok: boolean;
   msg: string;
   data?: {
-    dateIni: string;
-    dateEnd: string;
+    dates: string[];
     fileKeys: number;
     totals: {
       systemUnits: number;
       foundInFile: number;
       missingCount: number;
-      crossMonthCount: number;
+      crossDayCount: number;
       references: number;
       withoutSerial: number;
     };
-    months: WarehouseEntryMonthSummary[];
+    days: WarehouseEntryDaySummary[];
     missing: WarehouseEntryMissingUnit[];
-    crossMonth: WarehouseEntryCrossMonthUnit[];
+    crossDay: WarehouseEntryCrossDayUnit[];
     notInRange: WarehouseEntryOutOfRangeKey[];
     lookupSkipped: boolean;
   };

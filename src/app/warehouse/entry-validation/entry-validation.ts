@@ -7,8 +7,8 @@ import * as XLSX from 'xlsx';
 
 import { DashboardServices } from '../../services/dashboard-services';
 import {
+  WarehouseEntryDaySummary,
   WarehouseEntryMissingUnit,
-  WarehouseEntryMonthSummary,
   WarehouseEntryValidationResponse
 } from '../../interfaces/assembly.interface';
 
@@ -53,14 +53,13 @@ interface ErpSerialEntry {
   document: string;
   thirdParty: string;
   rows: number;
-  /** Mes/fecha en que entró al sistema (LoadBarcode). null = no existe; '' = sin validar. */
-  systemMonth: string | null;
+  /** Fecha en que entró al sistema (LoadBarcode). null = no existe; '' = sin validar. */
   systemDate: string | null;
   haystack: string;
 }
 
 interface MissingUnitView extends WarehouseEntryMissingUnit {
-  month: string;
+  day: string;
   haystack: string;
 }
 
@@ -73,9 +72,9 @@ interface ReferenceSummary {
   total: number;
 }
 
-/** Fila del indicador mensual: archivo (mes de ingreso ERP) vs sistema (mes de LoadBarcode). */
-interface MonthIndicator {
-  month: string;
+/** Fila del indicador diario: archivo (fecha de ingreso ERP) vs sistema (escaneado ese mismo día). */
+interface DayIndicator {
+  date: string;
   fileUnits: number;
   fileReferences: number;
   systemUnits: number;
@@ -83,13 +82,13 @@ interface MonthIndicator {
   difference: number;
   foundInFile: number;
   missingCount: number;
-  crossMonthCount: number;
-  lagCount: number;
-  errorCount: number;
+  otherDayCount: number;
   notInSystemCount: number;
+  errorCount: number;
+  lagCount: number;
 }
 
-type EntryValidationTab = 'missing' | 'errors' | 'lag' | 'notInSystem' | 'file';
+type EntryValidationTab = 'missing' | 'otherDay' | 'notInSystem' | 'errors' | 'lag' | 'file';
 
 /** Encabezados del Excel del ERP → campo. Se buscan normalizados (sin tildes, minúsculas). */
 const ERP_COLUMNS: Record<string, keyof ErpSerialRow> = {
@@ -115,8 +114,22 @@ const SERIAL_STATUS_LABELS: Record<SerialStatus, string> = {
   invalidFormat: 'Formato inválido'
 };
 
-/** La pestaña "Archivo ERP" puede traer cientos de miles de unidades: se pinta solo este tope. */
+/** La pestaña "Archivo ERP" puede traer miles de unidades: se pinta solo este tope. */
 const FILE_RENDER_LIMIT = 2000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Archivo .sal de Producción para cargar en Summum (validado contra los .sal procesados), una línea
+ * por unidad, 92 caracteres entre comillas + CRLF, sin espacio después de la comilla de cierre:
+ *
+ *   "2  161026.07   010770606003402521261002191                                  1  09011307:58"
+ *
+ *   Tipo de registro '2' · 2 esp · fecha lectura ddMMyy.HH · 3 esp · barcode 27 dígitos ·
+ *   cantidad '1' alineada a la derecha en 35 · 2 esp · '090113' (fijo) + hora lectura HH:mm
+ */
+const SUMMUM_SAL_PREFIX = '090113';
+const SUMMUM_SAL_LINE = /^"2 {2}\d{6}\.\d{2} {3}\d{27} {34}1 {2}090113\d{2}:\d{2}"$/;
 
 const normalizeText = (value: unknown): string =>
   String(value ?? '')
@@ -125,10 +138,8 @@ const normalizeText = (value: unknown): string =>
     .toLowerCase()
     .trim();
 
-const lastDayOfMonth = (month: string): string => {
-  const [year, mm] = month.split('-').map(Number);
-  return `${month}-${String(new Date(year, mm, 0).getDate()).padStart(2, '0')}`;
-};
+/** Días entre dos fechas YYYY-MM-DD (b - a). */
+const daysBetween = (a: string, b: string): number => Math.round((Date.parse(b) - Date.parse(a)) / DAY_MS);
 
 @Component({
   selector: 'app-entry-validation',
@@ -153,14 +164,13 @@ export class EntryValidation implements OnDestroy {
   public fileRowsCount = 0;
   /** Unidades únicas (producto + serial) del archivo. */
   public entries: ErpSerialEntry[] = [];
-  /** Meses de ingreso (columna Fecha) presentes en el archivo. */
-  public fileMonths: string[] = [];
-  public fileMaxDate = '';
-
-  public dateIni = '';
-  public dateEnd = '';
-  /** Filtro de mes para la vista ('' = todos los meses del archivo). */
-  public selectedMonth = '';
+  /**
+   * Fechas de ingreso (columna Fecha) del archivo. Solo esas se validan, cada una contra lo
+   * escaneado ese mismo día (ej. archivo de viernes + sábado: viernes vs viernes, sábado vs sábado).
+   */
+  public fileDates: string[] = [];
+  /** Filtro de día para la vista ('' = todas las fechas del archivo). */
+  public selectedDate = '';
 
   // ============================================================
   //  RESULTADO DE LA VALIDACIÓN
@@ -169,35 +179,36 @@ export class EntryValidation implements OnDestroy {
   public isValidating = false;
   public result: WarehouseEntryValidationResponse['data'] | null = null;
   private missingUnits: MissingUnitView[] = [];
-  public monthIndicators: MonthIndicator[] = [];
+  public dayIndicators: DayIndicator[] = [];
 
   public activeTab: EntryValidationTab = 'missing';
   public searchTerm = '';
   public referenceFilter: string | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Listas por pestaña (mes + búsqueda), y la de la pestaña activa con filtro de referencia.
+  // Listas por pestaña (día + búsqueda), y la de la pestaña activa con filtro de referencia.
   public missingBySearch: MissingUnitView[] = [];
+  public otherDayBySearch: ErpSerialEntry[] = [];
+  public notInSystemBySearch: ErpSerialEntry[] = [];
   public errorsBySearch: ErpSerialEntry[] = [];
   public lagBySearch: ErpSerialEntry[] = [];
-  public notInSystemBySearch: ErpSerialEntry[] = [];
   public entriesBySearch: ErpSerialEntry[] = [];
 
   public filteredMissing: MissingUnitView[] = [];
   public filteredEntries: ErpSerialEntry[] = [];
   public referenceSummaries: ReferenceSummary[] = [];
 
-  get monthIndicator(): MonthIndicator | null {
-    if (!this.monthIndicators.length) return null;
-    if (this.selectedMonth) return this.monthIndicators.find((m) => m.month === this.selectedMonth) || null;
+  get dayIndicator(): DayIndicator | null {
+    if (!this.dayIndicators.length) return null;
+    if (this.selectedDate) return this.dayIndicators.find((d) => d.date === this.selectedDate) || null;
     return this.totalIndicator;
   }
 
-  /** Totales de todos los meses (las referencias se cuentan únicas, no sumadas). */
-  get totalIndicator(): MonthIndicator {
-    const sum = (field: keyof MonthIndicator) => this.monthIndicators.reduce((acc, m) => acc + Number(m[field]), 0);
+  /** Totales de todas las fechas (las referencias se cuentan únicas, no sumadas). */
+  get totalIndicator(): DayIndicator {
+    const sum = (field: keyof DayIndicator) => this.dayIndicators.reduce((acc, d) => acc + Number(d[field]), 0);
     return {
-      month: 'Total',
+      date: 'Total',
       fileUnits: sum('fileUnits'),
       fileReferences: new Set(this.entries.map((e) => e.productCode)).size,
       systemUnits: sum('systemUnits'),
@@ -205,15 +216,22 @@ export class EntryValidation implements OnDestroy {
       difference: sum('difference'),
       foundInFile: sum('foundInFile'),
       missingCount: sum('missingCount'),
-      crossMonthCount: sum('crossMonthCount'),
-      lagCount: sum('lagCount'),
+      otherDayCount: sum('otherDayCount'),
+      notInSystemCount: sum('notInSystemCount'),
       errorCount: sum('errorCount'),
-      notInSystemCount: sum('notInSystemCount')
+      lagCount: sum('lagCount')
     };
   }
 
-  get downloadableSerials(): string[] {
-    return [...new Set(this.filteredMissing.map((unit) => (unit.consecutiveProduct || '').trim()).filter(Boolean))];
+  /** Unidades del plano para Summum: una por barcode de 27 dígitos (respeta día, búsqueda y referencia). */
+  get downloadableUnits(): MissingUnitView[] {
+    const seen = new Set<string>();
+    return this.filteredMissing.filter((unit) => {
+      const barcode = (unit.barcode || '').trim();
+      if (seen.has(barcode)) return false;
+      seen.add(barcode);
+      return true;
+    });
   }
 
   get visibleEntries(): ErpSerialEntry[] {
@@ -250,16 +268,15 @@ export class EntryValidation implements OnDestroy {
         this.fileName = file.name;
         this.fileRowsCount = rows.length;
         this.entries = this.buildEntries(rows);
-        this.fileMonths = [...new Set(this.entries.map((e) => e.entryMonth))].sort();
-        this.fileMaxDate = rows.reduce((max, row) => (row.date > max ? row.date : max), '');
-        this.selectedMonth = '';
+        this.fileDates = [...new Set(this.entries.map((e) => e.entryDate))].sort();
+        this.selectedDate = '';
         this.result = null;
         this.missingUnits = [];
-        this.resetRangeToFile();
+        this.dayIndicators = [];
 
         const errors = this.entries.filter((e) => e.isError).length;
         this.toastr.success(
-          `${rows.length.toLocaleString()} filas · ${this.entries.length.toLocaleString()} unidades · ${this.fileMonths.length} mes(es)` +
+          `${rows.length.toLocaleString()} filas · ${this.entries.length.toLocaleString()} unidades · ${this.fileDates.length} fecha(s)` +
             (errors ? ` · ${errors.toLocaleString()} seriales con error` : ''),
           'Archivo cargado'
         );
@@ -346,7 +363,6 @@ export class EntryValidation implements OnDestroy {
         document: first.document,
         thirdParty: first.thirdParty,
         rows: count,
-        systemMonth: '',
         systemDate: '',
         haystack: ''
       };
@@ -420,7 +436,8 @@ export class EntryValidation implements OnDestroy {
         entry.thirdParty,
         entry.voucher,
         entry.document,
-        entry.systemDate
+        entry.systemDate,
+        entry.systemDate === null ? 'no existe' : this.isOtherDay(entry) ? 'otro dia' : ''
       ].join(' ')
     );
   }
@@ -446,39 +463,19 @@ export class EntryValidation implements OnDestroy {
     return '';
   }
 
-  /**
-   * Rango por defecto: del día 1 del primer mes al último día que trae el archivo (corte del
-   * reporte del ERP), para no mostrar como faltante lo producido después de generar el listado.
-   */
-  public resetRangeToFile(): void {
-    this.dateIni = this.fileMonths.length ? `${this.fileMonths[0]}-01` : '';
-    const lastMonth = this.fileMonths[this.fileMonths.length - 1];
-    this.dateEnd = lastMonth
-      ? this.fileMaxDate && this.fileMaxDate < lastDayOfMonth(lastMonth)
-        ? this.fileMaxDate
-        : lastDayOfMonth(lastMonth)
-      : '';
-  }
-
   // ============================================================
-  //  VALIDACIÓN CONTRA LoadBarcode
+  //  VALIDACIÓN CONTRA LoadBarcode (día por día, solo las fechas del archivo)
   // ============================================================
 
   public validate(): void {
     if (!this.entries.length) return;
 
-    if (!this.dateIni || !this.dateEnd || this.dateIni > this.dateEnd) {
-      this.toastr.warning('Revisa el rango de fechas.', 'Rango inválido');
-      return;
-    }
-
     this.isValidating = true;
 
     this.dashboardService
       .validateWarehouseEntry({
-        dateIni: this.dateIni,
-        dateEnd: this.dateEnd,
-        items: this.entries.map((entry) => [entry.key, entry.entryMonth] as [string, string])
+        dates: this.fileDates,
+        items: this.entries.map((entry) => [entry.key, entry.entryDate] as [string, string])
       })
       .subscribe({
         next: (response) => {
@@ -487,7 +484,7 @@ export class EntryValidation implements OnDestroy {
           this.applyValidationResult();
           if (this.result?.lookupSkipped) {
             this.toastr.info(
-              'Demasiados seriales del archivo fuera del rango: no se buscó su fecha en el sistema. Ajusta el rango.',
+              'Demasiados seriales del archivo sin escanear en sus fechas: no se buscó en qué otro día entraron al sistema.',
               'Búsqueda parcial'
             );
           }
@@ -499,35 +496,28 @@ export class EntryValidation implements OnDestroy {
       });
   }
 
-  /** Marca en cada unidad del archivo cuándo entró al sistema y arma los indicadores por mes. */
+  /** Marca en cada unidad del archivo en qué fecha entró al sistema y arma los indicadores por día. */
   private applyValidationResult(): void {
     const data = this.result;
     if (!data) return;
 
-    const crossMonth = new Map(data.crossMonth.map((unit) => [unit.key, unit]));
+    const crossDay = new Map(data.crossDay.map((unit) => [unit.key, unit]));
     const outOfRange = new Map(data.notInRange.map((item) => [item.key, item]));
 
     for (const entry of this.entries) {
-      const cross = crossMonth.get(entry.key);
+      const cross = crossDay.get(entry.key);
       const outside = outOfRange.get(entry.key);
 
-      if (cross) {
-        entry.systemMonth = cross.systemMonth;
-        entry.systemDate = cross.date;
-      } else if (outside) {
-        // Búsqueda omitida: no se sabe si existe (queda '' = sin validar).
-        entry.systemDate = outside.systemDate ?? (data.lookupSkipped ? '' : null);
-        entry.systemMonth = outside.systemDate ? outside.systemDate.slice(0, 7) : entry.systemDate;
-      } else {
-        entry.systemMonth = entry.entryMonth;
-        entry.systemDate = '';
-      }
+      if (cross) entry.systemDate = cross.systemDate;
+      // Búsqueda omitida: no se sabe si existe (queda '' = sin validar).
+      else if (outside) entry.systemDate = outside.systemDate ?? (data.lookupSkipped ? '' : null);
+      else entry.systemDate = entry.entryDate;
       entry.haystack = this.entryHaystack(entry);
     }
 
     this.missingUnits = data.missing.map((unit) => ({
       ...unit,
-      month: String(unit.date || '').slice(0, 7),
+      day: String(unit.date || ''),
       haystack: normalizeText(
         [
           unit.consecutiveProduct,
@@ -544,20 +534,18 @@ export class EntryValidation implements OnDestroy {
       )
     }));
 
-    this.monthIndicators = this.buildMonthIndicators(data.months);
+    this.dayIndicators = this.buildDayIndicators(data.days);
     this.referenceFilter = null;
     this.applyFilters();
   }
 
-  private buildMonthIndicators(systemMonths: WarehouseEntryMonthSummary[]): MonthIndicator[] {
-    const months = [...new Set([...this.fileMonths, ...systemMonths.map((m) => m.month)])].sort();
-
-    return months.map((month) => {
-      const system = systemMonths.find((m) => m.month === month);
-      const fileEntries = this.entries.filter((e) => e.entryMonth === month);
+  private buildDayIndicators(systemDays: WarehouseEntryDaySummary[]): DayIndicator[] {
+    return this.fileDates.map((date) => {
+      const system = systemDays.find((d) => d.date === date);
+      const fileEntries = this.entries.filter((e) => e.entryDate === date);
       const fileUnits = fileEntries.length;
       return {
-        month,
+        date,
         fileUnits,
         fileReferences: new Set(fileEntries.map((e) => e.productCode)).size,
         systemUnits: system?.systemUnits ?? 0,
@@ -565,21 +553,31 @@ export class EntryValidation implements OnDestroy {
         difference: fileUnits - (system?.systemUnits ?? 0),
         foundInFile: system?.foundInFile ?? 0,
         missingCount: system?.missingCount ?? 0,
-        crossMonthCount: system?.crossMonthCount ?? 0,
-        lagCount: fileEntries.filter((e) => this.isLag(e)).length,
+        otherDayCount: fileEntries.filter((e) => this.isOtherDay(e)).length,
+        notInSystemCount: fileEntries.filter((e) => e.systemDate === null).length,
         errorCount: fileEntries.filter((e) => e.isError).length,
-        notInSystemCount: fileEntries.filter((e) => e.systemDate === null).length
+        lagCount: fileEntries.filter((e) => this.isLag(e)).length
       };
     });
   }
 
-  /** Desfase: el serial es de un mes anterior al ingreso, o el sistema lo tiene en otro mes. */
-  public isLag(entry: ErpSerialEntry): boolean {
-    return entry.serialStatus === 'lag' || (!!entry.systemMonth && entry.systemMonth !== entry.entryMonth);
+  /** En el archivo, pero el sistema lo escaneó otro día (informativo, no va al plano). */
+  public isOtherDay(entry: ErpSerialEntry): boolean {
+    return !!entry.systemDate && entry.systemDate !== entry.entryDate;
   }
 
-  public selectMonth(month: string): void {
-    this.selectedMonth = this.selectedMonth === month ? '' : month;
+  /** Días entre el ingreso al ERP y el escaneo (negativo = se escaneó antes del ingreso). */
+  public dayGap(entry: ErpSerialEntry): number {
+    return entry.systemDate ? daysBetween(entry.entryDate, entry.systemDate) : 0;
+  }
+
+  /** Desfase: el serial (AAMM) es de un mes anterior al de ingreso en el ERP. */
+  public isLag(entry: ErpSerialEntry): boolean {
+    return entry.serialStatus === 'lag';
+  }
+
+  public selectDate(date: string): void {
+    this.selectedDate = this.selectedDate === date ? '' : date;
     this.referenceFilter = null;
     this.applyFilters();
   }
@@ -602,15 +600,14 @@ export class EntryValidation implements OnDestroy {
   public applyFilters(): void {
     const terms = normalizeText(this.searchTerm).split(/\s+/).filter(Boolean);
     const matches = (haystack: string) => terms.every((term) => haystack.includes(term));
-    const month = this.selectedMonth;
+    const day = this.selectedDate;
 
-    this.missingBySearch = this.missingUnits.filter(
-      (unit) => (!month || unit.month === month) && (!terms.length || matches(unit.haystack))
-    );
-    this.entriesBySearch = this.entries.filter((e) => (!month || e.entryMonth === month) && (!terms.length || matches(e.haystack)));
+    this.missingBySearch = this.missingUnits.filter((unit) => (!day || unit.day === day) && (!terms.length || matches(unit.haystack)));
+    this.entriesBySearch = this.entries.filter((e) => (!day || e.entryDate === day) && (!terms.length || matches(e.haystack)));
+    this.otherDayBySearch = this.entriesBySearch.filter((e) => this.isOtherDay(e));
+    this.notInSystemBySearch = this.entriesBySearch.filter((e) => e.systemDate === null);
     this.errorsBySearch = this.entriesBySearch.filter((e) => e.isError);
     this.lagBySearch = this.entriesBySearch.filter((e) => this.isLag(e));
-    this.notInSystemBySearch = this.entriesBySearch.filter((e) => e.systemDate === null);
 
     if (this.activeTab === 'missing') {
       this.referenceSummaries = this.buildReferenceSummaries(this.missingBySearch.map((unit) => this.unitReference(unit)));
@@ -628,9 +625,10 @@ export class EntryValidation implements OnDestroy {
   }
 
   private entriesForTab(tab: EntryValidationTab): ErpSerialEntry[] {
+    if (tab === 'otherDay') return this.otherDayBySearch;
+    if (tab === 'notInSystem') return this.notInSystemBySearch;
     if (tab === 'errors') return this.errorsBySearch;
     if (tab === 'lag') return this.lagBySearch;
-    if (tab === 'notInSystem') return this.notInSystemBySearch;
     return this.entriesBySearch;
   }
 
@@ -680,29 +678,69 @@ export class EntryValidation implements OnDestroy {
   //  DESCARGAS
   // ============================================================
 
-  /** Plano para el ERP: solo los seriales, uno por línea (respeta mes, búsqueda y referencia). */
-  public downloadSerials(): void {
-    const serials = this.downloadableSerials;
-    if (!serials.length) {
-      this.toastr.info('No hay seriales para descargar.', 'Sin datos');
+  /**
+   * Plano .sal para Summum con las unidades escaneadas en las fechas del archivo que NO están en él
+   * (respeta día, búsqueda y referencia). Cada línea lleva el barcode de 27 dígitos y la fecha/hora
+   * de su lectura; el nombre lleva el momento de generación. Si una sola línea no cumple la
+   * estructura, el archivo NO se genera.
+   */
+  public downloadSummumSal(): void {
+    const units = this.downloadableUnits;
+    if (!units.length) {
+      this.toastr.info('No hay unidades para generar el archivo.', 'Sin datos');
       return;
     }
 
-    const blob = new Blob([serials.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8' });
-    this.saveBlob(blob, `seriales_no_ingresados_${this.rangeLabel()}.txt`);
+    const errors: string[] = [];
+    const lines = units.map((unit, i) => {
+      const line = this.buildSummumSalLine(unit);
+      if (!line) errors.push(`Línea ${i + 1} (${unit.barcode || unit.consecutiveProduct || 'sin barcode'})`);
+      return line;
+    });
+
+    if (errors.length) {
+      this.toastr.error(
+        `${errors.length} unidad(es) sin barcode de 27 dígitos o sin fecha/hora válida: ${errors.slice(0, 3).join(', ')}` +
+          (errors.length > 3 ? '...' : ''),
+        'Archivo .sal NO generado',
+        { timeOut: 10000 }
+      );
+      return;
+    }
+
+    const now = new Date();
+    const stamp = `${this.formatDate(now).replace(/-/g, '')}_${[now.getHours(), now.getMinutes(), now.getSeconds()]
+      .map((n) => String(n).padStart(2, '0'))
+      .join('')}`;
+    const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/plain' });
+    this.saveBlob(blob, `CargueBodega_${stamp}.sal`);
+    this.toastr.success(`${lines.length.toLocaleString()} unidades.`, 'Archivo .sal generado');
+  }
+
+  /** Línea del .sal (null si el barcode no es de 27 dígitos o la fecha/hora de lectura no es válida). */
+  private buildSummumSalLine(unit: WarehouseEntryMissingUnit): string | null {
+    const barcode = (unit.barcode || '').trim();
+    const date = String(unit.date || '').match(/^\d{2}(\d{2})-(\d{2})-(\d{2})$/);
+    const hour = String(unit.hour || '').match(/^(\d{2}):(\d{2})/);
+    if (!/^\d{27}$/.test(barcode) || !date || !hour) return null;
+
+    const [, yy, mm, dd] = date;
+    const [, hh, min] = hour;
+    const line = `"2  ${dd}${mm}${yy}.${hh}   ${barcode}${'1'.padStart(35, ' ')}  ${SUMMUM_SAL_PREFIX}${hh}:${min}"`;
+    return SUMMUM_SAL_LINE.test(line) ? line : null;
   }
 
   /**
-   * Análisis completo en Excel (respeta mes y búsqueda): resumen mensual, no ingresados,
-   * seriales con error, desfase de mes y no existentes en el sistema, una hoja por tema.
+   * Análisis completo en Excel (respeta día y búsqueda): resumen por día, no ingresados, escaneados
+   * otro día, no existentes en el sistema, seriales con error y desfase, una hoja por tema.
    */
   public downloadAnalysis(): void {
     if (!this.entries.length) return;
 
     const workbook = XLSX.utils.book_new();
-    const indicators = this.selectedMonth
-      ? this.monthIndicators.filter((m) => m.month === this.selectedMonth)
-      : [...this.monthIndicators, this.totalIndicator];
+    const indicators = this.selectedDate
+      ? this.dayIndicators.filter((d) => d.date === this.selectedDate)
+      : [...this.dayIndicators, this.totalIndicator];
 
     const append = (name: string, rows: object[]) => {
       const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Resultado: 'Sin registros' }]);
@@ -710,20 +748,20 @@ export class EntryValidation implements OnDestroy {
     };
 
     append(
-      'Resumen mensual',
-      indicators.map((m) => ({
-        Mes: m.month,
-        'Archivo ERP': m.fileUnits,
-        Sistema: m.systemUnits,
-        Diferencia: m.difference,
-        'En ERP': m.foundInFile,
-        'No ingresados': m.missingCount,
-        'Ingreso en otro mes': m.crossMonthCount,
-        'Desfase serial': m.lagCount,
-        'Seriales con error': m.errorCount,
-        'No existen en sistema': m.notInSystemCount,
-        'Referencias archivo': m.fileReferences,
-        'Referencias sistema': m.systemReferences
+      'Resumen por dia',
+      indicators.map((d) => ({
+        Fecha: d.date,
+        'Archivo ERP': d.fileUnits,
+        Sistema: d.systemUnits,
+        Diferencia: d.difference,
+        'En archivo': d.foundInFile,
+        'No ingresados': d.missingCount,
+        'Escaneados otro dia': d.otherDayCount,
+        'No existen en sistema': d.notInSystemCount,
+        'Seriales con error': d.errorCount,
+        'Desfase serial': d.lagCount,
+        'Referencias archivo': d.fileReferences,
+        'Referencias sistema': d.systemReferences
       }))
     );
 
@@ -736,7 +774,6 @@ export class EntryValidation implements OnDestroy {
         Referencia: unit.reference || '',
         Producto: unit.productName || '',
         EAN: unit.EAN || '',
-        'Mes sistema': unit.month,
         Fecha: unit.date,
         Hora: unit.hour,
         'Vale Summum': unit.packingList?.summum?.document || '',
@@ -745,19 +782,23 @@ export class EntryValidation implements OnDestroy {
     );
 
     append(
-      'Seriales con error',
-      this.errorsBySearch.map((e) => this.entryExportRow(e))
-    );
-    append(
-      'Desfase de mes',
-      this.lagBySearch.map((e) => this.entryExportRow(e))
+      'Escaneados otro dia',
+      this.otherDayBySearch.map((e) => this.entryExportRow(e))
     );
     append(
       'No existen en sistema',
       this.notInSystemBySearch.map((e) => this.entryExportRow(e))
     );
+    append(
+      'Seriales con error',
+      this.errorsBySearch.map((e) => this.entryExportRow(e))
+    );
+    append(
+      'Desfase serial',
+      this.lagBySearch.map((e) => this.entryExportRow(e))
+    );
 
-    XLSX.writeFile(workbook, `validacion_ingreso_bodega_${this.selectedMonth || this.rangeLabel()}.xlsx`);
+    XLSX.writeFile(workbook, `validacion_ingreso_bodega_${this.selectedDate || this.datesLabel()}.xlsx`);
   }
 
   private entryExportRow(entry: ErpSerialEntry) {
@@ -770,9 +811,8 @@ export class EntryValidation implements OnDestroy {
       'Mes serial': entry.serialMonth,
       Consecutivo: entry.serialConsecutive,
       'Fecha ingreso ERP': entry.entryDate,
-      'Mes ingreso ERP': entry.entryMonth,
       'Fecha sistema': entry.systemDate === null ? 'NO EXISTE' : entry.systemDate || '',
-      'Mes sistema': entry.systemMonth === null ? 'NO EXISTE' : entry.systemMonth || '',
+      'Dias de diferencia': this.isOtherDay(entry) ? this.dayGap(entry) : '',
       Estado: SERIAL_STATUS_LABELS[entry.serialStatus],
       Observacion: entry.serialIssue,
       Comprobante: entry.voucher,
@@ -782,8 +822,9 @@ export class EntryValidation implements OnDestroy {
     };
   }
 
-  private rangeLabel(): string {
-    return `${this.result?.dateIni || this.dateIni}_a_${this.result?.dateEnd || this.dateEnd}`;
+  private datesLabel(): string {
+    const dates = this.fileDates;
+    return dates.length > 1 ? `${dates[0]}_a_${dates[dates.length - 1]}` : dates[0] || '';
   }
 
   private saveBlob(blob: Blob, fileName: string): void {
@@ -801,5 +842,5 @@ export class EntryValidation implements OnDestroy {
 
   public trackById = (_: number, unit: WarehouseEntryMissingUnit) => unit._id;
   public trackByEntry = (_: number, entry: ErpSerialEntry) => entry.key;
-  public trackByKey = (_: number, item: { key?: string; month?: string }) => item.key || item.month;
+  public trackByKey = (_: number, item: { key?: string; date?: string }) => item.key || item.date;
 }
