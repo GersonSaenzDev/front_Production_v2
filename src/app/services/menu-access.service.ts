@@ -201,7 +201,22 @@ export class MenuAccessService {
     if (!userData) return false;
     const area = userData.area?.toUpperCase().trim() || '';
     const typeUser = userData.typeUser?.toUpperCase().trim() || '';
-    return area === 'MANTENIMIENTO' && typeUser === 'EMPLEADO';
+    // En RH el perfil por defecto de un colaborador es 'user' (no 'Empleado'): cualquier
+    // typeUser que no sea de gestión se trata como técnico.
+    return area === 'MANTENIMIENTO' && !!typeUser && !MenuAccessService.MAINTENANCE_MANAGER_TYPES.includes(typeUser);
+  }
+
+  /**
+   * typeUser con gestión completa de Mantenimiento (habilitar correcciones, editar tiempos de
+   * cualquier técnico, quitar asignados). IMPORTANTE: mantener alineado con
+   * MAINTENANCE_MANAGER_TYPES del backend (api_produccion/src/maintenance/helpers/maintenance.js).
+   */
+  private static readonly MAINTENANCE_MANAGER_TYPES = ['JEFE', 'ADMIN', 'GERENCIA', 'DIRECCION'];
+
+  /** Jefe de Mantenimiento (o perfil de gestión): puede corregir/habilitar intervenciones. */
+  isMaintenanceManager(): boolean {
+    const typeUser = this.authService.userData()?.typeUser?.toUpperCase().trim() || '';
+    return MenuAccessService.MAINTENANCE_MANAGER_TYPES.includes(typeUser);
   }
 
   // Items del menú de Mantenimiento exclusivos del Jefe (crear solicitudes / ver todo, asignar,

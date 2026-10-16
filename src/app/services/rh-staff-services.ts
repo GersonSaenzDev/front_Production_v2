@@ -108,6 +108,7 @@ export class RhStaffServices {
       specialty,
       area: assignment.area || '',
       departament: assignment.departament || '',
+      isAssistant: /AUXILIAR/i.test(`${position} ${jobTitle}`),
     };
   }
 }

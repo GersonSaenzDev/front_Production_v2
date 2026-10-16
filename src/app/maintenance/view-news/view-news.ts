@@ -9,39 +9,37 @@ import { ProductionNews } from '../../interfaces/assembly.interface';
 import {
   AddInterventionRequest,
   ApprovalRole,
+  AuditEntry,
   Intervention,
+  MaintenanceAssignee,
   MaintenanceListFilters,
   MaintenancePriority,
   MaintenanceRequest,
   MaintenanceStatus,
   MaintenanceType,
-  UpdateMaintenanceRequest,
+  PersonRef,
+  UpdateInterventionRequest,
+  UpdateMaintenanceRequest
 } from '../../interfaces/maintenance.interface';
-import {
-  Machine,
-  ProductionAreaGrouped,
-  ProductionSubArea,
-} from '../../interfaces/production-news.interface';
+import { Machine, ProductionAreaGrouped, ProductionSubArea } from '../../interfaces/production-news.interface';
 import { MaintenanceTechnician } from '../../interfaces/rh-staff.interface';
 import { DashboardServices } from '../../services/dashboard-services';
 import { MaintenanceDraftService } from '../../services/maintenance-draft-service';
 import { MaintenanceServices } from '../../services/maintenance-services';
+import { MenuAccessService } from '../../services/menu-access.service';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
 import { ProductionNewsRedirectedEvent, SocketService } from '../../services/socket-service';
 import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoing-stops/ongoing-stops.component';
-import {
-  formatStopSchedule,
-  isStopCategory,
-  isStopOngoing,
-} from '../../theme/layout/admin/navigation/stop-time.util';
+import { formatStopSchedule, isStopCategory, isStopOngoing } from '../../theme/layout/admin/navigation/stop-time.util';
+import { calculateMinutes, formatMinutes, toBackendDateTime, toDatetimeLocal } from '../maintenance-time.util';
 
 @Component({
   selector: 'app-maintenance-view-news',
   standalone: true,
   imports: [CommonModule, FormsModule, OngoingStopsComponent],
   templateUrl: './view-news.html',
-  styleUrl: './view-news.scss',
+  styleUrl: './view-news.scss'
 })
 export class ViewNews implements OnInit, OnDestroy {
   private maintenanceService = inject(MaintenanceServices);
@@ -52,6 +50,14 @@ export class ViewNews implements OnInit, OnDestroy {
   private router = inject(Router);
   private toastr = inject(ToastrService);
   private socketService = inject(SocketService);
+  private menuAccessService = inject(MenuAccessService);
+
+  readonly formatMinutes = formatMinutes;
+
+  /** Jefe de Mantenimiento: habilita correcciones y corrige tiempos/actividad (alineado con el backend). */
+  get canManage(): boolean {
+    return this.menuAccessService.isMaintenanceManager();
+  }
 
   private static readonly MAINTENANCE_AREA = 'Mantenimiento';
   private socketSub: Subscription | null = null;
@@ -67,7 +73,7 @@ export class ViewNews implements OnInit, OnDestroy {
     status: '',
     maintenanceType: '',
     machineCode: '',
-    area: '',
+    area: ''
   };
 
   orders: MaintenanceRequest[] = [];
@@ -104,7 +110,9 @@ export class ViewNews implements OnInit, OnDestroy {
   showMachineDropdown = false;
   private isSelectingMachine = false;
 
-  // Buscador predictivo de técnicos (por nombre o documento) en edición
+  // Técnicos asignados en edición (1 o N): se agregan por nombre/documento y se pueden quitar.
+  editAssignees: MaintenanceAssignee[] = [];
+  assigneeSearchTerm = '';
   predictiveTechnicianList: MaintenanceTechnician[] = [];
   showTechnicianDropdown = false;
   private isSelectingTechnician = false;
@@ -114,14 +122,15 @@ export class ViewNews implements OnInit, OnDestroy {
   isDeleting = false;
   orderToDelete: MaintenanceRequest | null = null;
 
-  // Nueva intervención (acción de contención)
-  newIntervention: { technicianCodes: string; workDone: string; startAt: string; endAt: string } = {
-    technicianCodes: '',
-    workDone: '',
-    startAt: '',
-    endAt: '',
-  };
+  // Nueva intervención (acción de contención) registrada por el Jefe a nombre de un técnico.
+  newIntervention: NewInterventionForm = this.buildEmptyNewIntervention();
   isAddingIntervention = false;
+
+  // Corrección de una intervención por el Jefe (siempre con motivo, queda en la auditoría).
+  editingInterventionId: string | null = null;
+  interventionEditForm: InterventionEditForm = this.buildEmptyInterventionEdit();
+  isSavingIntervention = false;
+  expandedHistoryId: string | null = null;
 
   ngOnInit(): void {
     this.loadTechnicians();
@@ -145,14 +154,12 @@ export class ViewNews implements OnInit, OnDestroy {
 
     // Alerta inmediata cuando entra una novedad nueva (o redirigida) para Mantenimiento.
     this.socketSub.add(
-      merge(this.socketService.productionNewsCreated$, this.socketService.productionNewsRedirected$).subscribe(
-        (event) => {
-          const news = event?.news as ProductionNews | undefined;
-          if (!news || !this.isAssignedToMaintenance(news)) return;
-          this.notifyIncomingNews(news);
-          this.schedulePendingNewsReload(news);
-        },
-      ),
+      merge(this.socketService.productionNewsCreated$, this.socketService.productionNewsRedirected$).subscribe((event) => {
+        const news = event?.news as ProductionNews | undefined;
+        if (!news || !this.isAssignedToMaintenance(news)) return;
+        this.notifyIncomingNews(news);
+        this.schedulePendingNewsReload(news);
+      })
     );
 
     // Cambios sobre novedades existentes (fin de parada, cierre, respuesta, salida por redirección).
@@ -161,15 +168,14 @@ export class ViewNews implements OnInit, OnDestroy {
         this.socketService.productionNewsStopFinished$,
         this.socketService.productionNewsClosed$,
         this.socketService.productionNewsResponded$,
-        this.socketService.productionNewsRedirected$,
+        this.socketService.productionNewsRedirected$
       ).subscribe((event) => {
         const news = event?.news as ProductionNews | undefined;
         if (!news) return;
-        const leftMaintenance =
-          (event as ProductionNewsRedirectedEvent).previousArea === ViewNews.MAINTENANCE_AREA;
+        const leftMaintenance = (event as ProductionNewsRedirectedEvent).previousArea === ViewNews.MAINTENANCE_AREA;
         const isListed = this.filteredPendingNews.some((n) => n._id === news._id) || this.isStop(news);
         if (isListed || leftMaintenance) this.schedulePendingNewsReload(news);
-      }),
+      })
     );
   }
 
@@ -185,7 +191,7 @@ export class ViewNews implements OnInit, OnDestroy {
     if (this.isStop(news)) {
       this.toastr.error(message, `Parada de Proceso${news.stop?.isOngoing ? ' EN CURSO' : ''}`, {
         timeOut: 15000,
-        progressBar: true,
+        progressBar: true
       });
     } else {
       this.toastr.warning(message, news.category || 'Nueva novedad', { timeOut: 10000, progressBar: true });
@@ -208,14 +214,14 @@ export class ViewNews implements OnInit, OnDestroy {
       next: (res) => {
         if (res.ok) this.groupedAreas = res.msg;
       },
-      error: (err) => console.error('Error cargando áreas agrupadas:', err),
+      error: (err) => console.error('Error cargando áreas agrupadas:', err)
     });
   }
 
   private loadTechnicians(): void {
     this.rhStaffService.getMaintenanceTechnicians().subscribe({
       next: (techs) => (this.technicians = techs),
-      error: (err) => console.error('Error cargando técnicos de mantenimiento:', err),
+      error: (err) => console.error('Error cargando técnicos de mantenimiento:', err)
     });
   }
 
@@ -226,8 +232,7 @@ export class ViewNews implements OnInit, OnDestroy {
   search(): void {
     const filters: MaintenanceListFilters = {};
     if (this.filters.status) filters.status = this.filters.status as MaintenanceStatus;
-    if (this.filters.maintenanceType)
-      filters.maintenanceType = this.filters.maintenanceType as MaintenanceType;
+    if (this.filters.maintenanceType) filters.maintenanceType = this.filters.maintenanceType as MaintenanceType;
     if (this.filters.machineCode.trim()) filters.machineCode = this.filters.machineCode.trim();
     if (this.filters.area.trim()) filters.area = this.filters.area.trim();
 
@@ -242,7 +247,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.orders = [];
         this.toastr.error(err.message || 'No se pudieron cargar las solicitudes.', 'Error');
       },
-      complete: () => (this.isLoading = false),
+      complete: () => (this.isLoading = false)
     });
   }
 
@@ -301,7 +306,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.filteredPendingNews = [];
         this.toastr.error(err.message || 'No se pudieron cargar las novedades entrantes.', 'Error');
       },
-      complete: () => (this.isLoadingPendingNews = false),
+      complete: () => (this.isLoadingPendingNews = false)
     });
     this.loadOngoingStops();
   }
@@ -313,7 +318,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.ongoingStops = res.ok ? res.msg : [];
         this.applyPendingNewsFilter();
       },
-      error: (err) => console.error('Error cargando paradas en curso:', err),
+      error: (err) => console.error('Error cargando paradas en curso:', err)
     });
   }
 
@@ -329,9 +334,7 @@ export class ViewNews implements OnInit, OnDestroy {
     // Paradas en curso siempre primero (prioridad); dentro de cada grupo, el orden elegido.
     const dir = this.pendingNewsSortDirection === 'asc' ? 1 : -1;
     const rank = (n: ProductionNews): number => (this.isOngoingStop(n) ? 0 : 1);
-    list.sort(
-      (a, b) => rank(a) - rank(b) || dir * this.comparePendingNews(a, b, this.pendingNewsSortField),
-    );
+    list.sort((a, b) => rank(a) - rank(b) || dir * this.comparePendingNews(a, b, this.pendingNewsSortField));
     this.filteredPendingNews = list;
   }
 
@@ -368,7 +371,7 @@ export class ViewNews implements OnInit, OnDestroy {
       n.origin?.reportedBy?.userApp,
       n.stop?.stopType,
       this.isStop(n) && this.isStopOngoing(n) ? 'en curso' : '',
-      generated ? `MTTO ${generated.consecutiveMtto}` : '',
+      generated ? `MTTO ${generated.consecutiveMtto}` : ''
     ]
       .filter((v): v is string => !!v)
       .join(' ')
@@ -442,7 +445,7 @@ export class ViewNews implements OnInit, OnDestroy {
     const parts = [
       `Parada de Proceso (${stop.stopType || 'sin tipo'}) ${n.newsDate} ${this.stopSchedule(n)}`,
       stop.totalTime ? `Total: ${stop.totalTime}` : '',
-      stop.finishedBy?.name ? `Finalizada por: ${stop.finishedBy.name}` : '',
+      stop.finishedBy?.name ? `Finalizada por: ${stop.finishedBy.name}` : ''
     ];
     return parts.filter((p) => !!p).join(' · ');
   }
@@ -461,7 +464,7 @@ export class ViewNews implements OnInit, OnDestroy {
       machineName: item.origin?.machineName || '',
       description: item.detail || '',
       requestedBy: item.origin?.reportedBy?.name || '',
-      reportedAt: item.origin?.reportedAt || '',
+      reportedAt: item.origin?.reportedAt || ''
     });
     this.router.navigate(['/maintenance/maintenanceNews']);
   }
@@ -487,6 +490,8 @@ export class ViewNews implements OnInit, OnDestroy {
   openDetail(order: MaintenanceRequest): void {
     this.detailOrder = order;
     this.resetNewIntervention();
+    this.editingInterventionId = null;
+    this.expandedHistoryId = null;
     this.showDetailModal = true;
   }
 
@@ -516,8 +521,10 @@ export class ViewNews implements OnInit, OnDestroy {
       machineCode: order.machineCode || '',
       machineName: order.machineName || '',
       scheduledDate: order.scheduledDate || '',
-      observation: '',
+      observation: ''
     };
+    this.editAssignees = (order.assignees || []).map((a) => ({ ...a }));
+    this.assigneeSearchTerm = '';
 
     // Preparar áreas/departamentos y máquinas del área actual.
     const group = this.groupedAreas.find((g) => g.area === area);
@@ -544,17 +551,32 @@ export class ViewNews implements OnInit, OnDestroy {
       return;
     }
 
+    // Quitar a un técnico no borra lo que ya registró, pero se confirma para evitar errores.
+    const kept = new Set(this.editAssignees.map((a) => a.document));
+    const removedWithWork = (this.editOrder.assignees || []).filter((a) => !kept.has(a.document) && this.sessionsOf(a.document) > 0);
+    if (
+      removedWithWork.length &&
+      !confirm(
+        `${removedWithWork.map((a) => a.fullName).join(', ')} ya tiene actividades registradas. ` +
+          'Se quitará de la asignación, pero sus actividades se conservan en el historial. ¿Continuar?'
+      )
+    ) {
+      return;
+    }
+
     const payload: UpdateMaintenanceRequest = {
       status: this.editForm.status,
       priority: this.editForm.priority,
       maintenanceType: this.editForm.maintenanceType,
-      assignedTo: this.editForm.assignedTo,
+      // `assignees` es el dato real (el técnico ve la solicitud en "Cargue de Novedad" por él);
+      // el backend deriva `assignedTo` y lo deja vacío si se quitaron todos.
+      assignees: this.editAssignees,
       // machineCode no es actualizable por el backend; sí machineName, area y department.
       machineName: this.editForm.machineName,
       area: this.editForm.machineArea,
       department: this.editForm.machineDepartment,
       scheduledDate: this.editForm.scheduledDate,
-      observation: this.editForm.observation.trim(),
+      observation: this.editForm.observation.trim()
     };
 
     this.isSaving = true;
@@ -570,7 +592,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.editOrder = null;
       },
       error: (err: Error) => this.toastr.error(err.message || 'Error al actualizar.', 'Error'),
-      complete: () => (this.isSaving = false),
+      complete: () => (this.isSaving = false)
     });
   }
 
@@ -589,13 +611,51 @@ export class ViewNews implements OnInit, OnDestroy {
         order.requesterApproval = res.data.requesterApproval;
         this.toastr.success(res.msg || `Vo.Bo ${role} registrado.`, 'Mantenimiento');
       },
-      error: (err: Error) => this.toastr.error(err.message || 'Error al registrar Vo.Bo.', 'Error'),
+      error: (err: Error) => this.toastr.error(err.message || 'Error al registrar Vo.Bo.', 'Error')
     });
   }
 
   // ============================================================
   //  INTERVENCIONES
   // ============================================================
+
+  /** Nombre legible del colaborador de un registro (snapshot, asignados o personal de RH). */
+  personName(it: Intervention): string {
+    if (it.person?.fullName) return it.person.fullName;
+    const codes = it.technicianCodes || [];
+    if (!codes.length) return '—';
+    return codes.map((c) => this.nameByDocument(c)).join(', ');
+  }
+
+  private nameByDocument(document: string): string {
+    const assignee = this.detailOrder?.assignees?.find((a) => a.document === document);
+    if (assignee?.fullName) return assignee.fullName;
+    const tech = this.technicians.find((t) => t.document === document);
+    return tech?.fullName || document;
+  }
+
+  /** Personal elegible como ayudante: Auxiliares de Mantenimiento (o todo mantenimiento si RH no marca ninguno). */
+  get assistantOptions(): MaintenanceTechnician[] {
+    const assistants = this.technicians.filter((t) => t.isAssistant);
+    return assistants.length ? assistants : this.technicians;
+  }
+
+  /** Tiempo total registrado por persona en la solicitud abierta (para validar). */
+  get minutesByPerson(): { name: string; minutes: number; sessions: number }[] {
+    const map = new Map<string, { name: string; minutes: number; sessions: number }>();
+    for (const it of this.detailOrder?.interventions || []) {
+      const key = it.person?.document || (it.technicianCodes || []).join(',') || '—';
+      const row = map.get(key) || { name: this.personName(it), minutes: 0, sessions: 0 };
+      row.minutes += it.durationMinutes || 0;
+      row.sessions += 1;
+      map.set(key, row);
+    }
+    return [...map.values()];
+  }
+
+  get newInterventionMinutes(): number | null {
+    return calculateMinutes(this.newIntervention.startAt, this.newIntervention.endAt);
+  }
 
   addIntervention(): void {
     if (!this.detailOrder) return;
@@ -604,18 +664,26 @@ export class ViewNews implements OnInit, OnDestroy {
       this.toastr.warning('Describa el trabajo realizado.', 'Atención');
       return;
     }
+    if (!this.newIntervention.responsibleDocument) {
+      this.toastr.warning('Seleccione el técnico responsable de la actividad.', 'Atención');
+      return;
+    }
+    if (!this.newIntervention.startAt || !this.newIntervention.endAt || this.newInterventionMinutes === null) {
+      this.toastr.warning('Indique inicio y fin válidos (el fin debe ser posterior al inicio).', 'Atención');
+      return;
+    }
+    if (this.newIntervention.helperDocument === this.newIntervention.responsibleDocument) {
+      this.toastr.warning('El ayudante no puede ser el mismo técnico responsable.', 'Atención');
+      return;
+    }
 
     const payload: AddInterventionRequest = {
-      technicianCodes: this.newIntervention.technicianCodes
-        .split(',')
-        .map((c) => c.trim())
-        .filter((c) => !!c),
+      technicianCodes: [this.newIntervention.responsibleDocument],
       workDone,
-      startAt: this.newIntervention.startAt
-        ? this.toBackendDateTime(this.newIntervention.startAt)
-        : '',
-      endAt: this.newIntervention.endAt ? this.toBackendDateTime(this.newIntervention.endAt) : '',
+      startAt: toBackendDateTime(this.newIntervention.startAt),
+      endAt: toBackendDateTime(this.newIntervention.endAt),
       spareParts: [],
+      helper: this.helperRefByDocument(this.newIntervention.helperDocument)
     };
 
     this.isAddingIntervention = true;
@@ -625,14 +693,141 @@ export class ViewNews implements OnInit, OnDestroy {
           this.toastr.error(res?.msg || 'No se pudo agregar la intervención.', 'Error');
           return;
         }
-        this.toastr.success('Acción de contención agregada.', 'Mantenimiento');
+        this.toastr.success(res.msg || 'Acción de contención agregada.', 'Mantenimiento');
         this.detailOrder = res.data;
         this.replaceInList(res.data);
         this.resetNewIntervention();
       },
       error: (err: Error) => this.toastr.error(err.message || 'Error al agregar.', 'Error'),
-      complete: () => (this.isAddingIntervention = false),
+      complete: () => (this.isAddingIntervention = false)
     });
+  }
+
+  private helperRefByDocument(document: string): PersonRef | null {
+    if (!document) return null;
+    const tech = this.technicians.find((t) => t.document === document);
+    return { document, fullName: tech?.fullName || document };
+  }
+
+  // ---------- Corrección del Jefe (ej. registraron 300 min y eran 30) ----------
+
+  startInterventionEdit(it: Intervention): void {
+    this.editingInterventionId = it.id;
+    this.interventionEditForm = {
+      workDone: it.workDone || '',
+      startAt: toDatetimeLocal(it.startAt),
+      endAt: toDatetimeLocal(it.endAt),
+      notes: it.notes || '',
+      helperDocument: it.helper?.document || '',
+      observation: '',
+      isHelperRecord: it.role === 'AYUDANTE',
+      originalMinutes: it.durationMinutes,
+      originalHelperDocument: it.helper?.document || ''
+    };
+  }
+
+  cancelInterventionEdit(): void {
+    if (this.isSavingIntervention) return;
+    this.editingInterventionId = null;
+    this.interventionEditForm = this.buildEmptyInterventionEdit();
+  }
+
+  get interventionEditMinutes(): number | null {
+    return calculateMinutes(this.interventionEditForm.startAt, this.interventionEditForm.endAt);
+  }
+
+  saveInterventionEdit(it: Intervention): void {
+    if (!this.detailOrder) return;
+    const f = this.interventionEditForm;
+    if (!f.workDone.trim()) {
+      this.toastr.warning('Describa el trabajo realizado.', 'Atención');
+      return;
+    }
+    if (!f.startAt || !f.endAt || this.interventionEditMinutes === null) {
+      this.toastr.warning('Indique inicio y fin válidos (el fin debe ser posterior al inicio).', 'Atención');
+      return;
+    }
+    if (!f.observation.trim()) {
+      this.toastr.warning('Indique el motivo del cambio: queda registrado en el historial.', 'Atención');
+      return;
+    }
+
+    const payload: UpdateInterventionRequest = {
+      workDone: f.workDone.trim(),
+      startAt: toBackendDateTime(f.startAt),
+      endAt: toBackendDateTime(f.endAt),
+      notes: f.notes.trim(),
+      observation: f.observation.trim()
+    };
+    // El ayudante solo se cambia/retira desde el registro del responsable.
+    if (!f.isHelperRecord && f.helperDocument !== f.originalHelperDocument) {
+      if (f.helperDocument && f.helperDocument === it.person?.document) {
+        this.toastr.warning('El ayudante no puede ser el mismo técnico responsable.', 'Atención');
+        return;
+      }
+      payload.helper = this.helperRefByDocument(f.helperDocument);
+    }
+
+    this.isSavingIntervention = true;
+    this.maintenanceService.updateIntervention(this.detailOrder.id, it.id, payload).subscribe({
+      next: (res) => {
+        if (!res?.ok) {
+          this.toastr.error(res?.msg || 'No se pudo guardar la corrección.', 'Error');
+          return;
+        }
+        this.toastr.success('Corrección guardada y registrada en el historial.', 'Mantenimiento');
+        this.detailOrder = res.data;
+        this.replaceInList(res.data);
+        this.editingInterventionId = null;
+        this.interventionEditForm = this.buildEmptyInterventionEdit();
+      },
+      error: (err: Error) => this.toastr.error(err.message || 'Error al guardar la corrección.', 'Error'),
+      complete: () => (this.isSavingIntervention = false)
+    });
+  }
+
+  // ---------- Historial de cambios de una intervención ----------
+
+  toggleHistory(it: Intervention): void {
+    this.expandedHistoryId = this.expandedHistoryId === it.id ? null : it.id;
+  }
+
+  /** Cambios posteriores al registro (correcciones, habilitaciones, cambios de ayudante). */
+  changeCount(it: Intervention): number {
+    return (it.auditTrail || []).filter((a) => a.action !== 'INTERVENTION_ADDED').length;
+  }
+
+  auditActionLabel(action: string): string {
+    switch (action) {
+      case 'INTERVENTION_ADDED':
+        return 'Registrada';
+      case 'INTERVENTION_UPDATED':
+        return 'Corregida por el técnico';
+      case 'INTERVENTION_UPDATED_BY_JEFE':
+        return 'Corregida por el Jefe';
+      case 'INTERVENTION_EDIT_UNLOCKED':
+        return 'Corrección habilitada';
+      case 'INTERVENTION_HELPER_CHANGED':
+        return 'Cambio de ayudante';
+      default:
+        return action;
+    }
+  }
+
+  /** Resumen "antes" de una entrada de auditoría: valores anteriores de tiempo y actividad. */
+  auditPreviousSummary(entry: AuditEntry): string {
+    const prev = entry.previousState as unknown as Record<string, unknown> | null;
+    if (!prev || typeof prev !== 'object') return '';
+    const parts: string[] = [];
+    if (prev['durationMinutes'] !== undefined && prev['durationMinutes'] !== null) {
+      parts.push(`Tiempo: ${formatMinutes(prev['durationMinutes'] as number)}`);
+    }
+    if (prev['startAt']) parts.push(`Inicio: ${prev['startAt']}`);
+    if (prev['endAt']) parts.push(`Fin: ${prev['endAt']}`);
+    if (prev['workDone']) parts.push(`Trabajo: ${prev['workDone']}`);
+    const person = prev['person'] as PersonRef | null | undefined;
+    if (person?.fullName) parts.push(`Ayudante: ${person.fullName}`);
+    return parts.join(' · ');
   }
 
   /** Habilita puntualmente que el técnico corrija esta intervención (Cargue de Novedad). */
@@ -648,7 +843,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.detailOrder = res.data;
         this.replaceInList(res.data);
       },
-      error: (err: Error) => this.toastr.error(err.message || 'Error al habilitar la corrección.', 'Error'),
+      error: (err: Error) => this.toastr.error(err.message || 'Error al habilitar la corrección.', 'Error')
     });
   }
 
@@ -684,7 +879,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.orderToDelete = null;
       },
       error: (err: Error) => this.toastr.error(err.message || 'Error al eliminar.', 'Error'),
-      complete: () => (this.isDeleting = false),
+      complete: () => (this.isDeleting = false)
     });
   }
 
@@ -717,7 +912,7 @@ export class ViewNews implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error cargando máquinas por área:', err);
         this.machinesByArea = [];
-      },
+      }
     });
   }
 
@@ -731,11 +926,7 @@ export class ViewNews implements OnInit, OnDestroy {
       return;
     }
     this.predictiveMachineList = this.machinesByArea
-      .filter(
-        (m) =>
-          (m.machineCode || '').toLowerCase().includes(t) ||
-          (m.machineName || '').toLowerCase().includes(t),
-      )
+      .filter((m) => (m.machineCode || '').toLowerCase().includes(t) || (m.machineName || '').toLowerCase().includes(t))
       .slice(0, 20);
     this.showMachineDropdown = this.predictiveMachineList.length > 0;
   }
@@ -766,7 +957,7 @@ export class ViewNews implements OnInit, OnDestroy {
   //  EDICIÓN: BUSCADOR PREDICTIVO DE TÉCNICOS (nombre o documento)
   // ============================================================
 
-  onEditAssignedChange(term: string): void {
+  onAssigneeSearchChange(term: string): void {
     if (this.isSelectingTechnician) return;
     const t = (term || '').toString().trim().toLowerCase();
     if (t.length < 1) {
@@ -774,22 +965,36 @@ export class ViewNews implements OnInit, OnDestroy {
       this.showTechnicianDropdown = false;
       return;
     }
+    const selected = new Set(this.editAssignees.map((a) => a.document));
     this.predictiveTechnicianList = this.technicians
       .filter(
         (tech) =>
-          (tech.fullName || '').toLowerCase().includes(t) ||
-          (tech.document || '').toLowerCase().includes(t),
+          !selected.has(tech.document) &&
+          ((tech.fullName || '').toLowerCase().includes(t) || (tech.document || '').toLowerCase().includes(t))
       )
       .slice(0, 20);
     this.showTechnicianDropdown = this.predictiveTechnicianList.length > 0;
   }
 
-  selectEditTechnician(tech: MaintenanceTechnician): void {
+  addEditAssignee(tech: MaintenanceTechnician): void {
     this.isSelectingTechnician = true;
-    this.editForm.assignedTo = tech.fullName;
+    if (!this.editAssignees.some((a) => a.document === tech.document)) {
+      this.editAssignees.push({ document: tech.document, fullName: tech.fullName, specialty: tech.specialty });
+    }
+    this.assigneeSearchTerm = '';
     this.predictiveTechnicianList = [];
     this.showTechnicianDropdown = false;
     setTimeout(() => (this.isSelectingTechnician = false), 300);
+  }
+
+  /** Quita un técnico asignado por error. Sus actividades ya registradas se conservan (historial). */
+  removeEditAssignee(index: number): void {
+    this.editAssignees.splice(index, 1);
+  }
+
+  /** Actividades ya registradas por un técnico en la solicitud en edición (aviso al quitarlo). */
+  sessionsOf(document: string): number {
+    return (this.editOrder?.interventions || []).filter((i) => i.technicianCodes?.includes(document)).length;
   }
 
   onTechnicianBlur(): void {
@@ -829,21 +1034,53 @@ export class ViewNews implements OnInit, OnDestroy {
       machineCode: '',
       machineName: '',
       scheduledDate: '',
-      observation: '',
+      observation: ''
     };
   }
 
   private resetNewIntervention(): void {
-    this.newIntervention = { technicianCodes: '', workDone: '', startAt: '', endAt: '' };
+    this.newIntervention = this.buildEmptyNewIntervention();
   }
 
-  /** Convierte un datetime-local (yyyy-MM-ddTHH:mm) a 'dd/MM/yyyy, HH:mm:ss'. */
-  private toBackendDateTime(value: string): string {
-    const [datePart, timePart] = value.split('T');
-    const [year, month, day] = datePart.split('-');
-    const time = timePart ? `${timePart}:00`.slice(0, 8) : '00:00:00';
-    return `${day}/${month}/${year}, ${time}`;
+  private buildEmptyNewIntervention(): NewInterventionForm {
+    return { responsibleDocument: '', helperDocument: '', workDone: '', startAt: '', endAt: '' };
   }
+
+  private buildEmptyInterventionEdit(): InterventionEditForm {
+    return {
+      workDone: '',
+      startAt: '',
+      endAt: '',
+      notes: '',
+      helperDocument: '',
+      observation: '',
+      isHelperRecord: false,
+      originalMinutes: null,
+      originalHelperDocument: ''
+    };
+  }
+}
+
+/** Alta de actividad por el Jefe a nombre de un técnico asignado (+ ayudante opcional). */
+interface NewInterventionForm {
+  responsibleDocument: string;
+  helperDocument: string;
+  workDone: string;
+  startAt: string;
+  endAt: string;
+}
+
+/** Corrección de una intervención por el Jefe (motivo obligatorio). */
+interface InterventionEditForm {
+  workDone: string;
+  startAt: string;
+  endAt: string;
+  notes: string;
+  helperDocument: string;
+  observation: string;
+  isHelperRecord: boolean;
+  originalMinutes: number | null;
+  originalHelperDocument: string;
 }
 
 /** Columnas por las que se puede ordenar la tabla de novedades entrantes. */

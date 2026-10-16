@@ -249,3 +249,74 @@ $mtto-bg-light: #f8fafc;
 @media (max-width: 900px) {
   .header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
 }
+
+// Sesión que se está corrigiendo (resaltada en la lista "Mis actividades").
+.mtto-intervention-item.is-editing {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+}
+
+// Buscador predictivo del ayudante + chip del ayudante seleccionado.
+.autocomplete-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.autocomplete-item {
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background-color: #e7f1ff; color: #084298; }
+}
+
+.assignee-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #e7f1ff;
+  color: #084298;
+  border: 1px solid #bcd6f7;
+  border-radius: 999px;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  small { color: #4a72a3; font-weight: 400; }
+}
+
+.assignee-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(8, 66, 152, 0.12);
+  color: #084298;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover { background: rgba(8, 66, 152, 0.25); }
+}

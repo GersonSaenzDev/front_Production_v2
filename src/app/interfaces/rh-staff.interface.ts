@@ -37,4 +37,6 @@ export interface MaintenanceTechnician {
   specialty: string;
   area: string;
   departament: string;
+  /** Cargo de Auxiliar de Mantenimiento (position/jobTitle contiene "AUXILIAR"): puede ser ayudante. */
+  isAssistant: boolean;
 }

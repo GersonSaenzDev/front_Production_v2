@@ -75,56 +75,112 @@
             </div>
           </div>
 
-          <!-- Ya registré mi intervención y NO está habilitada para corregir -->
-          <div class="mtto-section" *ngIf="myIntervention && !canEditMyIntervention">
-            <h6 class="mtto-section-title"><i class="ti ti-circle-check"></i> Tu intervención ya fue registrada</h6>
-            <div class="mtto-intervention-item">
-              <div class="mtto-intervention-work">{{ myIntervention.workDone }}</div>
+          <!-- Mis sesiones de trabajo (como responsable o ayudante) -->
+          <div class="mtto-section">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="mtto-section-title mb-0">
+                <i class="ti ti-list-check"></i> Mis actividades
+                <span class="text-muted fw-normal" *ngIf="mySessions.length">
+                  · {{ mySessions.length }} · Total {{ formatMinutes(myTotalMinutes) }}
+                </span>
+              </h6>
+              <span *ngIf="isLoadingOrder" class="spinner-border spinner-border-sm text-primary"></span>
+            </div>
+
+            <p class="mtto-empty-text" *ngIf="mySessions.length === 0">Aún no has registrado actividades en esta solicitud.</p>
+
+            <div class="mtto-intervention-item mb-2" *ngFor="let it of mySessions"
+              [class.is-editing]="editingIntervention?.id === it.id">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="mtto-intervention-work">{{ it.workDone }}</div>
+                <span class="badge" [class.bg-primary]="it.role !== 'AYUDANTE'" [class.bg-secondary]="it.role === 'AYUDANTE'">
+                  {{ it.role === 'AYUDANTE' ? 'Ayudante' : 'Responsable' }}
+                </span>
+              </div>
               <div class="mtto-intervention-meta">
-                <span><i class="ti ti-clock"></i> {{ myIntervention.startAt || '—' }} → {{ myIntervention.endAt || '—' }}</span>
-                <span *ngIf="myIntervention.durationMinutes != null"><i class="ti ti-hourglass"></i> {{ myIntervention.durationMinutes }} min</span>
+                <span><i class="ti ti-clock"></i> {{ it.startAt || '—' }} → {{ it.endAt || '—' }}</span>
+                <span><i class="ti ti-hourglass"></i> {{ formatMinutes(it.durationMinutes) }}</span>
+                <span *ngIf="it.role !== 'AYUDANTE' && it.helper"><i class="ti ti-user-plus"></i> Ayudante: {{ it.helper.fullName }}</span>
+                <span *ngIf="it.role === 'AYUDANTE' && it.responsible"><i class="ti ti-user"></i> Responsable: {{ it.responsible.fullName || it.responsible.document }}</span>
+              </div>
+              <div class="mt-2" *ngIf="it.role !== 'AYUDANTE'">
+                <button class="btn btn-sm btn-primary" *ngIf="canCorrect(it) && editingIntervention?.id !== it.id" (click)="startEdit(it)">
+                  <i class="ti ti-edit me-1"></i> Corregir (habilitado por el Jefe)
+                </button>
+                <small class="text-muted" *ngIf="!it.editUnlocked">
+                  <i class="ti ti-lock"></i> Para corregirla, pide al Jefe que la habilite.
+                </small>
               </div>
             </div>
-            <p class="mtto-empty-text mt-2 mb-0">
-              Si necesitas corregirla, pídele al Jefe de Mantenimiento que habilite la corrección desde "Visualizar Novedades".
+
+            <div class="text-end mt-2" *ngIf="isAssignee && !showForm">
+              <button class="btn btn-sm btn-success" (click)="startNew()">
+                <i class="ti ti-plus me-1"></i> Registrar nueva actividad
+              </button>
+            </div>
+            <p class="mtto-empty-text mt-2 mb-0" *ngIf="!isAssignee">
+              Participaste como ayudante: el técnico responsable registra las actividades.
             </p>
           </div>
 
-          <!-- Ya registré mi intervención y el Jefe habilitó la corrección -->
-          <div class="mtto-section" *ngIf="myIntervention && canEditMyIntervention && !isEditing">
-            <h6 class="mtto-section-title"><i class="ti ti-lock-open"></i> Corrección habilitada por el Jefe</h6>
-            <p class="mtto-empty-text mb-2">El Jefe habilitó puntualmente la corrección de tu intervención.</p>
-            <button class="btn btn-sm btn-primary" (click)="startEdit()">
-              <i class="ti ti-edit me-1"></i> Corregir mi intervención
-            </button>
-          </div>
-
-          <!-- Formulario: agregar (sin intervención propia) o corregir (edición habilitada, ya en curso) -->
-          <div class="mtto-section" *ngIf="!myIntervention || isEditing">
+          <!-- Formulario: nueva actividad o corrección habilitada -->
+          <div class="mtto-section" *ngIf="showForm">
             <h6 class="mtto-section-title">
-              <i class="ti ti-plus"></i>
-              {{ myIntervention ? 'Corregir mi intervención' : 'Registrar mi intervención' }}
+              <i class="ti" [class.ti-plus]="!editingIntervention" [class.ti-edit]="editingIntervention"></i>
+              {{ editingIntervention ? 'Corregir actividad' : 'Registrar nueva actividad' }}
             </h6>
 
             <div class="mtto-form-row">
               <div class="mtto-form-group mtto-form-group-full">
-                <label class="form-label">Trabajo realizado</label>
+                <label class="form-label">Trabajo realizado <span class="text-danger">*</span></label>
                 <textarea class="form-control form-control-sm" rows="2"
                   [(ngModel)]="form.workDone" placeholder="Describa brevemente el trabajo realizado"></textarea>
               </div>
               <div class="mtto-form-group">
-                <label class="form-label">Inicio</label>
+                <label class="form-label">Inicio <span class="text-danger">*</span></label>
                 <input type="datetime-local" class="form-control form-control-sm" [(ngModel)]="form.startAt" />
               </div>
               <div class="mtto-form-group">
-                <label class="form-label">Culminación</label>
+                <label class="form-label">Fin <span class="text-danger">*</span></label>
                 <input type="datetime-local" class="form-control form-control-sm" [(ngModel)]="form.endAt" />
               </div>
-              <div class="mtto-form-group mtto-form-group-full">
-                <label class="form-label">Otros técnicos que participaron (documentos separados por coma)</label>
-                <input type="text" class="form-control form-control-sm" [(ngModel)]="form.otherTechnicianCodes"
-                  placeholder="Ej: 123456, 789012" />
+              <div class="mtto-form-group">
+                <label class="form-label">Tiempo</label>
+                <div class="form-control form-control-sm bg-light">
+                  {{ formMinutes !== null ? formatMinutes(formMinutes) : '—' }}
+                </div>
               </div>
+
+              <!-- Ayudante (1 solo) -->
+              <div class="mtto-form-group mtto-form-group-full position-relative">
+                <label class="form-label">Ayudante (Auxiliar de Mantenimiento) — opcional, máximo 1</label>
+                <div class="assignee-chips mt-0" *ngIf="form.helper; else helperSearch">
+                  <span class="assignee-chip">
+                    <i class="ti ti-user-plus"></i>
+                    {{ form.helper.fullName }} <small>· CC {{ form.helper.document }}</small>
+                    <button type="button" class="assignee-chip-remove" (click)="removeHelper()" title="Quitar ayudante">×</button>
+                  </span>
+                </div>
+                <ng-template #helperSearch>
+                  <input type="text" class="form-control form-control-sm" autocomplete="off"
+                    [(ngModel)]="helperSearchTerm" (ngModelChange)="onHelperSearchChange($event)"
+                    (focus)="onHelperFocus()" (blur)="onHelperBlur()"
+                    placeholder="Buscar por nombre o cédula" />
+                  <div class="autocomplete-results" *ngIf="showHelperDropdown && helperResults.length > 0">
+                    <div class="autocomplete-item" *ngFor="let s of helperResults" (mousedown)="selectHelper(s)">
+                      <strong>{{ s.fullName }}</strong> — {{ s.specialty }}
+                      <small class="text-muted d-block">CC: {{ s.document }}</small>
+                    </div>
+                  </div>
+                  <small class="text-muted" *ngIf="helperPoolIsFallback">
+                    RH no tiene personal con cargo "Auxiliar": se muestra todo el personal de mantenimiento.
+                  </small>
+                </ng-template>
+                <small class="text-muted mt-1" *ngIf="form.helper">
+                  La actividad se guardará también a nombre del ayudante, con el mismo tiempo.
+                </small>
+              </div>
+
               <div class="mtto-form-group mtto-form-group-full">
                 <label class="form-label">Notas / detalles adicionales</label>
                 <textarea class="form-control form-control-sm" rows="2"
@@ -162,13 +218,13 @@
             </div>
 
             <div class="text-end mt-3">
-              <button class="btn btn-sm btn-secondary me-2" (click)="cancelEdit()" *ngIf="myIntervention">
+              <button class="btn btn-sm btn-secondary me-2" (click)="cancelForm()" [disabled]="isSaving">
                 Cancelar
               </button>
               <button class="btn btn-sm btn-success" (click)="submit()" [disabled]="isSaving">
                 <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
                 <i *ngIf="!isSaving" class="ti ti-device-floppy me-1"></i>
-                {{ myIntervention ? 'Guardar corrección' : 'Registrar intervención' }}
+                {{ editingIntervention ? 'Guardar corrección' : 'Registrar actividad' }}
               </button>
             </div>
           </div>

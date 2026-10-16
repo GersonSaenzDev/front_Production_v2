@@ -26,7 +26,12 @@ export interface MaintenanceAssignee {
   document: string;
   fullName: string;
   specialty?: string;
+  /** Ayudante (auxiliar de mantenimiento) vinculado por este técnico. Máximo 1. */
+  helper?: PersonRef | null;
 }
+
+/** Rol de un registro de intervención dentro de una sesión de trabajo. */
+export type InterventionRole = 'RESPONSABLE' | 'AYUDANTE';
 
 export interface AuditEntry {
   action: string;
@@ -72,6 +77,18 @@ export interface Intervention {
   editUnlocked: boolean;
   editUnlockedBy: string | null;
   editUnlockedAt: string | null;
+  /**
+   * Sesión con ayudante: se guarda un registro POR PERSONA (responsable y ayudante) con el
+   * mismo tiempo y actividad; ambos comparten `groupId`. Legado: null.
+   */
+  groupId: string | null;
+  role: InterventionRole;
+  /** Colaborador al que pertenece este registro. */
+  person: PersonRef | null;
+  /** En el registro del ayudante: técnico responsable de la sesión. */
+  responsible: PersonRef | null;
+  /** En el registro del responsable: ayudante vinculado (máx. 1). */
+  helper: PersonRef | null;
   auditTrail: AuditEntry[];
   userCreate: string | null;
   dateCreate: string | null;
@@ -155,6 +172,8 @@ export interface InterventionInput {
   /** Solicita que mesa técnica valide esta intervención. */
   escalateToTechnicalDesk?: boolean;
   escalationReason?: string;
+  /** Ayudante de la sesión: el backend crea un registro aparte para él. */
+  helper?: PersonRef | null;
 }
 
 /** Entrega de Almacén de Mantenimiento al registrar (sin auditoría ni id). */
@@ -236,6 +255,9 @@ export interface UpdateInterventionRequest {
   /** Uso de mesa técnica al atender un escalamiento. */
   escalationStatus?: EscalationStatus;
   escalationResponse?: string;
+  /** Ayudante: objeto = vincular/cambiar, null = retirarlo. Omitir = no tocar. */
+  helper?: PersonRef | null;
+  /** Motivo del cambio; obligatorio cuando el Jefe corrige tiempos/actividad. */
   observation?: string;
 }
 

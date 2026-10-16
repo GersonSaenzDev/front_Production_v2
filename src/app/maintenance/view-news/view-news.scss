@@ -655,3 +655,80 @@ $mtto-bg-light: #f8fafc;
     .form-group { width: 100% !important; }
   }
 }
+
+// Técnicos asignados en el modal de edición: chips con botón para quitarlos.
+.assignee-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #e7f1ff;
+  color: #084298;
+  border: 1px solid #bcd6f7;
+  border-radius: 999px;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  small { color: #4a72a3; font-weight: 400; }
+  small.text-warning { color: #b45309 !important; }
+}
+
+.assignee-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(8, 66, 152, 0.12);
+  color: #084298;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover { background: rgba(220, 53, 69, 0.2); color: #b02a37; }
+}
+
+// Totales de tiempo por colaborador en el detalle.
+.mtto-person-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.mtto-person-total {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+
+  small { color: #64748b; }
+}
+
+// Registro del ayudante (misma sesión que el responsable).
+.mtto-intervention-item.is-helper {
+  border-left: 3px solid #6c757d;
+}
+
+// Historial de cambios (auditoría) de una intervención.
+.mtto-history {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 0.78rem;
+
+  li + li { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed #e2e8f0; }
+}
+
+.mtto-history-prev { color: #b45309; }
