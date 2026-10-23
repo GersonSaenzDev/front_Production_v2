@@ -81,7 +81,7 @@ export class MenuAccessService {
     'GESTIÓN DE ESTRUCTURAS': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'RECURSOS HUMANOS': ['TH', 'RECURSOS HUMANOS'],
     CALIDAD: ['CALIDAD'],
-    'SERVICIO AL CLIENTE': ['SERVICIO AL CLIENTE'],
+    'SERVICIO AL CLIENTE': ['SERVICIO AL CLIENTE', 'SERVICIO TECNICO', 'SERVICIO POST VENTA'],
     SST: ['SST', 'SEGURIDAD INDUSTRIAL'],
     // Grupos exclusivos por departamento (ver DEPARTMENT_ACCESS): ningún área los habilita
     OXYPLAST: [],
@@ -649,7 +649,7 @@ export class MenuAccessService {
     if (area === 'PRODUCCION' && dept === 'COSTOS' && module === 'printing') return true;
     if (area === 'PRODUCCION' && dept === 'PLANEACION' && module === 'inventories') return true;
     if (area === 'CALIDAD' && module === 'quality') return true;
-    if (area === 'SERVICIO AL CLIENTE' && module === 'customer-service') return true;
+    if (['SERVICIO AL CLIENTE', 'SERVICIO TECNICO', 'SERVICIO POST VENTA'].includes(area) && module === 'customer-service') return true;
     if (
       (area === 'INGENIERIA INDUSTRIAL' || area === 'INGENIERIA PRODUCTO' || area === 'INGENIERIA DE PRODUCTO') &&
       module === 'engineering'

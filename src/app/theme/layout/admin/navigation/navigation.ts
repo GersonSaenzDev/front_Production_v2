@@ -1043,13 +1043,13 @@ export const NavigationItems: NavigationItem[] = [
   },
   {
     id: 'servicio-cliente-group',
-    title: 'Servicio al Cliente',
+    title: 'Servicio Post Venta',
     type: 'group',
     icon: 'ti ti-headset',
     children: [
       {
         id: 'servicio-cliente-collapse',
-        title: 'Servicio al Cliente',
+        title: 'Servicio Post Venta',
         type: 'collapse',
         icon: 'ti ti-headset',
         classes: 'nav-item',
@@ -1057,7 +1057,7 @@ export const NavigationItems: NavigationItem[] = [
         children: [
           {
             id: 'servicio-cliente-novedades',
-            title: 'Novedades Servicio al Cliente',
+            title: 'Novedades Post Venta',
             type: 'item',
             url: 'customer-service/customerServiceNews',
             breadcrumbs: true

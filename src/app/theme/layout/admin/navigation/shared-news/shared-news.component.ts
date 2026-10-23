@@ -45,6 +45,8 @@ export class SharedNewsComponent implements OnInit {
   @Input() title: string = '';
   @Input() subtitle: string = '';
   @Input() defaultOriginArea: string = '';
+  /** Permite cargar la novedad a otra sub-área de la MISMA área origen (ej. Post Venta: Servicio al Cliente -> Servicio Tecnico). */
+  @Input() allowSameAreaAssignment: boolean = false;
 
   private authService = inject(AuthService);
   private dashboardService = inject(DashboardServices);
@@ -181,6 +183,14 @@ export class SharedNewsComponent implements OnInit {
 
     this.novedadForm.get('assignmentArea')?.valueChanges.subscribe(value => {
       this.handleAssignmentAreaChange(value);
+    });
+
+    this.novedadForm.get('originSubArea')?.valueChanges.subscribe(() => {
+      if (!this.allowSameAreaAssignment) return;
+      const assignmentArea = this.novedadForm.get('assignmentArea')?.value;
+      if (assignmentArea && assignmentArea === this.novedadForm.get('originArea')?.value) {
+        this.handleAssignmentAreaChange(assignmentArea);
+      }
     });
 
     this.novedadForm.get('estadoParada')?.valueChanges.subscribe(() => this.applyStopStatus());
@@ -349,8 +359,10 @@ export class SharedNewsComponent implements OnInit {
       lineaControl?.setValue('');
     }
     lineaControl?.updateValueAndValidity();
-    this.availableAssignmentAreas = this.groupedAreas.filter(g => g.area !== area);
-    if (this.novedadForm.get('assignmentArea')?.value === area) {
+    this.availableAssignmentAreas = this.allowSameAreaAssignment
+      ? this.groupedAreas
+      : this.groupedAreas.filter(g => g.area !== area);
+    if (!this.allowSameAreaAssignment && this.novedadForm.get('assignmentArea')?.value === area) {
       this.novedadForm.patchValue({ assignmentArea: '', assignmentSubArea: '' });
       this.availableAssignmentSubAreas = [];
     }
@@ -427,7 +439,13 @@ export class SharedNewsComponent implements OnInit {
 
   handleAssignmentAreaChange(area: string): void {
     const group = this.groupedAreas.find(g => g.area === area);
-    this.availableAssignmentSubAreas = group ? group.subAreas : [];
+    const subAreas = group ? group.subAreas : [];
+    // Misma área origen y destino: la sub-área destino no puede ser la misma que reporta.
+    const originSubArea = this.novedadForm.get('originSubArea')?.value;
+    this.availableAssignmentSubAreas =
+      this.allowSameAreaAssignment && area === this.novedadForm.get('originArea')?.value && originSubArea
+        ? subAreas.filter(s => s.subArea !== originSubArea)
+        : subAreas;
     this.novedadForm.get('assignmentSubArea')?.setValue('');
   }
 
