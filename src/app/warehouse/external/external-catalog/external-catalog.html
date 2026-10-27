@@ -7,7 +7,7 @@
         <h3 class="ext-header-title mb-1">Catálogo Importaciones / Externos</h3>
         <p class="ext-header-subtitle mb-0">Productos por GTIN: referencia, producto Summum, cliente y características</p>
       </div>
-      @if (access().isWarehouseAdmin) {
+      @if (access().canManageCatalog) {
       <div class="ext-header-actions">
         <button type="button" class="ext-btn-header" (click)="downloadTemplate()">
           <i class="ti ti-download"></i>
@@ -107,7 +107,7 @@
             <td class="ext-mono">{{ u.lastBarcode }}</td>
             <td class="small">{{ u.lastEntryAt }}</td>
             <td class="text-end">
-              @if (access().isWarehouseAdmin) {
+              @if (access().canManageCatalog) {
               <button type="button" class="btn btn-sm btn-warning" (click)="openNew(u.gtin14)">
                 <i class="ti ti-plus"></i>
                 Crear producto
@@ -191,7 +191,7 @@
             </td>
             <td class="small">{{ features(p) }}</td>
             <td class="text-end">
-              @if (access().isWarehouseAdmin) {
+              @if (access().canManageCatalog) {
               <button type="button" class="btn btn-sm btn-outline-primary" (click)="openEdit(p)" title="Editar">
                 <i class="ti ti-edit"></i>
               </button>

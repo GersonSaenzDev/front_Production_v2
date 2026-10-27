@@ -37,7 +37,24 @@ export class MenuAccessService {
       return false;
     }
 
+    if (module === 'inventories' && this.isExternalViewerUser(userData.userApp)) {
+      return true;
+    }
     return this.checkAccess(userData, module);
+  }
+
+  /**
+   * true si la sesión entra a /inventories SOLO por EXTERNAL_VIEWER_USERS (sin acceso propio a
+   * Bodega): kioskRouteGuard la limita a EXTERNAL_VIEWER_URLS, incluso escribiendo la URL a mano.
+   */
+  isExternalOnlyInventoriesSession(): boolean {
+    const userData = this.authService.userData();
+    if (!userData || !this.isExternalViewerUser(userData.userApp)) return false;
+    return !this.checkAccess(userData, 'inventories');
+  }
+
+  getExternalViewerUrls(): readonly string[] {
+    return this.EXTERNAL_VIEWER_URLS;
   }
 
   getAllowedRoutes(): string[] {
@@ -142,6 +159,25 @@ export class MenuAccessService {
 
   private isExternalExitNavItem(item: any): boolean {
     return item.type === 'item' && item.url === 'inventories/externalExit';
+  }
+
+  // Usuarios de OTRAS áreas (ej. JEVELASQUEZ, Producción) que, además de su menú normal, ven
+  // Bodega > Importaciones / Externos (Ingreso, Inventario, Catálogo, Devoluciones; sin Salida
+  // manual). Permiso ADITIVO por userApp. Si no tienen acceso propio a Bodega, el resto de
+  // /inventories queda oculto y bloqueado (kioskRouteGuard). Crear productos del catálogo lo
+  // habilita el backend con EXTERNAL_CATALOG_USERS (mantener alineadas).
+  private readonly EXTERNAL_VIEWER_USERS = ['JEVELASQUEZ'];
+
+  private readonly EXTERNAL_VIEWER_URLS = [
+    '/inventories/externalEntry',
+    '/inventories/externalInventory',
+    '/inventories/externalCatalog',
+    '/inventories/warrantyReturns'
+  ];
+
+  private isExternalViewerUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.EXTERNAL_VIEWER_USERS.includes(code);
   }
 
   // Lista PUNTUAL de usuarios autorizados a entrar al Almacén de Mantenimiento (entrega de
@@ -385,7 +421,9 @@ export class MenuAccessService {
     // las reglas por título de collapse (área, departamento, analista...) no los conocen y
     // los ocultarían. Excepción: los kioscos solo ven los subgrupos de su perfil.
     const kioskProfile = this.getBodegaKioskProfile(userData.userApp);
+    const externalOnly = this.isExternalOnlyInventoriesSession();
     if (this.isBodegaSubgroupNavItem(item)) {
+      if (externalOnly) return item.id === 'bodega-sub-externos';
       return kioskProfile ? kioskProfile.subgroups.includes(item.id) : true;
     }
 
@@ -461,6 +499,14 @@ export class MenuAccessService {
     // que los items de Bodega pasen; el resto de items sigue la lógica normal del
     // área/depto más abajo.
     if (this.isBodegaViewerUser(userData.userApp) && this.isBodegaNavItem(item)) {
+      return true;
+    }
+
+    // Permiso aditivo de Importaciones / Externos (EXTERNAL_VIEWER_USERS): grupo Logística y
+    // collapse Bodega visibles; de sus items solo los de EXTERNAL_VIEWER_URLS (los subgrupos
+    // ya se filtraron arriba). Si además tiene acceso propio a Bodega, sigue la lógica normal.
+    if (externalOnly && this.isBodegaNavItem(item)) {
+      if (item.type === 'item') return this.EXTERNAL_VIEWER_URLS.includes(`/${item.url}`);
       return true;
     }
 

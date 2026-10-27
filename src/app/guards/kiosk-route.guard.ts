@@ -14,15 +14,22 @@ import { MenuAccessService } from '../services/menu-access.service';
  */
 export const kioskRouteGuard: CanActivateChildFn = (_childRoute, state) => {
   const menuAccessService = inject(MenuAccessService);
-
-  if (!menuAccessService.isKioskSession()) {
-    return true;
-  }
-
   const router = inject(Router);
   // Ruta exacta sin query params ni fragmento (ej. '/inventories/enterInventory')
   const segments = router.parseUrl(state.url).root.children[PRIMARY_OUTLET]?.segments ?? [];
   const path = '/' + segments.map((s) => s.path).join('/');
+
+  // Usuarios de otras áreas con acceso solo a Importaciones / Externos (EXTERNAL_VIEWER_USERS):
+  // dentro de /inventories solo esas pantallas; el resto de módulos sigue su lógica normal.
+  if (menuAccessService.isExternalOnlyInventoriesSession() && path.startsWith('/inventories')) {
+    if (menuAccessService.getExternalViewerUrls().includes(path)) return true;
+    inject(ToastrService).warning('Solo tiene acceso a Bodega > Importaciones / Externos.', 'Acceso restringido');
+    return router.createUrlTree(['/inventories/externalEntry']);
+  }
+
+  if (!menuAccessService.isKioskSession()) {
+    return true;
+  }
 
   if (menuAccessService.getKioskAllowedUrls().includes(path)) {
     return true;

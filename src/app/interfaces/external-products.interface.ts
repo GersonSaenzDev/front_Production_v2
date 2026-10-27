@@ -20,6 +20,8 @@ export interface ExternalActor {
 export interface ExternalAccess {
   isWarehouseAdmin: boolean;
   canManualExit: boolean;
+  /** Crear/editar productos y carga por Excel: administrativos de Bodega + EXTERNAL_CATALOG_USERS (backend). */
+  canManageCatalog?: boolean;
 }
 
 // ---------------------------------------------------------------- Ingreso
