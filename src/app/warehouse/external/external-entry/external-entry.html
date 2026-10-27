@@ -1,0 +1,241 @@
+<!-- src/app/warehouse/external/external-entry/external-entry.html -->
+<div class="container-fluid py-4 ext-view">
+  <!-- HEADER -->
+  <div class="ext-header">
+    <div class="ext-header-content">
+      <div class="ext-header-icon"><i class="ti ti-world-download"></i></div>
+      <div class="ext-header-text">
+        <h3 class="ext-header-title mb-1">Ingreso Importaciones / Externos</h3>
+        <p class="ext-header-subtitle mb-0">Bodega — Lea con la pistola el código GS1-128 (01)…(21)… de cada unidad</p>
+      </div>
+      <div class="ext-header-actions">
+        <span class="ext-btn-header" [title]="online() && !connectionIssue() ? 'Conectado' : 'Sin conexión'">
+          <i class="ti" [ngClass]="online() && !connectionIssue() ? 'ti-wifi' : 'ti-wifi-off'"></i>
+          <span>{{ online() && !connectionIssue() ? 'En línea' : 'Sin conexión' }}</span>
+        </span>
+      </div>
+    </div>
+    <div class="ext-stats">
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ activeSession().length }}</span>
+        <span class="ext-stat-label">Ingresadas hoy (este equipo)</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ pending().length }}</span>
+        <span class="ext-stat-label">Pendientes por enviar</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ unidentifiedCount() }}</span>
+        <span class="ext-stat-label">No identificadas</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ sessionByProduct().length }}</span>
+        <span class="ext-stat-label">Productos distintos</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <!-- LECTOR -->
+    <div class="col-12 col-xl-6">
+      <div class="ext-card">
+        <div class="ext-card-title">
+          <i class="ti ti-scan"></i>
+          Lectura
+        </div>
+
+        <label for="entryReference" class="form-label small text-muted mb-1">
+          Referencia del ingreso (opcional: contenedor, factura, declaración)
+        </label>
+        <input
+          id="entryReference"
+          type="text"
+          class="form-control mb-3"
+          maxlength="80"
+          [(ngModel)]="entryReference"
+          (change)="onReferenceChange()"
+          (blur)="onReferenceChange()"
+          placeholder="Ej: CONT-MSKU1234567"
+        />
+
+        <label for="externalScanInput" class="form-label fw-semibold mb-1">Código de barras (GS1-128)</label>
+        <input
+          #scanInput
+          id="externalScanInput"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          class="form-control ext-scan-input"
+          maxlength="120"
+          (input)="onScanInput()"
+          (keydown.enter)="onScanSubmit()"
+          (blur)="focusScan()"
+          placeholder="Escanee aquí..."
+        />
+        <small class="text-muted d-block mt-1">
+          Lea el código largo con
+          <strong>(01)</strong>
+          y
+          <strong>(21)</strong>
+          . El EAN corto de la caja no trae serial y no se acepta.
+        </small>
+
+        @if (lastScan(); as s) {
+        <div class="ext-feedback mt-3" [ngClass]="s.kind">
+          <i
+            class="ti"
+            [ngClass]="{ 'ti-circle-check': s.kind === 'ok', 'ti-alert-triangle': s.kind === 'warn', 'ti-circle-x': s.kind === 'error', 'ti-cloud-upload': s.kind === 'queued' }"
+          ></i>
+          <div>
+            <div class="ext-feedback-title">{{ s.title }}</div>
+            <div class="ext-feedback-detail">{{ s.detail }}</div>
+            <div class="ext-feedback-code">{{ s.code }}</div>
+          </div>
+        </div>
+        } @if (pending().length) {
+        <div class="ext-feedback queued mt-3">
+          <i class="ti ti-cloud-upload"></i>
+          <div>
+            <div class="ext-feedback-title">{{ pending().length }} lectura(s) pendiente(s) por enviar</div>
+            <div class="ext-feedback-detail">
+              Se guardaron en el equipo y se envían solas al recuperar la conexión. No cierre esta pantalla.
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- RESUMEN POR PRODUCTO -->
+      <div class="ext-card mt-3">
+        <div class="ext-card-title">
+          <i class="ti ti-packages"></i>
+          Recibido hoy por producto
+        </div>
+        @if (sessionByProduct().length) {
+        <div class="ext-table-wrap">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Referencia</th>
+                <th>Descripción</th>
+                <th class="text-end">Unidades</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of sessionByProduct(); track p.reference) {
+              <tr>
+                <td>
+                  <strong>{{ p.reference }}</strong>
+                  @if (!p.identified) {
+                  <span class="ext-badge warn ms-1">No identificado</span>
+                  }
+                </td>
+                <td>{{ p.productName }}</td>
+                <td class="text-end fw-bold">{{ p.qty }}</td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else {
+        <div class="ext-empty">
+          <i class="ti ti-package-off"></i>
+          Aún no hay ingresos hoy en este equipo.
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- ÚLTIMAS LECTURAS -->
+    <div class="col-12 col-xl-6">
+      <div class="ext-card h-100">
+        <div class="ext-card-title">
+          <i class="ti ti-list-check"></i>
+          Últimos ingresos (este equipo)
+        </div>
+        @if (session().length) {
+        <div class="ext-table-wrap">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Producto</th>
+                <th>Serial</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of session(); track s.unitId) {
+              <tr [class.text-decoration-line-through]="s.voided" [class.text-muted]="s.voided">
+                <td class="text-nowrap">{{ s.enteredAt.split(', ')[1] }}</td>
+                <td>
+                  @if (s.identified) {
+                  <strong>{{ s.reference }}</strong>
+                  } @else {
+                  <span class="ext-badge warn">No identificado</span>
+                  }
+                </td>
+                <td class="ext-mono">{{ s.barcode }}</td>
+                <td class="text-end">
+                  @if (s.voided) {
+                  <span class="ext-badge VOIDED">Anulado</span>
+                  } @else {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    (click)="openVoid(s)"
+                    title="Anular este ingreso (lectura errada)"
+                  >
+                    <i class="ti ti-trash"></i>
+                  </button>
+                  }
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else {
+        <div class="ext-empty">
+          <i class="ti ti-barcode"></i>
+          Las lecturas aparecerán aquí.
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIÁLOGO: ANULAR INGRESO -->
+@if (voidTarget(); as v) {
+<div class="ext-dialog-backdrop" (click)="cancelVoid()" aria-hidden="true"></div>
+<div class="ext-dialog" role="dialog" aria-modal="true" aria-labelledby="voidEntryTitle">
+  <div class="ext-dialog-title" id="voidEntryTitle">
+    <i class="ti ti-trash"></i>
+    Anular ingreso
+  </div>
+  <p class="mb-2">
+    <strong>{{ v.reference || 'Producto no identificado' }}</strong>
+    <br />
+    <span class="ext-mono">{{ v.barcode }}</span>
+  </p>
+  <p class="small text-muted">El ingreso no se borra: queda anulado con su motivo en la auditoría y el serial se puede volver a leer.</p>
+  <label for="voidObservation" class="form-label">Motivo (obligatorio)</label>
+  <textarea
+    id="voidObservation"
+    class="form-control"
+    rows="2"
+    maxlength="300"
+    [(ngModel)]="voidObservation"
+    placeholder="Ej: se leyó una unidad de otra estiba"
+  ></textarea>
+  <div class="d-flex justify-content-end gap-2 mt-3">
+    <button type="button" class="btn btn-light" (click)="cancelVoid()" [disabled]="voiding()">Cancelar</button>
+    <button type="button" class="btn btn-danger" (click)="confirmVoid()" [disabled]="voiding()">
+      @if (voiding()) {
+      <span class="spinner-border spinner-border-sm me-1"></span>
+      } Anular ingreso
+    </button>
+  </div>
+</div>
+}

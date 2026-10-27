@@ -130,6 +130,20 @@ export class MenuAccessService {
     return this.STADISTICS_VIEWER_USERS.includes(code);
   }
 
+  // Salida manual de Importaciones / Externos (daño, devolución a proveedor, ajuste): solo el
+  // Eje de Bodega. Solo oculta el item del menú: la regla real vive en el backend
+  // (EXTERNAL_EXIT_USERS) y la ruta la protege externalExitGuard. Mantener alineadas.
+  private readonly EXTERNAL_EXIT_USERS = ['LYLEON'];
+
+  private isExternalExitUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.EXTERNAL_EXIT_USERS.includes(code);
+  }
+
+  private isExternalExitNavItem(item: any): boolean {
+    return item.type === 'item' && item.url === 'inventories/externalExit';
+  }
+
   // Lista PUNTUAL de usuarios autorizados a entrar al Almacén de Mantenimiento (entrega de
   // repuestos/materiales por solicitud: qué se entrega, quién entrega y quién recibe).
   // Acceso EXCLUSIVO y restrictivo (al revés de BODEGA_VIEWER_USERS): ni siquiera el resto
@@ -255,14 +269,18 @@ export class MenuAccessService {
   //   que no estén aquí. Siempre incluye '/production' (Dashboard).
   // - home: a dónde se redirige cuando intenta entrar a una ruta no permitida.
   private readonly BODEGA_KIOSK_PROFILES: Record<BodegaKioskProfile, { subgroups: string[]; urls: string[]; home: string }> = {
-    // Tablets del lector: Recepción de Producción + Inventarios
+    // Tablets del lector: Recepción de Producción + Inventarios + Importaciones / Externos
+    // (ingreso, consulta y devoluciones; sin catálogo ni salida manual)
     INVENTARIO: {
-      subgroups: ['bodega-sub-recepcion', 'bodega-sub-inventarios'],
+      subgroups: ['bodega-sub-recepcion', 'bodega-sub-externos', 'bodega-sub-inventarios'],
       urls: [
         '/production',
         '/inventories/packingList',
         '/inventories/entryValidation',
         '/inventories/barcodeReader',
+        '/inventories/externalEntry',
+        '/inventories/externalInventory',
+        '/inventories/warrantyReturns',
         '/inventories/dash',
         '/inventories/enterInventory',
         '/inventories/finalInventoryReport'
@@ -369,6 +387,12 @@ export class MenuAccessService {
     const kioskProfile = this.getBodegaKioskProfile(userData.userApp);
     if (this.isBodegaSubgroupNavItem(item)) {
       return kioskProfile ? kioskProfile.subgroups.includes(item.id) : true;
+    }
+
+    // Salida manual de Importaciones / Externos: única y exclusivamente el Eje de Bodega, ni
+    // siquiera Gerencia/Desarrollo. Va antes del acceso total para restringirla sin excepción.
+    if (this.isExternalExitNavItem(item)) {
+      return this.isExternalExitUser(userData.userApp);
     }
 
     const isStadistics = this.isStadisticsNavItem(item);

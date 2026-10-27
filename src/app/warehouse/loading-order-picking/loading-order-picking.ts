@@ -28,6 +28,7 @@ import {
   ScanSerialResponse,
   ScanSerialResult
 } from '../../interfaces/loading-order.interface';
+import { normalizeDispatchSerial } from '../../shared/utils/gs1-barcode.util';
 
 const SERIAL_LENGTH = 27;
 const VOICE_STORAGE_KEY = 'loadingOrderPicking.voice';
@@ -313,7 +314,8 @@ export class LoadingOrderPicking implements OnInit, OnDestroy {
   onScanInput(): void {
     if (this.autoSubmitTimer) clearTimeout(this.autoSubmitTimer);
     const digits = (this.scanInput?.nativeElement.value || '').replace(/\D/g, '');
-    if (digits.length >= SERIAL_LENGTH) {
+    // Externos con GTIN-13 llegan en 26 dígitos; si siguen llegando caracteres el timer se reinicia
+    if (digits.length >= SERIAL_LENGTH - 1) {
       this.autoSubmitTimer = setTimeout(() => this.onScanSubmit(), AUTO_SUBMIT_DELAY_MS);
     }
   }
@@ -323,7 +325,8 @@ export class LoadingOrderPicking implements OnInit, OnDestroy {
     this.autoSubmitTimer = null;
 
     const input = this.scanInput?.nativeElement;
-    const serial = (input?.value || '').replace(/\D/g, '');
+    // Importaciones / Externos: GS1-128 con GTIN-13 (26 dígitos) -> forma canónica de 27
+    const serial = normalizeDispatchSerial(input?.value || '');
     if (input) input.value = '';
 
     if (!serial) return;

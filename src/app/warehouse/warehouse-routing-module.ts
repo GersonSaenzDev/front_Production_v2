@@ -3,6 +3,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { DashInventories } from './dash-inventories/dash-inventories';
 import { warehouseAdminGuard } from '../guards/warehouse-admin.guard';
+import { externalExitGuard } from '../guards/external-exit.guard';
 
 const routes: Routes = [
   {
@@ -80,6 +81,32 @@ const routes: Routes = [
     // Path completo: /inventories/dockLoading (operario de cargue en muelle)
     path: 'dockLoading',
     loadComponent: () => import('./dock-loading/dock-loading').then((c) => c.DockLoading)
+  },
+  {
+    // Path completo: /inventories/externalEntry (Importaciones / Externos: ingreso con pistola)
+    path: 'externalEntry',
+    loadComponent: () => import('./external/external-entry/external-entry').then((c) => c.ExternalEntry)
+  },
+  {
+    // Path completo: /inventories/externalInventory (existencias, trazabilidad y auditoría)
+    path: 'externalInventory',
+    loadComponent: () => import('./external/external-inventory/external-inventory').then((c) => c.ExternalInventory)
+  },
+  {
+    // Path completo: /inventories/externalCatalog (productos por GTIN; editar solo administrativos)
+    path: 'externalCatalog',
+    loadComponent: () => import('./external/external-catalog/external-catalog').then((c) => c.ExternalCatalog)
+  },
+  {
+    // Path completo: /inventories/externalExit (salida manual: exclusivo del Eje de Bodega)
+    path: 'externalExit',
+    canActivate: [externalExitGuard],
+    loadComponent: () => import('./external/external-exit/external-exit').then((c) => c.ExternalExit)
+  },
+  {
+    // Path completo: /inventories/warrantyReturns (Devoluciones / Garantías)
+    path: 'warrantyReturns',
+    loadComponent: () => import('./warranty-returns/warranty-returns').then((c) => c.WarrantyReturns)
   },
 ];
 

@@ -1,0 +1,540 @@
+<!-- src/app/warehouse/external/external-inventory/external-inventory.html -->
+<div class="container-fluid py-4 ext-view">
+  <!-- HEADER -->
+  <div class="ext-header">
+    <div class="ext-header-content">
+      <div class="ext-header-icon"><i class="ti ti-building-warehouse"></i></div>
+      <div class="ext-header-text">
+        <h3 class="ext-header-title mb-1">Inventario Importaciones / Externos</h3>
+        <p class="ext-header-subtitle mb-0">Existencias por producto, estado de cada serial y trazabilidad</p>
+      </div>
+      <div class="ext-header-actions">
+        <button type="button" class="ext-btn-header" (click)="applyFilters()" [disabled]="loadingStock()">
+          <i class="ti ti-refresh"></i>
+          <span>Actualizar</span>
+        </button>
+      </div>
+    </div>
+    @if (stock(); as s) {
+    <div class="ext-stats">
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ s.totals.available }}</span>
+        <span class="ext-stat-label">En bodega</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ s.totals.picked }}</span>
+        <span class="ext-stat-label">Alistado en OC</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ s.totals.dispatched }}</span>
+        <span class="ext-stat-label">Despachado</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ s.totals.exited }}</span>
+        <span class="ext-stat-label">Salida manual</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ s.totals.entered }}</span>
+        <span class="ext-stat-label">Total ingresado</span>
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- CONSULTA DE SERIAL -->
+  <div class="ext-card mt-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-8">
+        <label for="traceCode" class="form-label small fw-semibold mb-1">
+          <i class="ti ti-route"></i>
+          Trazabilidad de un serial (lea o escriba el código)
+        </label>
+        <input
+          id="traceCode"
+          type="text"
+          class="form-control ext-mono"
+          autocomplete="off"
+          maxlength="120"
+          [(ngModel)]="traceCode"
+          (keydown.enter)="openTrace(traceCode)"
+          placeholder="(01)…(21)…"
+        />
+      </div>
+      <div class="col-12 col-md-4">
+        <button type="button" class="btn btn-primary w-100" (click)="openTrace(traceCode)" [disabled]="loadingTrace() || !traceCode.trim()">
+          <i class="ti ti-search"></i>
+          Consultar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="ext-card mt-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label for="fClient" class="form-label small mb-1">Cliente</label>
+        <select id="fClient" class="form-select form-select-sm" [(ngModel)]="filters.client">
+          <option value="">Todos</option>
+          @for (c of clients(); track c) {
+          <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="fCategory" class="form-label small mb-1">Categoría</label>
+        <select id="fCategory" class="form-select form-select-sm" [(ngModel)]="filters.category">
+          <option value="">Todas</option>
+          @for (c of categories(); track c) {
+          <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="fFrom" class="form-label small mb-1">Ingreso desde</label>
+        <input id="fFrom" type="date" class="form-control form-control-sm" [(ngModel)]="filters.from" />
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="fTo" class="form-label small mb-1">Ingreso hasta</label>
+        <input id="fTo" type="date" class="form-control form-control-sm" [(ngModel)]="filters.to" />
+      </div>
+      <div class="col-12 col-md-2">
+        <label for="fSearch" class="form-label small mb-1">Buscar</label>
+        <input
+          id="fSearch"
+          type="text"
+          class="form-control form-control-sm"
+          [(ngModel)]="filters.search"
+          (keydown.enter)="applyFilters()"
+          placeholder="Ref., serial, GTIN"
+        />
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-primary flex-fill" (click)="applyFilters()">
+          <i class="ti ti-filter"></i>
+          Filtrar
+        </button>
+        <button type="button" class="btn btn-sm btn-light" (click)="clearFilters()" title="Limpiar filtros"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PESTAÑAS -->
+  <div class="ext-tabs mt-3">
+    <button type="button" class="ext-tab" [class.active]="tab() === 'stock'" (click)="setTab('stock')">
+      <i class="ti ti-chart-bar"></i>
+      Existencias
+    </button>
+    <button type="button" class="ext-tab" [class.active]="tab() === 'units'" (click)="setTab('units')">
+      <i class="ti ti-list-details"></i>
+      Unidades
+    </button>
+    @if (access().isWarehouseAdmin) {
+    <button type="button" class="ext-tab" [class.active]="tab() === 'audit'" (click)="setTab('audit')">
+      <i class="ti ti-shield-check"></i>
+      Auditoría
+    </button>
+    }
+  </div>
+
+  <!-- EXISTENCIAS -->
+  @if (tab() === 'stock') {
+  <div class="ext-card mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="ext-card-title mb-0">
+        <i class="ti ti-chart-bar"></i>
+        Existencias por producto
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-success" (click)="exportStock()" [disabled]="!stock()?.rows?.length">
+        <i class="ti ti-file-spreadsheet"></i>
+        Excel
+      </button>
+    </div>
+    @if (loadingStock()) {
+    <div class="ext-empty">
+      <span class="spinner-border spinner-border-sm"></span>
+      Consultando...
+    </div>
+    } @else if (stock()?.rows?.length) {
+    <div class="ext-table-wrap">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Referencia</th>
+            <th>Descripción</th>
+            <th>Cliente</th>
+            <th>Categoría</th>
+            <th>Summum</th>
+            <th class="text-end">En bodega</th>
+            <th class="text-end">Alistado</th>
+            <th class="text-end">Despachado</th>
+            <th class="text-end">Salida manual</th>
+            <th class="text-end">Ingresado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of stock()!.rows; track r.gtin14) {
+          <tr>
+            <td>
+              @if (r.identified) {
+              <strong>{{ r.reference }}</strong>
+              } @else {
+              <span class="ext-badge warn">No identificado</span>
+              }
+              <div class="ext-mono text-muted">{{ r.gtin14 }}</div>
+            </td>
+            <td>{{ r.productName }}</td>
+            <td>{{ r.client }}</td>
+            <td>{{ r.category }}</td>
+            <td class="ext-mono">{{ r.summumProduct }}</td>
+            <td class="text-end">
+              <a role="button" class="fw-bold text-success" (click)="showProductUnits(r.gtin14, 'AVAILABLE')">{{ r.available }}</a>
+            </td>
+            <td class="text-end"><a role="button" (click)="showProductUnits(r.gtin14, 'PICKED')">{{ r.picked }}</a></td>
+            <td class="text-end"><a role="button" (click)="showProductUnits(r.gtin14, 'DISPATCHED')">{{ r.dispatched }}</a></td>
+            <td class="text-end"><a role="button" (click)="showProductUnits(r.gtin14, 'EXITED')">{{ r.exited }}</a></td>
+            <td class="text-end"><a role="button" (click)="showProductUnits(r.gtin14)">{{ r.entered }}</a></td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="ext-empty">
+      <i class="ti ti-package-off"></i>
+      No hay unidades con estos filtros.
+    </div>
+    }
+  </div>
+  }
+
+  <!-- UNIDADES -->
+  @if (tab() === 'units') {
+  <div class="ext-card mt-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <div class="ext-card-title mb-0">
+        <i class="ti ti-list-details"></i>
+        Unidades ({{ unitsTotal() }})
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        @if (filters.gtin14) {
+        <span class="ext-badge info">
+          GTIN {{ filters.gtin14 }}
+          <a role="button" class="ms-1" (click)="clearProductFilter()"><i class="ti ti-x"></i></a>
+        </span>
+        }
+        <select class="form-select form-select-sm w-auto" [(ngModel)]="filters.stockStatus" (change)="loadUnits(1)" aria-label="Estado">
+          <option value="">Todos los estados</option>
+          @for (s of stockStatuses; track s) {
+          <option [value]="s">{{ statusLabels[s] }}</option>
+          }
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-success" (click)="exportUnits()" [disabled]="!units().length">
+          <i class="ti ti-file-spreadsheet"></i>
+          Excel (página)
+        </button>
+      </div>
+    </div>
+    @if (loadingUnits()) {
+    <div class="ext-empty">
+      <span class="spinner-border spinner-border-sm"></span>
+      Consultando...
+    </div>
+    } @else if (units().length) {
+    <div class="ext-table-wrap">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Barcode</th>
+            <th>Estado</th>
+            <th>Ingreso</th>
+            <th>Salida / OC</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of units(); track u._id) {
+          <tr>
+            <td>
+              @if (u.identified) {
+              <strong>{{ u.reference }}</strong>
+              <div class="small text-muted">{{ u.productName }}</div>
+              } @else {
+              <span class="ext-badge warn">No identificado</span>
+              }
+            </td>
+            <td class="ext-mono">
+              {{ u.barcode }} @if (!u.dispatchable) {
+              <span class="ext-badge error ms-1" title="No queda en 27 dígitos: no puede ir en una OC (.sal)">No despachable</span>
+              }
+            </td>
+            <td><span class="ext-badge" [ngClass]="u.stockStatus">{{ statusLabels[u.stockStatus] }}</span></td>
+            <td class="small">
+              {{ u.entry.at }}
+              <br />
+              <span class="text-muted">{{ u.entry.by.name || u.entry.by.userApp }}</span>
+              @if (u.entry.entryReference) {
+              <br />
+              <span class="text-muted">Ref. {{ u.entry.entryReference }}</span>
+              }
+            </td>
+            <td class="small">
+              @if (u.flow?.loadingOrder) { OC {{ u.flow?.loadingOrder }} } @if (u.exit?.type) { {{ exitTypeLabel(u.exit?.type) }} · Doc. {{
+              u.exit?.document }}
+              <br />
+              <span class="text-muted">{{ u.exit?.at }} · {{ u.exit?.by?.name || u.exit?.by?.userApp }}</span>
+              }
+            </td>
+            <td class="text-end">
+              <button type="button" class="btn btn-sm btn-outline-primary" (click)="openTrace(u.barcode)" title="Trazabilidad">
+                <i class="ti ti-route"></i>
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+      <button type="button" class="btn btn-sm btn-light" (click)="loadUnits(unitsPage() - 1)" [disabled]="unitsPage() <= 1">
+        <i class="ti ti-chevron-left"></i>
+      </button>
+      <span class="small">Página {{ unitsPage() }} de {{ unitsPages() }}</span>
+      <button type="button" class="btn btn-sm btn-light" (click)="loadUnits(unitsPage() + 1)" [disabled]="unitsPage() >= unitsPages()">
+        <i class="ti ti-chevron-right"></i>
+      </button>
+    </div>
+    } @else {
+    <div class="ext-empty">
+      <i class="ti ti-package-off"></i>
+      No hay unidades con estos filtros.
+    </div>
+    }
+  </div>
+  }
+
+  <!-- AUDITORÍA -->
+  @if (tab() === 'audit' && access().isWarehouseAdmin) {
+  <div class="ext-card mt-3">
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-6 col-md-2">
+        <label for="aFrom" class="form-label small mb-1">Desde</label>
+        <input id="aFrom" type="date" class="form-control form-control-sm" [(ngModel)]="auditFilters.from" />
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="aTo" class="form-label small mb-1">Hasta</label>
+        <input id="aTo" type="date" class="form-control form-control-sm" [(ngModel)]="auditFilters.to" />
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="aModule" class="form-label small mb-1">Módulo</label>
+        <select id="aModule" class="form-select form-select-sm" [(ngModel)]="auditFilters.module">
+          <option value="">Todos</option>
+          <option value="EXTERNAL">Externos</option>
+          <option value="RETURNS">Devoluciones</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="aAction" class="form-label small mb-1">Acción</label>
+        <select id="aAction" class="form-select form-select-sm" [(ngModel)]="auditFilters.action">
+          <option value="">Todas</option>
+          @for (a of auditActions; track a) {
+          <option [value]="a">{{ auditLabels[a] }}</option>
+          }
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="aUser" class="form-label small mb-1">Usuario</label>
+        <input id="aUser" type="text" class="form-control form-control-sm" [(ngModel)]="auditFilters.userApp" placeholder="userApp" />
+      </div>
+      <div class="col-6 col-md-2">
+        <button type="button" class="btn btn-sm btn-primary w-100" (click)="loadAudit(1)">
+          <i class="ti ti-filter"></i>
+          Consultar
+        </button>
+      </div>
+    </div>
+    @if (loadingAudit()) {
+    <div class="ext-empty">
+      <span class="spinner-border spinner-border-sm"></span>
+      Consultando...
+    </div>
+    } @else if (auditRows().length) {
+    <div class="ext-table-wrap">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Acción</th>
+            <th>Responsable</th>
+            <th>Serial</th>
+            <th>Detalle</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of auditRows(); track l._id) {
+          <tr>
+            <td class="text-nowrap small">{{ l.at }}</td>
+            <td>
+              <span
+                class="ext-badge"
+                [ngClass]="l.action.endsWith('REJECTED') ? 'error' : l.action.endsWith('VOIDED') || l.action === 'EXIT' ? 'warn' : 'info'"
+              >
+                {{ auditLabels[l.action] || l.action }}
+              </span>
+            </td>
+            <td class="small">
+              {{ l.actor.name || l.actor.userApp }}
+              <br />
+              <span class="text-muted">{{ l.actor.userApp }}</span>
+            </td>
+            <td class="ext-mono">
+              @if (l.barcode) {
+              <a role="button" (click)="openTrace(l.barcode)">{{ l.barcode }}</a>
+              }
+            </td>
+            <td class="small">{{ l.msg }}</td>
+            <td class="small text-muted">{{ l.ip }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+      <button type="button" class="btn btn-sm btn-light" (click)="loadAudit(auditPage() - 1)" [disabled]="auditPage() <= 1">
+        <i class="ti ti-chevron-left"></i>
+      </button>
+      <span class="small">Página {{ auditPage() }} de {{ auditPages() }}</span>
+      <button type="button" class="btn btn-sm btn-light" (click)="loadAudit(auditPage() + 1)" [disabled]="auditPage() >= auditPages()">
+        <i class="ti ti-chevron-right"></i>
+      </button>
+    </div>
+    } @else {
+    <div class="ext-empty">
+      <i class="ti ti-shield-check"></i>
+      Sin registros con estos filtros.
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- DIÁLOGO: TRAZABILIDAD -->
+@if (trace(); as t) {
+<div class="ext-dialog-backdrop" (click)="closeTrace()" aria-hidden="true"></div>
+<div class="ext-dialog ext-dialog-lg" role="dialog" aria-modal="true" aria-labelledby="traceTitle">
+  <div class="d-flex justify-content-between align-items-start">
+    <div class="ext-dialog-title" id="traceTitle">
+      <i class="ti ti-route"></i>
+      Trazabilidad
+      <span class="ext-mono">{{ t.barcode }}</span>
+    </div>
+    <button type="button" class="btn-close" (click)="closeTrace()" aria-label="Cerrar"></button>
+  </div>
+
+  @if (!t.units.length && !t.reads.length && !t.returns.length) {
+  <div class="ext-empty">
+    <i class="ti ti-search-off"></i>
+    Este serial no tiene ingreso de externos, lecturas de OC ni devoluciones.
+  </div>
+  } @for (u of t.units; track u._id) {
+  <div class="ext-card mb-2">
+    <div class="d-flex justify-content-between flex-wrap gap-2">
+      <div>
+        <strong>{{ u.reference || 'Producto no identificado' }}</strong>
+        <span class="text-muted">{{ u.productName }}</span>
+        <br />
+        <span class="small text-muted">{{ u.client }} · {{ u.category }} · Summum {{ u.summumProduct }}</span>
+      </div>
+      <span class="ext-badge" [ngClass]="u.status === 'IN_STOCK' ? 'ok' : u.status === 'EXITED' ? 'warn' : 'error'">
+        {{ u.status === 'IN_STOCK' ? 'Ingresado' : u.status === 'EXITED' ? 'Salida manual' : 'Ingreso anulado' }}
+      </span>
+    </div>
+    <ul class="small mt-2 mb-0">
+      <li>
+        Ingreso: {{ u.entry.at }} · {{ u.entry.by.name || u.entry.by.userApp }}@if (u.entry.entryReference) { · Ref. {{
+        u.entry.entryReference }} }
+      </li>
+      @if (u.exit?.type) {
+      <li>
+        Salida manual: {{ exitTypeLabel(u.exit?.type) }} · Doc. {{ u.exit?.document }} · {{ u.exit?.at }} · {{ u.exit?.by?.name ||
+        u.exit?.by?.userApp }} — {{ u.exit?.observation }}
+      </li>
+      } @if (u.voided?.at) {
+      <li>Anulado: {{ u.voided?.at }} · {{ u.voided?.by?.name || u.voided?.by?.userApp }} — {{ u.voided?.observation }}</li>
+      }
+    </ul>
+  </div>
+  } @if (t.flow) {
+  <p class="small mb-2">
+    <strong>Estado en despachos:</strong>
+    {{ t.flow.status }} · OC {{ t.flow.loadingOrder }} · {{ t.flow.lastUpdate }}
+  </p>
+  } @if (t.reads.length) {
+  <div class="fw-semibold small mb-1">Lecturas en Órdenes de Cargue</div>
+  <div class="ext-table-wrap mb-2">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>OC</th>
+          <th>Etapa</th>
+          <th>Estado</th>
+          <th>Operario</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of t.reads; track r._id) {
+        <tr>
+          <td class="small">{{ r.readAt }}</td>
+          <td>{{ r.loadingOrder }}</td>
+          <td>{{ r.stage === 'PICKING' ? 'Prealistamiento' : 'Muelle' }}</td>
+          <td>
+            <span class="ext-badge" [ngClass]="r.status === 'ACTIVE' ? 'ok' : r.status === 'VOIDED' ? 'warn' : 'error'">
+              {{ r.status }}{{ r.rejectReason ? ' · ' + r.rejectReason : '' }}
+            </span>
+          </td>
+          <td class="small">{{ r.readBy.name || r.readBy.userApp }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @if (t.returns.length) {
+  <div class="fw-semibold small mb-1">Devoluciones / Garantías</div>
+  <ul class="small">
+    @for (r of t.returns; track r._id) {
+    <li>
+      {{ r.receivedAt }} · {{ returnTypeLabels[r.type] }} · {{ r.customer }} · Doc. {{ r.document }} · {{ r.status === 'RECEIVED' ?
+      'Abierta' : 'Cerrada' }}
+    </li>
+    }
+  </ul>
+  } @if (t.logs.length) {
+  <div class="fw-semibold small mb-1">Bitácora</div>
+  <div class="ext-table-wrap">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Acción</th>
+          <th>Responsable</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of t.logs; track l._id) {
+        <tr>
+          <td class="small text-nowrap">{{ l.at }}</td>
+          <td>{{ auditLabels[l.action] || l.action }}</td>
+          <td class="small">{{ l.actor.name || l.actor.userApp }}</td>
+          <td class="small">{{ l.msg }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</div>
+}

@@ -449,7 +449,7 @@ export const LOADING_ORDER_STATUS_LABELS: Record<LoadingOrderStatus, string> = {
 };
 
 export const LOADING_ORDER_REJECT_LABELS: Record<LoadingOrderRejectReason, string> = {
-  SERIAL_NOT_IN_LOADBARCODE: 'Sin entrega de producción',
+  SERIAL_NOT_IN_LOADBARCODE: 'Sin ingreso a bodega (producción o externos)',
   PRODUCT_NOT_IN_ORDER: 'No pertenece a la OC',
   QTY_EXCEEDED: 'Cantidad completa',
   ALREADY_READ_IN_ORDER: 'Ya leído',

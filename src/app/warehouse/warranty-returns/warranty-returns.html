@@ -1,0 +1,268 @@
+<!-- src/app/warehouse/warranty-returns/warranty-returns.html -->
+<div class="container-fluid py-4 ext-view">
+  <div class="ext-header">
+    <div class="ext-header-content">
+      <div class="ext-header-icon"><i class="ti ti-arrow-back-up"></i></div>
+      <div class="ext-header-text">
+        <h3 class="ext-header-title mb-1">Devoluciones / Garantías</h3>
+        <p class="ext-header-subtitle mb-0">Reingreso a bodega de seriales que ya salieron (propios o externos), con su soporte</p>
+      </div>
+    </div>
+    <div class="ext-stats">
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ total() }}</span>
+        <span class="ext-stat-label">
+          {{ filters.status === 'RECEIVED' ? 'Abiertas' : filters.status === 'CLOSED' ? 'Cerradas' : 'Registros' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <!-- RECEPCIÓN -->
+    <div class="col-12 col-xl-5">
+      <div class="ext-card">
+        <div class="ext-card-title">
+          <i class="ti ti-package-import"></i>
+          Recibir unidad
+        </div>
+
+        <label for="retScanInput" class="form-label fw-semibold mb-1">Código de barras (GS1-128)</label>
+        <input
+          #scanInput
+          id="retScanInput"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="120"
+          class="form-control ext-scan-input"
+          [(ngModel)]="barcode"
+          (keydown.enter)="onScanEnter()"
+          placeholder="Escanee aquí..."
+        />
+        @if (barcodeError()) {
+        <small class="text-danger">{{ barcodeError() }}</small>
+        }
+
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <label for="retType" class="form-label small mb-1">Tipo</label>
+            <select id="retType" class="form-select" [(ngModel)]="form.type">
+              @for (t of types; track t) {
+              <option [value]="t">{{ typeLabels[t] }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-6">
+            <label for="retCondition" class="form-label small mb-1">Estado físico</label>
+            <select id="retCondition" class="form-select" [(ngModel)]="form.condition">
+              @for (c of conditions; track c) {
+              <option [value]="c">{{ conditionLabels[c] }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-7">
+            <label for="retCustomer" class="form-label small mb-1">Cliente que devuelve *</label>
+            <input id="retCustomer" type="text" class="form-control" maxlength="120" [(ngModel)]="form.customer" />
+          </div>
+          <div class="col-12 col-md-5">
+            <label for="retDocument" class="form-label small mb-1">Documento soporte *</label>
+            <input
+              id="retDocument"
+              type="text"
+              class="form-control"
+              maxlength="60"
+              [(ngModel)]="form.document"
+              placeholder="NC, remisión, caso"
+            />
+          </div>
+          <div class="col-12">
+            <label for="retReason" class="form-label small mb-1">Motivo *</label>
+            <textarea
+              id="retReason"
+              class="form-control"
+              rows="2"
+              maxlength="300"
+              [(ngModel)]="form.reason"
+              placeholder="Ej: no enciende, golpe en transporte"
+            ></textarea>
+          </div>
+          <div class="col-12">
+            <label for="retObservation" class="form-label small mb-1">Observación</label>
+            <input id="retObservation" type="text" class="form-control" maxlength="300" [(ngModel)]="form.observation" />
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+          <button type="button" class="btn btn-light" (click)="resetForm()" [disabled]="receiving()">Limpiar</button>
+          <button type="button" class="btn btn-primary flex-fill" (click)="receive()" [disabled]="receiving() || !barcode.trim()">
+            @if (receiving()) {
+            <span class="spinner-border spinner-border-sm me-1"></span>
+            } Registrar {{ typeLabels[form.type] | lowercase }}
+          </button>
+        </div>
+        <small class="text-muted d-block mt-1">Cliente, documento y tipo se conservan para leer varias unidades del mismo soporte.</small>
+
+        @if (lastReceived(); as l) {
+        <div class="ext-feedback mt-3" [ngClass]="l.warnings.length ? 'warn' : 'ok'">
+          <i class="ti" [ngClass]="l.warnings.length ? 'ti-alert-triangle' : 'ti-circle-check'"></i>
+          <div>
+            <div class="ext-feedback-title">{{ l.ret.reference || 'Producto sin referencia' }} · {{ originLabel(l.ret.origin) }}</div>
+            <div class="ext-feedback-detail">
+              @if (l.ret.previousExit.found) { Salida previa: {{ l.ret.previousExit.kind === 'DISPATCHED' ? 'OC ' +
+              l.ret.previousExit.loadingOrder : 'salida manual' }} · {{ l.ret.previousExit.at }} } @for (w of l.warnings; track w) {
+              <div>{{ w }}</div>
+              }
+            </div>
+            <div class="ext-feedback-code">{{ l.ret.barcode }}</div>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- LISTADO -->
+    <div class="col-12 col-xl-7">
+      <div class="ext-card">
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-6 col-md-3">
+            <label for="lStatus" class="form-label small mb-1">Estado</label>
+            <select id="lStatus" class="form-select form-select-sm" [(ngModel)]="filters.status" (change)="load(1)">
+              <option value="RECEIVED">Abiertas</option>
+              <option value="CLOSED">Cerradas</option>
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3">
+            <label for="lType" class="form-label small mb-1">Tipo</label>
+            <select id="lType" class="form-select form-select-sm" [(ngModel)]="filters.type" (change)="load(1)">
+              <option value="">Todos</option>
+              @for (t of types; track t) {
+              <option [value]="t">{{ typeLabels[t] }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-8 col-md-4">
+            <label for="lSearch" class="form-label small mb-1">Buscar</label>
+            <input
+              id="lSearch"
+              type="text"
+              class="form-control form-control-sm"
+              [(ngModel)]="filters.search"
+              (keydown.enter)="load(1)"
+              placeholder="Serial, ref., cliente, documento"
+            />
+          </div>
+          <div class="col-4 col-md-2">
+            <button type="button" class="btn btn-sm btn-primary w-100" (click)="load(1)"><i class="ti ti-search"></i></button>
+          </div>
+        </div>
+
+        @if (loading()) {
+        <div class="ext-empty">
+          <span class="spinner-border spinner-border-sm"></span>
+          Consultando...
+        </div>
+        } @else if (rows().length) {
+        <div class="ext-table-wrap">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Recibido</th>
+                <th>Producto</th>
+                <th>Cliente / Doc.</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r._id) {
+              <tr>
+                <td class="small">
+                  {{ r.receivedAt }}
+                  <br />
+                  <span class="text-muted">{{ r.receivedBy.name || r.receivedBy.userApp }}</span>
+                </td>
+                <td>
+                  <strong>{{ r.reference || '—' }}</strong>
+                  <span class="ext-badge muted">{{ originLabel(r.origin) }}</span>
+                  <div class="ext-mono">{{ r.barcode }}</div>
+                  <div class="small text-muted">{{ typeLabels[r.type] }} · {{ conditionLabels[r.condition] }} · {{ r.reason }}</div>
+                  @if (!r.previousExit.found) {
+                  <span class="ext-badge warn">Sin salida registrada</span>
+                  }
+                </td>
+                <td class="small">
+                  {{ r.customer }}
+                  <br />
+                  <span class="text-muted">Doc. {{ r.document }}</span>
+                </td>
+                <td>
+                  @if (r.status === 'RECEIVED') {
+                  <span class="ext-badge info">Abierta</span>
+                  } @else {
+                  <span class="ext-badge ok">{{ r.resolution.type ? resolutionLabels[r.resolution.type] : 'Cerrada' }}</span>
+                  <div class="small text-muted">{{ r.resolution.at }} · {{ r.resolution.by.name || r.resolution.by.userApp }}</div>
+                  }
+                </td>
+                <td class="text-end">
+                  @if (r.status === 'RECEIVED' && access().isWarehouseAdmin) {
+                  <button type="button" class="btn btn-sm btn-outline-primary" (click)="openClose(r)">Cerrar</button>
+                  }
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+          <button type="button" class="btn btn-sm btn-light" (click)="load(page() - 1)" [disabled]="page() <= 1">
+            <i class="ti ti-chevron-left"></i>
+          </button>
+          <span class="small">Página {{ page() }} de {{ pages() }}</span>
+          <button type="button" class="btn btn-sm btn-light" (click)="load(page() + 1)" [disabled]="page() >= pages()">
+            <i class="ti ti-chevron-right"></i>
+          </button>
+        </div>
+        } @else {
+        <div class="ext-empty">
+          <i class="ti ti-arrow-back-up"></i>
+          No hay devoluciones con estos filtros.
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (closeTarget(); as t) {
+<div class="ext-dialog-backdrop" (click)="closeTarget.set(null)" aria-hidden="true"></div>
+<div class="ext-dialog" role="dialog" aria-modal="true" aria-labelledby="closeReturnTitle">
+  <div class="ext-dialog-title" id="closeReturnTitle">
+    <i class="ti ti-check"></i>
+    Cerrar {{ typeLabels[t.type] | lowercase }}
+  </div>
+  <p class="mb-2">
+    <strong>{{ t.reference || '—' }}</strong>
+    · {{ t.customer }} · Doc. {{ t.document }}
+    <br />
+    <span class="ext-mono">{{ t.barcode }}</span>
+  </p>
+  <label for="closeResolution" class="form-label small mb-1">Resolución</label>
+  <select id="closeResolution" class="form-select mb-2" [(ngModel)]="closeResolution">
+    @for (r of resolutions; track r) {
+    <option [value]="r">{{ resolutionLabels[r] }}</option>
+    }
+  </select>
+  <label for="closeObservation" class="form-label small mb-1">Observación (obligatoria)</label>
+  <textarea id="closeObservation" class="form-control" rows="2" maxlength="300" [(ngModel)]="closeObservation"></textarea>
+  <div class="d-flex justify-content-end gap-2 mt-3">
+    <button type="button" class="btn btn-light" (click)="closeTarget.set(null)" [disabled]="closing()">Cancelar</button>
+    <button type="button" class="btn btn-primary" (click)="confirmClose()" [disabled]="closing()">
+      @if (closing()) {
+      <span class="spinner-border spinner-border-sm me-1"></span>
+      } Cerrar
+    </button>
+  </div>
+</div>
+}

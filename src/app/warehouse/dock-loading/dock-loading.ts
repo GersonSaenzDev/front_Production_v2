@@ -15,6 +15,7 @@ import { finalize } from 'rxjs';
 
 import { DashInventoryServices } from '../../services/dashInventory-services';
 import { DockOrder, DockRead, DockScanResponse, DockScanResult, LOADING_ORDER_REJECT_LABELS } from '../../interfaces/loading-order.interface';
+import { normalizeDispatchSerial } from '../../shared/utils/gs1-barcode.util';
 
 const SERIAL_LENGTH = 27;
 // Con varios operarios en el muelle, el estado de las OC en cargue se sincroniza solo
@@ -113,7 +114,8 @@ export class DockLoading implements OnInit, OnDestroy {
   //  LECTURA (sin elegir OC)
   // ============================================================
   onScanSubmit(): void {
-    const serial = (this.scanValue || '').replace(/\D/g, '');
+    // Importaciones / Externos: GS1-128 con GTIN-13 (26 dígitos) -> forma canónica de 27
+    const serial = normalizeDispatchSerial(this.scanValue || '');
     this.scanValue = '';
     if (!serial) return;
 

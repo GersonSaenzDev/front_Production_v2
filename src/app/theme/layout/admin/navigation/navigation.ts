@@ -682,6 +682,52 @@ export const NavigationItems: NavigationItem[] = [
               }
             ]
           },
+          // Productos de importación / externos (campanas, dispensadores, maquila para terceros):
+          // ingresan SOLO por aquí (no por Recepción de Producción); su salida natural es la OC.
+          {
+            id: 'bodega-sub-externos',
+            title: 'Importaciones / Externos',
+            type: 'collapse',
+            icon: 'ti ti-world-download',
+            children: [
+              {
+                id: 'externos-ingreso-item',
+                title: 'Ingreso',
+                type: 'item',
+                url: 'inventories/externalEntry',
+                breadcrumbs: false
+              },
+              {
+                id: 'externos-inventario-item',
+                title: 'Inventario',
+                type: 'item',
+                url: 'inventories/externalInventory',
+                breadcrumbs: false
+              },
+              {
+                id: 'externos-catalogo-item',
+                title: 'Catálogo',
+                type: 'item',
+                url: 'inventories/externalCatalog',
+                breadcrumbs: false
+              },
+              {
+                // Exclusivo del Eje de Bodega (externalExitGuard + EXTERNAL_EXIT_USERS en el backend)
+                id: 'externos-salida-item',
+                title: 'Salida manual',
+                type: 'item',
+                url: 'inventories/externalExit',
+                breadcrumbs: false
+              },
+              {
+                id: 'devoluciones-garantias-item',
+                title: 'Devoluciones / Garantías',
+                type: 'item',
+                url: 'inventories/warrantyReturns',
+                breadcrumbs: false
+              }
+            ]
+          },
           // Conteos de inventario (visible para los kioscos invenbodega1..5 junto con Recepción;
           // perfiles de kiosco en menu-access.service.ts → BODEGA_KIOSK_PROFILES)
           {

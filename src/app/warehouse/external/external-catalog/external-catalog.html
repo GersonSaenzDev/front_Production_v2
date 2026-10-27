@@ -1,0 +1,353 @@
+<!-- src/app/warehouse/external/external-catalog/external-catalog.html -->
+<div class="container-fluid py-4 ext-view">
+  <div class="ext-header">
+    <div class="ext-header-content">
+      <div class="ext-header-icon"><i class="ti ti-book"></i></div>
+      <div class="ext-header-text">
+        <h3 class="ext-header-title mb-1">Catálogo Importaciones / Externos</h3>
+        <p class="ext-header-subtitle mb-0">Productos por GTIN: referencia, producto Summum, cliente y características</p>
+      </div>
+      @if (access().isWarehouseAdmin) {
+      <div class="ext-header-actions">
+        <button type="button" class="ext-btn-header" (click)="downloadTemplate()">
+          <i class="ti ti-download"></i>
+          <span>Plantilla</span>
+        </button>
+        <label class="ext-btn-header mb-0" role="button" [class.disabled]="importing()">
+          @if (importing()) {
+          <span class="spinner-border spinner-border-sm"></span>
+          } @else {
+          <i class="ti ti-file-upload"></i>
+          }
+          <span>Cargar Excel</span>
+          <input type="file" accept=".xlsx,.xls" hidden (change)="onFileSelected($event)" [disabled]="importing()" />
+        </label>
+        <button type="button" class="ext-btn-header" (click)="openNew()">
+          <i class="ti ti-plus"></i>
+          <span>Nuevo producto</span>
+        </button>
+      </div>
+      }
+    </div>
+    <div class="ext-stats">
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ products().length }}</span>
+        <span class="ext-stat-label">Productos</span>
+      </div>
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ unidentified().length }}</span>
+        <span class="ext-stat-label">GTIN sin identificar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADO DEL EXCEL -->
+  @if (importResult(); as r) {
+  <div class="ext-card mt-3">
+    <div class="d-flex justify-content-between">
+      <div class="ext-card-title">
+        <i class="ti ti-report"></i>
+        Carga de Excel: {{ importOk(r) }} de {{ r.results.length }} fila(s) cargadas
+      </div>
+      <button type="button" class="btn-close" (click)="importResult.set(null)" aria-label="Cerrar"></button>
+    </div>
+    @if (r.truncated) {
+    <p class="small text-warning mb-1">El archivo superó el máximo de filas: solo se procesaron las primeras 2000.</p>
+    } @if (importFailures(r).length) {
+    <div class="ext-table-wrap">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Fila</th>
+            <th>GTIN</th>
+            <th>Referencia</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of importFailures(r); track f.rowNumber) {
+          <tr>
+            <td>{{ f.rowNumber }}</td>
+            <td class="ext-mono">{{ f.gtin }}</td>
+            <td>{{ f.reference }}</td>
+            <td class="text-danger small">{{ f.msg }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- NO IDENTIFICADOS -->
+  @if (unidentified().length) {
+  <div class="ext-card mt-3 border-warning">
+    <div class="ext-card-title">
+      <i class="ti ti-alert-triangle"></i>
+      GTIN leídos en el Ingreso que no están en el catálogo
+    </div>
+    <p class="small text-muted">Al crear el producto, todas sus unidades quedan identificadas automáticamente.</p>
+    <div class="ext-table-wrap">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>GTIN</th>
+            <th>Unidades</th>
+            <th>Último código leído</th>
+            <th>Último ingreso</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of unidentified(); track u.gtin14) {
+          <tr>
+            <td class="ext-mono">{{ u.gtin14 }}</td>
+            <td class="fw-bold">{{ u.units }}</td>
+            <td class="ext-mono">{{ u.lastBarcode }}</td>
+            <td class="small">{{ u.lastEntryAt }}</td>
+            <td class="text-end">
+              @if (access().isWarehouseAdmin) {
+              <button type="button" class="btn btn-sm btn-warning" (click)="openNew(u.gtin14)">
+                <i class="ti ti-plus"></i>
+                Crear producto
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+
+  <!-- CATÁLOGO -->
+  <div class="ext-card mt-3">
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-12 col-md-6">
+        <label for="catSearch" class="form-label small mb-1">Buscar</label>
+        <input
+          id="catSearch"
+          type="text"
+          class="form-control form-control-sm"
+          [(ngModel)]="search"
+          (keydown.enter)="load()"
+          placeholder="Referencia, GTIN, cliente, categoría, Summum"
+        />
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="form-check mt-3">
+          <input id="catInactive" class="form-check-input" type="checkbox" [(ngModel)]="includeInactive" (change)="load()" />
+          <label for="catInactive" class="form-check-label small">Incluir inactivos</label>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <button type="button" class="btn btn-sm btn-primary w-100" (click)="load()" [disabled]="loading()">
+          <i class="ti ti-search"></i>
+          Buscar
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+    <div class="ext-empty">
+      <span class="spinner-border spinner-border-sm"></span>
+      Consultando...
+    </div>
+    } @else if (products().length) {
+    <div class="ext-table-wrap">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Referencia</th>
+            <th>GTIN</th>
+            <th>Summum</th>
+            <th>Cliente</th>
+            <th>Categoría</th>
+            <th>Origen</th>
+            <th>Características</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of products(); track p.gtin14) {
+          <tr [class.text-muted]="!p.active">
+            <td>
+              <strong>{{ p.reference }}</strong>
+              @if (!p.active) {
+              <span class="ext-badge muted ms-1">Inactivo</span>
+              }
+              <div class="small text-muted">{{ p.productName }}</div>
+            </td>
+            <td class="ext-mono">{{ p.gtin14 }}</td>
+            <td class="ext-mono">{{ p.summumProduct }}</td>
+            <td>{{ p.client }}</td>
+            <td>{{ p.category }}</td>
+            <td>
+              <span class="ext-badge" [ngClass]="p.origin === 'MAQUILA' ? 'info' : 'muted'">
+                {{ p.origin === 'MAQUILA' ? 'Maquila' : 'Importación' }}
+              </span>
+            </td>
+            <td class="small">{{ features(p) }}</td>
+            <td class="text-end">
+              @if (access().isWarehouseAdmin) {
+              <button type="button" class="btn btn-sm btn-outline-primary" (click)="openEdit(p)" title="Editar">
+                <i class="ti ti-edit"></i>
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="ext-empty">
+      <i class="ti ti-book-off"></i>
+      No hay productos en el catálogo.
+    </div>
+    }
+  </div>
+</div>
+
+<!-- DIÁLOGO: PRODUCTO -->
+@if (showForm()) {
+<div class="ext-dialog-backdrop" (click)="closeForm()" aria-hidden="true"></div>
+<div class="ext-dialog ext-dialog-lg" role="dialog" aria-modal="true" aria-labelledby="productFormTitle">
+  <div class="ext-dialog-title" id="productFormTitle">
+    <i class="ti ti-book"></i>
+    {{ editing() ? 'Editar producto' : 'Nuevo producto' }}
+  </div>
+  <div class="row g-2">
+    <div class="col-12 col-md-4">
+      <label for="pGtin" class="form-label small mb-1">GTIN / EAN (13 o 14 dígitos) *</label>
+      <input
+        id="pGtin"
+        type="text"
+        inputmode="numeric"
+        class="form-control ext-mono"
+        maxlength="14"
+        [(ngModel)]="form.gtin"
+        (blur)="onGtinChange()"
+        [readonly]="editing()"
+      />
+      @if (gtinWarning(); as w) {
+      <small class="text-danger">{{ w }}</small>
+      }
+    </div>
+    <div class="col-12 col-md-4">
+      <label for="pReference" class="form-label small mb-1">Referencia comercial *</label>
+      <input id="pReference" type="text" class="form-control" maxlength="200" [(ngModel)]="form.reference" placeholder="Ej: CRIX60X" />
+    </div>
+    <div class="col-12 col-md-4">
+      <label for="pSummum" class="form-label small mb-1">Producto Summum (5 dígitos)</label>
+      <input
+        id="pSummum"
+        type="text"
+        inputmode="numeric"
+        class="form-control ext-mono"
+        maxlength="5"
+        [(ngModel)]="form.summumProduct"
+        placeholder="Con el que la OC lo pide"
+      />
+    </div>
+    <div class="col-12">
+      <label for="pName" class="form-label small mb-1">Descripción</label>
+      <input
+        id="pName"
+        type="text"
+        class="form-control"
+        maxlength="200"
+        [(ngModel)]="form.productName"
+        placeholder="Ej: Campana extractora o recirculadora para uso doméstico"
+      />
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pCategory" class="form-label small mb-1">Categoría</label>
+      <input
+        id="pCategory"
+        type="text"
+        class="form-control"
+        maxlength="60"
+        list="categoryOptions"
+        [(ngModel)]="form.category"
+        placeholder="CAMPANA"
+      />
+      <datalist id="categoryOptions">
+        <option value="CAMPANA"></option>
+        <option value="DISPENSADOR"></option>
+        <option value="ESTUFA"></option>
+        @for (c of categories(); track c) {
+        <option [value]="c"></option>
+        }
+      </datalist>
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pClient" class="form-label small mb-1">Cliente / marca</label>
+      <input
+        id="pClient"
+        type="text"
+        class="form-control"
+        maxlength="60"
+        list="clientOptions"
+        [(ngModel)]="form.client"
+        placeholder="ABBA"
+      />
+      <datalist id="clientOptions">
+        @for (c of clients(); track c) {
+        <option [value]="c"></option>
+        }
+      </datalist>
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pOrigin" class="form-label small mb-1">Origen</label>
+      <select id="pOrigin" class="form-select" [(ngModel)]="form.origin">
+        <option value="IMPORTACION">Importación</option>
+        <option value="MAQUILA">Maquila (fabricado para tercero)</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pSupplier" class="form-label small mb-1">Proveedor / importador</label>
+      <input id="pSupplier" type="text" class="form-control" maxlength="200" [(ngModel)]="form.supplier" />
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pMade" class="form-label small mb-1">Fabricado en</label>
+      <input id="pMade" type="text" class="form-control" maxlength="200" [(ngModel)]="form.manufacturedIn" placeholder="RPC, INDIA..." />
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pColor" class="form-label small mb-1">Color / acabado</label>
+      <input id="pColor" type="text" class="form-control" maxlength="200" [(ngModel)]="form.color" placeholder="ACERO INOXIDABLE" />
+    </div>
+    <div class="col-6 col-md-3">
+      <label for="pVoltage" class="form-label small mb-1">Tensión</label>
+      <input id="pVoltage" type="text" class="form-control" maxlength="200" [(ngModel)]="form.voltage" placeholder="120V / 60Hz" />
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="form-check mt-4">
+        <input id="pActive" class="form-check-input" type="checkbox" [(ngModel)]="form.active" />
+        <label for="pActive" class="form-check-label">Activo</label>
+      </div>
+    </div>
+    <div class="col-12">
+      <label for="pSpecs" class="form-label small mb-1">Especificaciones</label>
+      <textarea
+        id="pSpecs"
+        class="form-control"
+        rows="2"
+        maxlength="200"
+        [(ngModel)]="form.specs"
+        placeholder="Clase ST, presión de gas, potencia..."
+      ></textarea>
+    </div>
+  </div>
+  <div class="d-flex justify-content-end gap-2 mt-3">
+    <button type="button" class="btn btn-light" (click)="closeForm()" [disabled]="saving()">Cancelar</button>
+    <button type="button" class="btn btn-primary" (click)="save()" [disabled]="saving()">
+      @if (saving()) {
+      <span class="spinner-border spinner-border-sm me-1"></span>
+      } Guardar
+    </button>
+  </div>
+</div>
+}

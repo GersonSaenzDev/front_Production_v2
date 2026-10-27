@@ -1,0 +1,174 @@
+<!-- src/app/warehouse/external/external-exit/external-exit.html -->
+<div class="container-fluid py-4 ext-view">
+  <div class="ext-header">
+    <div class="ext-header-content">
+      <div class="ext-header-icon"><i class="ti ti-package-export"></i></div>
+      <div class="ext-header-text">
+        <h3 class="ext-header-title mb-1">Salida manual · Importaciones / Externos</h3>
+        <p class="ext-header-subtitle mb-0">
+          Baja por daño, devolución a proveedor o ajuste — exclusivo del Eje de Bodega. La salida normal es por Orden de Cargue.
+        </p>
+      </div>
+    </div>
+    <div class="ext-stats">
+      <div class="ext-stat">
+        <span class="ext-stat-value">{{ items().length }}</span>
+        <span class="ext-stat-label">Seriales en la lista</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12 col-xl-5">
+      <div class="ext-card">
+        <div class="ext-card-title">
+          <i class="ti ti-file-certificate"></i>
+          Soporte de la salida
+        </div>
+
+        <label for="exitType" class="form-label small mb-1">Tipo de salida</label>
+        <select id="exitType" class="form-select mb-2" [(ngModel)]="exitType">
+          @for (t of exitTypes; track t) {
+          <option [value]="t">{{ exitTypeLabels[t] }}</option>
+          }
+        </select>
+
+        <label for="exitDocument" class="form-label small mb-1">Documento soporte (obligatorio)</label>
+        <input
+          id="exitDocument"
+          type="text"
+          class="form-control mb-2"
+          maxlength="60"
+          [(ngModel)]="document"
+          placeholder="Ej: Acta de baja 015, NC proveedor 123"
+        />
+
+        <label for="exitObservation" class="form-label small mb-1">Motivo / observación (obligatorio)</label>
+        <textarea
+          id="exitObservation"
+          class="form-control"
+          rows="3"
+          maxlength="300"
+          [(ngModel)]="observation"
+          placeholder="Describa por qué sale el producto"
+        ></textarea>
+
+        <label for="exitScanInput" class="form-label fw-semibold mt-3 mb-1">Lea los seriales (GS1-128)</label>
+        <input
+          #scanInput
+          id="exitScanInput"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="120"
+          class="form-control ext-scan-input"
+          (keydown.enter)="onScanSubmit()"
+          placeholder="Escanee y presione Enter..."
+        />
+
+        <button type="button" class="btn btn-danger w-100 mt-3" (click)="openConfirm()" [disabled]="!items().length || submitting()">
+          <i class="ti ti-package-export"></i>
+          Registrar salida de {{ items().length }} unidad(es)
+        </button>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-7">
+      @if (result(); as r) {
+      <div class="ext-card mb-3">
+        <div class="ext-card-title">
+          <i class="ti ti-report"></i>
+          Resultado: {{ r.done }} con salida · {{ r.failed }} sin salida
+        </div>
+        <div class="ext-table-wrap">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Serial</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (x of r.results; track x.barcode) {
+              <tr>
+                <td class="ext-mono">{{ x.barcode }}</td>
+                <td>
+                  <span class="ext-badge" [ngClass]="x.ok ? 'ok' : 'error'">{{ x.ok ? (x.reference || 'OK') : 'Rechazado' }}</span>
+                  <span class="small">{{ x.msg }}</span>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      }
+
+      <div class="ext-card">
+        <div class="ext-card-title">
+          <i class="ti ti-list"></i>
+          Seriales a dar salida
+        </div>
+        @if (items().length) {
+        <div class="ext-table-wrap">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Serial</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of items(); track i.barcode) {
+              <tr>
+                <td class="ext-mono">{{ i.barcode }}</td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="remove(i.barcode)" title="Quitar de la lista">
+                    <i class="ti ti-x"></i>
+                  </button>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else {
+        <div class="ext-empty">
+          <i class="ti ti-barcode"></i>
+          Lea con la pistola los seriales que salen.
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (showConfirm()) {
+<div class="ext-dialog-backdrop" (click)="showConfirm.set(false)" aria-hidden="true"></div>
+<div class="ext-dialog" role="dialog" aria-modal="true" aria-labelledby="exitConfirmTitle">
+  <div class="ext-dialog-title" id="exitConfirmTitle">
+    <i class="ti ti-alert-triangle"></i>
+    Confirmar salida manual
+  </div>
+  <p>
+    Se dará salida a
+    <strong>{{ items().length }}</strong>
+    unidad(es) por
+    <strong>{{ exitTypeLabels[exitType] }}</strong>
+    con el documento
+    <strong>{{ document }}</strong>
+    .
+  </p>
+  <p class="small text-muted">
+    Queda registrado a su nombre en la auditoría. Las unidades alistadas o despachadas en una OC no salen por aquí.
+  </p>
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-light" (click)="showConfirm.set(false)" [disabled]="submitting()">Cancelar</button>
+    <button type="button" class="btn btn-danger" (click)="confirm()" [disabled]="submitting()">
+      @if (submitting()) {
+      <span class="spinner-border spinner-border-sm me-1"></span>
+      } Confirmar salida
+    </button>
+  </div>
+</div>
+}
