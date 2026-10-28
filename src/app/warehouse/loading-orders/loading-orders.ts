@@ -4,18 +4,23 @@
 // cargue del .PRN del ERP, cola / seguimiento, cierre parcial por OC, detalle con lecturas y
 // auditoría, registro de rechazos (reenvíos del ERP y archivos inválidos), y asignación de OC a
 // los operarios de prealistamiento (sin asignar = cola libre; varios = leen la OC en paralelo),
-// vehículo y conductor para el Cargue en Muelle, y alertas de lecturas erradas en el muelle.
+// vehículo y conductor para el Cargue en Muelle, alertas de lecturas erradas en el muelle, y
+// liberación (con pistola) de las unidades devueltas desde el muelle que quedaron retenidas.
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { finalize } from 'rxjs';
 
 import { DashInventoryServices } from '../../services/dashInventory-services';
+import { normalizeDispatchSerial } from '../../shared/utils/gs1-barcode.util';
 import {
   DOCK_ALERT_LABELS,
+  DOCK_RETURN_REASON_LABELS,
   DockAlert,
+  DockReturn,
+  ReleaseReturnedUnitResult,
   SUMMUM_EXPORT_LABELS,
   LOADING_ORDER_REJECT_LABELS,
   LOADING_ORDER_STATUS_LABELS,
@@ -36,7 +41,8 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['.prn', '.txt'];
 
 type StatusFilter = 'queue' | 'closed' | 'dock' | 'all' | LoadingOrderStatus;
-type AdminTab = 'orders' | 'operators' | 'dockAlerts' | 'rejections';
+type AdminTab = 'orders' | 'operators' | 'dockAlerts' | 'dockReturns' | 'rejections';
+const SERIAL_LENGTH = 27;
 type ReadsFilter = 'ACTIVE' | 'VOIDED' | 'REJECTED' | 'ALL';
 
 const STATUS_FILTERS: Record<'queue' | 'closed' | 'dock' | 'all', LoadingOrderStatus[]> = {
@@ -136,6 +142,23 @@ export class LoadingOrders implements OnInit {
   readonly savingReview = signal(false);
   reviewObservation = '';
 
+  // Devoluciones de muelle: unidades retenidas que el analista libera leyéndolas con la pistola
+  @ViewChild('releaseScanInput') private releaseScanInput?: ElementRef<HTMLInputElement>;
+  readonly returnReasonLabels = DOCK_RETURN_REASON_LABELS;
+  readonly dockReturns = signal<DockReturn[]>([]);
+  readonly loadingDockReturns = signal(false);
+  readonly showClosedReturns = signal(false);
+  readonly releasing = signal(false);
+  readonly lastReleased = signal<ReleaseReturnedUnitResult | null>(null);
+  readonly pendingReturnUnits = computed(() =>
+    this.dockReturns()
+      .filter((r) => r.status === 'OPEN')
+      .reduce((acc, r) => acc + r.totals.pending, 0)
+  );
+  readonly releaseAllTarget = signal<DockReturn | null>(null);
+  releaseScanValue = '';
+  releaseAllObservation = '';
+
   // Detalle
   readonly detail = signal<LoadingOrderView | null>(null);
   readonly loadingDetail = signal(false);
@@ -180,11 +203,16 @@ export class LoadingOrders implements OnInit {
     this.loadOrders();
     this.loadOperators();
     this.loadDockAlerts();
+    this.loadDockReturns();
   }
 
   setTab(tab: AdminTab): void {
     this.activeTab.set(tab);
     if (tab === 'dockAlerts') this.loadDockAlerts();
+    if (tab === 'dockReturns') {
+      this.loadDockReturns();
+      setTimeout(() => this.releaseScanInput?.nativeElement.focus());
+    }
     if (tab === 'rejections' && !this.rejections().length) this.loadRejections();
   }
 
@@ -562,6 +590,89 @@ export class LoadingOrders implements OnInit {
       .subscribe({
         next: (res) => this.dockAlerts.set(res.data ?? []),
         error: (err: Error) => this.toastr.error(err.message, 'Alertas de muelle')
+      });
+  }
+
+  // ============================================================
+  //  DEVOLUCIONES DE MUELLE (liberación de unidades retenidas)
+  // ============================================================
+  loadDockReturns(): void {
+    this.loadingDockReturns.set(true);
+    this.inventoryService
+      .getDockReturns(!this.showClosedReturns())
+      .pipe(finalize(() => this.loadingDockReturns.set(false)))
+      .subscribe({
+        next: (res) => this.dockReturns.set(res.data ?? []),
+        error: (err: Error) => this.toastr.error(err.message, 'Devoluciones de muelle')
+      });
+  }
+
+  toggleClosedReturns(): void {
+    this.showClosedReturns.update((v) => !v);
+    this.loadDockReturns();
+  }
+
+  /** Lectura con pistola: la unidad volvió a su ubicación y queda libre para otra OC. */
+  onReleaseScan(): void {
+    const serial = normalizeDispatchSerial(this.releaseScanValue || '');
+    this.releaseScanValue = '';
+    if (!serial) return;
+    if (serial.length !== SERIAL_LENGTH) {
+      this.toastr.warning(
+        `Lectura incompleta: el serial debe tener ${SERIAL_LENGTH} dígitos (se leyeron ${serial.length}). Vuelva a leer.`,
+        'Serial inválido'
+      );
+      return;
+    }
+    if (this.releasing()) return;
+
+    this.releasing.set(true);
+    this.inventoryService
+      .releaseReturnedUnit(serial)
+      .pipe(
+        finalize(() => {
+          this.releasing.set(false);
+          setTimeout(() => this.releaseScanInput?.nativeElement.focus());
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.lastReleased.set(res.data ?? null);
+          this.toastr.success(res.msg, 'Unidad liberada');
+          this.loadDockReturns();
+        },
+        error: (err: Error) => {
+          this.lastReleased.set(null);
+          this.toastr.error(err.message, 'Liberar unidad', { timeOut: 8000 });
+        }
+      });
+  }
+
+  openReleaseAll(ret: DockReturn): void {
+    this.releaseAllObservation = '';
+    this.releaseAllTarget.set(ret);
+  }
+
+  cancelReleaseAll(): void {
+    this.releaseAllTarget.set(null);
+  }
+
+  confirmReleaseAll(): void {
+    const target = this.releaseAllTarget();
+    const observation = this.releaseAllObservation.replace(/[<>&]/g, ' ').trim();
+    if (!target || observation.length < 10) return;
+
+    this.releasing.set(true);
+    this.inventoryService
+      .releaseDockReturn(target._id, observation)
+      .pipe(finalize(() => this.releasing.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.toastr.success(res.msg, 'Devolución liberada');
+          this.releaseAllTarget.set(null);
+          this.loadDockReturns();
+        },
+        error: (err: Error) => this.toastr.error(err.message, 'Liberar devolución')
       });
   }
 

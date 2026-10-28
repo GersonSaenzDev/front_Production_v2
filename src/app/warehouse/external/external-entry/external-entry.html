@@ -9,6 +9,16 @@
         <p class="ext-header-subtitle mb-0">Bodega — Lea con la pistola el código GS1-128 (01)…(21)… de cada unidad</p>
       </div>
       <div class="ext-header-actions">
+        <button
+          type="button"
+          class="ext-btn-header"
+          (click)="syncNow(); focusScan()"
+          [disabled]="syncing()"
+          title="Cuadrar el conteo de hoy con lo registrado en el servidor"
+        >
+          <i class="ti ti-refresh" [class.ext-spin]="syncing()"></i>
+          <span>Sincronizar</span>
+        </button>
         <span class="ext-btn-header" [title]="online() && !connectionIssue() ? 'Conectado' : 'Sin conexión'">
           <i class="ti" [ngClass]="online() && !connectionIssue() ? 'ti-wifi' : 'ti-wifi-off'"></i>
           <span>{{ online() && !connectionIssue() ? 'En línea' : 'Sin conexión' }}</span>
@@ -17,8 +27,8 @@
     </div>
     <div class="ext-stats">
       <div class="ext-stat">
-        <span class="ext-stat-value">{{ activeSession().length }}</span>
-        <span class="ext-stat-label">Ingresadas hoy (este equipo)</span>
+        <span class="ext-stat-value">{{ totalToday() }}</span>
+        <span class="ext-stat-label">Ingresadas hoy (su usuario)</span>
       </div>
       <div class="ext-stat">
         <span class="ext-stat-value">{{ pending().length }}</span>
@@ -122,7 +132,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (p of sessionByProduct(); track p.reference) {
+              @for (p of sessionByProduct(); track p.gtin14) {
               <tr>
                 <td>
                   <strong>{{ p.reference }}</strong>
@@ -151,13 +161,23 @@
       <div class="ext-card h-100">
         <div class="ext-card-title">
           <i class="ti ti-list-check"></i>
-          Últimos ingresos (este equipo)
+          Últimos ingresos (del último al primero)
         </div>
-        @if (session().length) {
+        @if (lastEntry(); as last) {
+        <div class="ext-last-entry mb-2">
+          <div class="small text-uppercase fw-semibold">Última unidad leída @if (last.seq) { · n.º {{ last.seq }} }</div>
+          <div class="ext-last-serial">{{ last.serial }}</div>
+          <div class="small">
+            {{ last.identified ? last.reference : 'No identificado' }} · {{ last.enteredAt.split(', ')[1] }}
+            <span class="ext-mono text-muted ms-1">GTIN {{ gtinOf(last.barcode) }}</span>
+          </div>
+        </div>
+        } @if (session().length) {
         <div class="ext-table-wrap">
           <table class="table table-sm align-middle">
             <thead>
               <tr>
+                <th class="text-end">#</th>
                 <th>Hora</th>
                 <th>Producto</th>
                 <th>Serial</th>
@@ -165,8 +185,9 @@
               </tr>
             </thead>
             <tbody>
-              @for (s of session(); track s.unitId) {
-              <tr [class.text-decoration-line-through]="s.voided" [class.text-muted]="s.voided">
+              @for (s of session(); track s.unitId; let first = $first) {
+              <tr [class.text-decoration-line-through]="s.voided" [class.text-muted]="s.voided" [class.ext-row-last]="first && !s.voided">
+                <td class="text-end fw-bold text-nowrap">{{ s.seq ?? '—' }}</td>
                 <td class="text-nowrap">{{ s.enteredAt.split(', ')[1] }}</td>
                 <td>
                   @if (s.identified) {
@@ -175,7 +196,10 @@
                   <span class="ext-badge warn">No identificado</span>
                   }
                 </td>
-                <td class="ext-mono">{{ s.barcode }}</td>
+                <td>
+                  <span class="ext-serial">{{ s.serial }}</span>
+                  <div class="ext-mono text-muted small">(01) {{ gtinOf(s.barcode) }} (21)</div>
+                </td>
                 <td class="text-end">
                   @if (s.voided) {
                   <span class="ext-badge VOIDED">Anulado</span>

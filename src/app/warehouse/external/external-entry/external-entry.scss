@@ -1,1 +1,41 @@
-@use '../external-shared';
+@use '../external-shared' as shared;
+
+// Última unidad leída: el operario ve de un vistazo dónde continuar la lectura
+.ext-last-entry {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(shared.$abba-blue, 0.3);
+  border-radius: 10px;
+  background: shared.$abba-blue-light;
+  color: shared.$abba-blue-dark;
+}
+
+.ext-last-serial {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}
+
+// Serial resaltado; el prefijo (01) GTIN (21) va debajo en gris
+.ext-serial {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.ext-row-last > td {
+  background: shared.$abba-green-light;
+}
+
+.ext-spin {
+  display: inline-block;
+  animation: ext-spin 1s linear infinite;
+}
+
+@keyframes ext-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

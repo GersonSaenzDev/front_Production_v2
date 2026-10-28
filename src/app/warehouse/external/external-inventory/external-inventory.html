@@ -229,11 +229,44 @@
           <option [value]="s">{{ statusLabels[s] }}</option>
           }
         </select>
-        <button type="button" class="btn btn-sm btn-outline-success" (click)="exportUnits()" [disabled]="!units().length">
-          <i class="ti ti-file-spreadsheet"></i>
-          Excel (página)
-        </button>
+        <div class="input-group input-group-sm w-auto">
+          <select
+            class="form-select form-select-sm"
+            [(ngModel)]="exportScope"
+            aria-label="Cantidad a descargar"
+            [disabled]="exportingUnits()"
+          >
+            @for (o of exportScopes; track o.value) {
+            <option [ngValue]="o.value">{{ o.label }}</option>
+            }
+          </select>
+          <button type="button" class="btn btn-outline-success" (click)="exportUnits()" [disabled]="!units().length || exportingUnits()">
+            @if (exportingUnits()) {
+            <span class="spinner-border spinner-border-sm"></span>
+            } @else {
+            <i class="ti ti-file-spreadsheet"></i>
+            } Excel
+          </button>
+        </div>
       </div>
+    </div>
+
+    <!-- FILTRO RÁPIDO POR NOVEDAD -->
+    <div class="ext-flag-filters mb-2">
+      <span class="small text-muted me-1">Novedades:</span>
+      <button type="button" class="ext-flag-chip" [class.active]="!filters.flag" (click)="setFlag('')">Todas las unidades</button>
+      @for (f of unitFlags; track f) {
+      <button
+        type="button"
+        class="ext-flag-chip"
+        [class.active]="filters.flag === f"
+        [class.has-items]="flagCounts()[f] > 0"
+        (click)="setFlag(f)"
+      >
+        {{ flagLabels[f] }}
+        <span class="ext-flag-count">{{ flagCounts()[f] }}</span>
+      </button>
+      }
     </div>
     @if (loadingUnits()) {
     <div class="ext-empty">
@@ -265,8 +298,13 @@
               }
             </td>
             <td class="ext-mono">
-              {{ u.barcode }} @if (!u.dispatchable) {
-              <span class="ext-badge error ms-1" title="No queda en 27 dígitos: no puede ir en una OC (.sal)">No despachable</span>
+              {{ u.barcode }} @for (f of unitFlagsOf(u); track f) {
+              <span
+                class="ext-badge error ms-1"
+                [title]="f === 'NOT_DISPATCHABLE' ? 'No queda en 27 dígitos: no puede ir en una OC (.sal)' : 'El dígito verificador del GTIN no cuadra: revise la etiqueta'"
+              >
+                {{ flagLabels[f] }}
+              </span>
               }
             </td>
             <td><span class="ext-badge" [ngClass]="u.stockStatus">{{ statusLabels[u.stockStatus] }}</span></td>
@@ -296,13 +334,36 @@
         </tbody>
       </table>
     </div>
-    <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+    <div class="d-flex flex-wrap justify-content-end align-items-center gap-2 mt-2">
+      <label for="unitsPageSize" class="small text-muted mb-0">Por página</label>
+      <select
+        id="unitsPageSize"
+        class="form-select form-select-sm w-auto"
+        [ngModel]="unitsPageSize()"
+        (ngModelChange)="setUnitsPageSize($event)"
+      >
+        @for (s of unitsPageSizes; track s) {
+        <option [ngValue]="s">{{ s }}</option>
+        }
+      </select>
+      <button type="button" class="btn btn-sm btn-light" (click)="loadUnits(1)" [disabled]="unitsPage() <= 1" title="Primera página">
+        <i class="ti ti-chevrons-left"></i>
+      </button>
       <button type="button" class="btn btn-sm btn-light" (click)="loadUnits(unitsPage() - 1)" [disabled]="unitsPage() <= 1">
         <i class="ti ti-chevron-left"></i>
       </button>
       <span class="small">Página {{ unitsPage() }} de {{ unitsPages() }}</span>
       <button type="button" class="btn btn-sm btn-light" (click)="loadUnits(unitsPage() + 1)" [disabled]="unitsPage() >= unitsPages()">
         <i class="ti ti-chevron-right"></i>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-light"
+        (click)="loadUnits(unitsPages())"
+        [disabled]="unitsPage() >= unitsPages()"
+        title="Última página"
+      >
+        <i class="ti ti-chevrons-right"></i>
       </button>
     </div>
     } @else {

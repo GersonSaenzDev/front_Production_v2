@@ -480,6 +480,32 @@ $abba-amber-light: #fffbeb;
   background: #fff5f5;
 }
 
+// Devoluciones de muelle
+.release-scan {
+  padding: 1rem;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px dashed #f59e0b;
+}
+
+.return-unit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0;
+
+    &.released {
+      opacity: 0.6;
+    }
+  }
+}
+
 .dispatch-box,
 .replenish-box {
   display: flex;

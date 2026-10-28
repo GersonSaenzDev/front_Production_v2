@@ -266,6 +266,53 @@ $abba-amber-light: #fffbeb;
   word-break: break-all;
 }
 
+// ---------------------------------------------------------------- Filtro rápido por novedad
+.ext-flag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ext-flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid #dfe3ea;
+  border-radius: 999px;
+  background: #fff;
+  color: $abba-gray;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  .ext-flag-count {
+    min-width: 1.4rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: #eef0f3;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  &.has-items .ext-flag-count {
+    background: $abba-red-light;
+    color: $abba-red;
+  }
+
+  &.active {
+    border-color: $abba-blue;
+    background: $abba-blue;
+    color: #fff;
+
+    .ext-flag-count {
+      background: rgba(#fff, 0.25);
+      color: #fff;
+    }
+  }
+}
+
 // ---------------------------------------------------------------- Badges de estado
 .ext-badge {
   display: inline-block;

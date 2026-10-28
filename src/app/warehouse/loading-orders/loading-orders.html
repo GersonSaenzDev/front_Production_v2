@@ -164,6 +164,14 @@
       </button>
     </li>
     <li class="nav-item">
+      <button type="button" class="nav-link" [class.active]="activeTab() === 'dockReturns'" (click)="setTab('dockReturns')">
+        <i class="ti ti-arrow-back-up"></i>
+        Devoluciones de muelle @if (pendingReturnUnits()) {
+        <span class="badge-alert">{{ pendingReturnUnits() }}</span>
+        }
+      </button>
+    </li>
+    <li class="nav-item">
       <button type="button" class="nav-link" [class.active]="activeTab() === 'rejections'" (click)="setTab('rejections')">
         <i class="ti ti-shield-x"></i>
         Rechazos de cargue
@@ -522,6 +530,133 @@
       </table>
     </div>
   </div>
+  } @if (activeTab() === 'dockReturns') {
+  <div class="lo-card lo-card-tabbed">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <p class="text-muted mb-0">
+        Unidades que el muelle devolvió (no cupo, daño, cambio). Quedan
+        <strong>retenidas</strong>
+        y no se pueden alistar en otra OC hasta liberarlas: lea cada unidad con la pistola al devolverla a su ubicación.
+      </p>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-light" (click)="toggleClosedReturns()" [disabled]="loadingDockReturns()">
+          <i class="ti" [ngClass]="showClosedReturns() ? 'ti-eye-off' : 'ti-history'"></i>
+          {{ showClosedReturns() ? 'Solo pendientes' : 'Ver historial' }}
+        </button>
+        <button type="button" class="btn btn-light" (click)="loadDockReturns()" [disabled]="loadingDockReturns()">
+          <i class="ti" [ngClass]="loadingDockReturns() ? 'ti-loader-2 spin' : 'ti-refresh'"></i>
+          Actualizar
+        </button>
+      </div>
+    </div>
+
+    <div class="release-scan">
+      <label for="releaseScanInput" class="form-label fw-semibold">
+        <i class="ti ti-scan"></i>
+        Lea la unidad para liberarla
+      </label>
+      <input
+        #releaseScanInput
+        id="releaseScanInput"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        spellcheck="false"
+        class="form-control form-control-lg mono"
+        maxlength="40"
+        [(ngModel)]="releaseScanValue"
+        (keydown.enter)="onReleaseScan()"
+        placeholder="Escanee aquí..."
+      />
+      @if (releasing()) {
+      <small class="text-muted">
+        <i class="ti ti-loader-2 spin"></i>
+        Liberando...
+      </small>
+      } @else { @if (lastReleased(); as r) {
+      <small class="text-success d-block mt-1">
+        <i class="ti ti-circle-check"></i>
+        {{ r.serial }} · {{ r.reference }} (OC {{ r.loadingOrder }}) liberada. @if (r.pending) { Faltan {{ r.pending }} de esa devolución. }
+      </small>
+      } }
+    </div>
+
+    <div class="table-responsive mt-3">
+      <table class="table align-middle lo-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>OC / Vehículo</th>
+            <th>Motivo y detalle</th>
+            <th>Unidades</th>
+            <th>Operario</th>
+            <th>Correo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (ret of dockReturns(); track ret._id) {
+          <tr [class.alert-pending]="ret.status === 'OPEN'">
+            <td><small>{{ ret.dateCreate }}</small></td>
+            <td>
+              <div class="fw-semibold">{{ ret.loadingOrder }}</div>
+              @if (ret.vehiclePlate) {
+              <span class="plate-chip">{{ ret.vehiclePlate }}</span>
+              }
+              <small class="d-block text-muted">{{ ret.replace ? 'Con reposición' : 'Sin reposición' }}</small>
+            </td>
+            <td>
+              <span class="status-badge status-PAUSED">{{ returnReasonLabels[ret.reason] }}</span>
+              <small class="d-block text-muted mt-1">{{ ret.detail }}</small>
+            </td>
+            <td>
+              <ul class="return-unit-list">
+                @for (u of ret.units; track u.serial) {
+                <li [class.released]="u.status === 'RELEASED'">
+                  <i class="ti" [ngClass]="u.status === 'RELEASED' ? 'ti-lock-open text-success' : 'ti-lock text-warning'"></i>
+                  <span class="mono">{{ u.serial }}</span>
+                  <small class="text-muted">{{ u.reference }}</small>
+                  @if (u.status === 'RELEASED') {
+                  <small class="d-block text-muted">Liberada {{ u.releasedAt }} · {{ u.releasedBy?.name || u.releasedBy?.userApp }}</small>
+                  }
+                </li>
+                }
+              </ul>
+            </td>
+            <td><small>{{ ret.reportedBy.name || ret.reportedBy.userApp }}</small></td>
+            <td>
+              <i
+                class="ti"
+                [ngClass]="ret.emailAlert.sent ? 'ti-mail-check text-success' : 'ti-mail-x text-danger'"
+                [title]="ret.emailAlert.sent ? 'Informe enviado' : ret.emailAlert.error || 'Correo no enviado'"
+              ></i>
+            </td>
+            <td>
+              @if (ret.status === 'OPEN') {
+              <span class="d-block small fw-semibold text-warning-emphasis mb-1">{{ ret.totals.pending }} por liberar</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="openReleaseAll(ret)" [disabled]="releasing()">
+                Liberar todas
+              </button>
+              } @else {
+              <small class="text-success">
+                <i class="ti ti-check"></i>
+                Liberada
+              </small>
+              }
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+              {{ loadingDockReturns() ? 'Consultando...' : showClosedReturns() ? 'No hay devoluciones de muelle.' : 'No hay unidades
+              retenidas por liberar.' }}
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
   } @if (activeTab() === 'rejections') {
   <div class="lo-card lo-card-tabbed">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -728,6 +863,37 @@
       @if (savingReview()) {
       <i class="ti ti-loader-2 spin"></i>
       } Marcar revisada
+    </button>
+  </div>
+</div>
+}
+
+<!-- DIÁLOGO: LIBERAR TODAS LAS UNIDADES DE UNA DEVOLUCIÓN -->
+@if (releaseAllTarget(); as target) {
+<div class="dialog-backdrop" (click)="cancelReleaseAll()" aria-hidden="true"></div>
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="releaseAllTitle">
+  <h5 id="releaseAllTitle">
+    <i class="ti ti-lock-open"></i>
+    Liberar devolución · OC {{ target.loadingOrder }}
+  </h5>
+  <p class="small mb-2">
+    Se liberarán
+    <strong>{{ target.totals.pending }}</strong>
+    unidad(es) sin leerlas con la pistola. Úselo solo si verificó físicamente que volvieron a su ubicación.
+  </p>
+  <label for="releaseAllObservation" class="form-label">Motivo (obligatorio, mínimo 10 caracteres)</label>
+  <textarea id="releaseAllObservation" class="form-control" rows="3" maxlength="300" [(ngModel)]="releaseAllObservation"></textarea>
+  <div class="dialog-actions">
+    <button type="button" class="btn btn-light" (click)="cancelReleaseAll()" [disabled]="releasing()">Cancelar</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="confirmReleaseAll()"
+      [disabled]="releasing() || releaseAllObservation.trim().length < 10"
+    >
+      @if (releasing()) {
+      <i class="ti ti-loader-2 spin"></i>
+      } Liberar
     </button>
   </div>
 </div>

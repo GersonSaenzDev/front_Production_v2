@@ -98,8 +98,27 @@ export interface ExternalUnitFilters {
   from?: string;
   to?: string;
   stockStatus?: ExternalStockStatus | '';
+  flag?: ExternalUnitFlag | '';
   page?: number;
   limit?: number;
+  /** Descarga a Excel: el backend acepta limit hasta 20.000. */
+  forExport?: boolean;
+}
+
+/** Novedades (marcaciones) de una unidad. ANY = cualquiera. Espejo de UNIT_FLAG_MATCH (backend). */
+export type ExternalUnitFlag = 'ANY' | 'NOT_DISPATCHABLE' | 'INVALID_CHECK_DIGIT' | 'UNIDENTIFIED';
+
+export const EXTERNAL_UNIT_FLAG_LABELS: Record<ExternalUnitFlag, string> = {
+  ANY: 'Con novedad',
+  NOT_DISPATCHABLE: 'No despachable',
+  INVALID_CHECK_DIGIT: 'Verificador inválido',
+  UNIDENTIFIED: 'No identificado'
+};
+
+export type ExternalUnitFlagCounts = Record<ExternalUnitFlag, number>;
+
+export interface ExternalUnitsResponse extends ExternalApiResponse<ExternalUnit[]> {
+  flagCounts?: ExternalUnitFlagCounts;
 }
 
 export interface ExternalUnit {

@@ -15,6 +15,7 @@ import {
   EXTERNAL_AUDIT_ACTION_LABELS,
   EXTERNAL_EXIT_TYPE_LABELS,
   EXTERNAL_STOCK_STATUS_LABELS,
+  EXTERNAL_UNIT_FLAG_LABELS,
   ExternalAccess,
   ExternalAuditLog,
   ExternalExitType,
@@ -23,12 +24,20 @@ import {
   ExternalTrace,
   ExternalUnit,
   ExternalUnitFilters,
+  ExternalUnitFlag,
+  ExternalUnitFlagCounts,
   WARRANTY_RETURN_TYPE_LABELS
 } from '../../../interfaces/external-products.interface';
 
 type InventoryTab = 'stock' | 'units' | 'audit';
+/** 'page' = solo lo que se ve; un número = las primeras N unidades del filtro; 'all' = todo el filtro. */
+type UnitsExportScope = 'page' | 500 | 1000 | 5000 | 'all';
 
 const PAGE_SIZE = 50;
+const UNITS_PAGE_SIZES = [50, 100, 200];
+/** Tope de la descarga a Excel (MAX_EXPORT_LIMIT del backend). */
+const MAX_EXPORT_UNITS = 20000;
+const EMPTY_FLAG_COUNTS: ExternalUnitFlagCounts = { ANY: 0, NOT_DISPATCHABLE: 0, INVALID_CHECK_DIGIT: 0, UNIDENTIFIED: 0 };
 
 @Component({
   selector: 'app-external-inventory',
@@ -46,13 +55,23 @@ export class ExternalInventory implements OnInit {
   readonly auditLabels = EXTERNAL_AUDIT_ACTION_LABELS;
   readonly returnTypeLabels = WARRANTY_RETURN_TYPE_LABELS;
   readonly stockStatuses = Object.keys(EXTERNAL_STOCK_STATUS_LABELS) as ExternalStockStatus[];
+  readonly flagLabels = EXTERNAL_UNIT_FLAG_LABELS;
+  readonly unitFlags = Object.keys(EXTERNAL_UNIT_FLAG_LABELS) as ExternalUnitFlag[];
+  readonly unitsPageSizes = UNITS_PAGE_SIZES;
+  readonly exportScopes: { value: UnitsExportScope; label: string }[] = [
+    { value: 'page', label: 'Página actual' },
+    { value: 500, label: '500 unidades' },
+    { value: 1000, label: '1.000 unidades' },
+    { value: 5000, label: '5.000 unidades' },
+    { value: 'all', label: 'Todas (según filtros)' }
+  ];
   readonly auditActions = Object.keys(EXTERNAL_AUDIT_ACTION_LABELS);
 
   readonly tab = signal<InventoryTab>('stock');
   readonly access = signal<ExternalAccess>({ isWarehouseAdmin: false, canManualExit: false });
 
   // Filtros compartidos de existencias / unidades
-  filters: ExternalUnitFilters = { client: '', category: '', search: '', from: '', to: '', stockStatus: '' };
+  filters: ExternalUnitFilters = { client: '', category: '', search: '', from: '', to: '', stockStatus: '', flag: '' };
 
   // Existencias
   readonly stock = signal<ExternalStockSummary | null>(null);
@@ -65,7 +84,11 @@ export class ExternalInventory implements OnInit {
   readonly unitsTotal = signal(0);
   readonly unitsPage = signal(1);
   readonly loadingUnits = signal(false);
-  readonly unitsPages = computed(() => Math.max(1, Math.ceil(this.unitsTotal() / PAGE_SIZE)));
+  readonly unitsPageSize = signal(PAGE_SIZE);
+  readonly unitsPages = computed(() => Math.max(1, Math.ceil(this.unitsTotal() / this.unitsPageSize())));
+  readonly flagCounts = signal<ExternalUnitFlagCounts>(EMPTY_FLAG_COUNTS);
+  exportScope: UnitsExportScope = 'page';
+  readonly exportingUnits = signal(false);
 
   // Trazabilidad
   readonly trace = signal<ExternalTrace | null>(null);
@@ -100,7 +123,7 @@ export class ExternalInventory implements OnInit {
   }
 
   clearFilters(): void {
-    this.filters = { client: '', category: '', search: '', from: '', to: '', stockStatus: '' };
+    this.filters = { client: '', category: '', search: '', from: '', to: '', stockStatus: '', flag: '' };
     this.applyFilters();
   }
 
@@ -132,15 +155,35 @@ export class ExternalInventory implements OnInit {
     this.loadingUnits.set(true);
     this.unitsPage.set(page);
     this.externalService
-      .listUnits({ ...this.cleanFilters(), page, limit: PAGE_SIZE })
+      .listUnits({ ...this.cleanFilters(), page, limit: this.unitsPageSize() })
       .pipe(finalize(() => this.loadingUnits.set(false)))
       .subscribe({
         next: (res) => {
           this.units.set(res.data);
           this.unitsTotal.set(res.total || 0);
+          this.flagCounts.set(res.flagCounts || EMPTY_FLAG_COUNTS);
         },
         error: (err: Error) => this.toastr.error(err.message, 'Unidades externas')
       });
+  }
+
+  /** Filtro rápido por novedad: un clic filtra, otro clic en el mismo lo quita. */
+  setFlag(flag: ExternalUnitFlag | ''): void {
+    this.filters = { ...this.filters, flag: this.filters.flag === flag ? '' : flag };
+    this.loadUnits(1);
+  }
+
+  setUnitsPageSize(size: number): void {
+    this.unitsPageSize.set(size);
+    this.loadUnits(1);
+  }
+
+  /** Marcaciones de la unidad para mostrar como etiquetas (sin ANY, que es el agregado). */
+  unitFlagsOf(u: ExternalUnit): ExternalUnitFlag[] {
+    const flags: ExternalUnitFlag[] = [];
+    if (u.dispatchable === false) flags.push('NOT_DISPATCHABLE');
+    if (u.checkDigitValid === false) flags.push('INVALID_CHECK_DIGIT');
+    return flags;
   }
 
   clearProductFilter(): void {
@@ -222,9 +265,36 @@ export class ExternalInventory implements OnInit {
     );
   }
 
+  /** Descarga la página actual o las primeras N / todas las unidades del filtro (incluye estado y novedad). */
   exportUnits(): void {
-    const rows = this.units();
-    if (!rows.length) return;
+    const scope = this.exportScope;
+    if (scope === 'page') {
+      this.writeUnitsExcel(this.units());
+      return;
+    }
+    const limit = scope === 'all' ? Math.min(this.unitsTotal(), MAX_EXPORT_UNITS) : scope;
+    if (!limit) return;
+    if (scope === 'all' && this.unitsTotal() > MAX_EXPORT_UNITS) {
+      this.toastr.warning(
+        `Se descargan las primeras ${MAX_EXPORT_UNITS.toLocaleString('es-CO')} unidades. Use filtros para el resto.`,
+        'Excel'
+      );
+    }
+    this.exportingUnits.set(true);
+    this.externalService
+      .listUnits({ ...this.cleanFilters(), page: 1, limit, forExport: true })
+      .pipe(finalize(() => this.exportingUnits.set(false)))
+      .subscribe({
+        next: (res) => this.writeUnitsExcel(res.data),
+        error: (err: Error) => this.toastr.error(err.message, 'Excel unidades')
+      });
+  }
+
+  private writeUnitsExcel(rows: ExternalUnit[]): void {
+    if (!rows.length) {
+      this.toastr.info('No hay unidades para descargar con estos filtros.', 'Excel');
+      return;
+    }
     this.writeExcel(
       rows.map((u) => ({
         Barcode: u.barcode,
@@ -234,6 +304,7 @@ export class ExternalInventory implements OnInit {
         Descripcion: u.productName,
         Cliente: u.client,
         Estado: this.statusLabels[u.stockStatus],
+        Novedad: [...(u.identified ? [] : ['UNIDENTIFIED' as const]), ...this.unitFlagsOf(u)].map((f) => this.flagLabels[f]).join(', '),
         OC: u.flow?.loadingOrder || '',
         'Fecha ingreso': u.entry?.at,
         'Ingresado por': u.entry?.by?.name || u.entry?.by?.userApp,
@@ -262,7 +333,8 @@ export class ExternalInventory implements OnInit {
       search: f.search?.trim() || undefined,
       from: f.from || undefined,
       to: f.to || undefined,
-      stockStatus: f.stockStatus || undefined
+      stockStatus: f.stockStatus || undefined,
+      flag: f.flag || undefined
     };
   }
 

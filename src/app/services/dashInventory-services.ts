@@ -31,7 +31,12 @@ import {
   DispatchInfoRequest,
   DockAlert,
   DockOrder,
+  DockReturn,
+  DockReturnPreview,
+  DockReturnRequest,
+  DockReturnResult,
   DockScanResponse,
+  ReleaseReturnedUnitResult,
   DockView,
   LoadingOrderDispatch,
   CompletePickingResponse,
@@ -493,6 +498,43 @@ export class DashInventoryServices {
   reviewDockAlert(alertId: string, observation: string): Observable<LoadingOrderApiResponse<DockAlert>> {
     return this.http
       .post<LoadingOrderApiResponse<DockAlert>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/alerts/review`, { alertId, observation })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Valida una unidad antes de agregarla a la devolución desde muelle (OC, referencia, si está cargada). */
+  previewDockReturn(serial: string): Observable<LoadingOrderApiResponse<DockReturnPreview>> {
+    return this.http
+      .post<LoadingOrderApiResponse<DockReturnPreview>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/return/preview`, { serial })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Devolución desde muelle (no cupo / daño / cambio) de unidades de UNA OC, con detalle y correo. */
+  createDockReturn(payload: DockReturnRequest): Observable<LoadingOrderApiResponse<DockReturnResult>> {
+    return this.http
+      .post<LoadingOrderApiResponse<DockReturnResult>>(`${this.LOADING_ORDERS_ENDPOINT}/dock/return`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Devoluciones de muelle: abiertas (unidades retenidas) o todas. */
+  getDockReturns(onlyOpen = false): Observable<LoadingOrderApiResponse<DockReturn[]>> {
+    return this.http
+      .post<LoadingOrderApiResponse<DockReturn[]>>(`${this.LOADING_ORDERS_ENDPOINT}/returns/list`, { onlyOpen })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Libera una unidad retenida leyéndola con la pistola. */
+  releaseReturnedUnit(serial: string): Observable<LoadingOrderApiResponse<ReleaseReturnedUnitResult>> {
+    return this.http
+      .post<LoadingOrderApiResponse<ReleaseReturnedUnitResult>>(`${this.LOADING_ORDERS_ENDPOINT}/returns/release`, { serial })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** (Administrativo) Libera todas las unidades pendientes de una devolución, con motivo. */
+  releaseDockReturn(returnId: string, observation: string): Observable<LoadingOrderApiResponse<{ returnId: string; released: number }>> {
+    return this.http
+      .post<
+        LoadingOrderApiResponse<{ returnId: string; released: number }>
+      >(`${this.LOADING_ORDERS_ENDPOINT}/returns/releaseAll`, { returnId, observation })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

@@ -9,6 +9,9 @@
         <p class="header-subtitle mb-0">Bodega — Punto de control: lea cada serial al subirlo al vehículo</p>
       </div>
       <div class="header-actions">
+        <button type="button" class="btn-header btn-header-return" (click)="openReturn()" title="Devolver unidades que no se van en el vehículo (no cupo, daño, cambio)">
+          <i class="ti ti-arrow-back-up"></i><span>Devolución / cambio</span>
+        </button>
         <button type="button" class="btn-header" (click)="loadOrders()" [disabled]="loadingOrders()">
           <i class="ti ti-refresh" [class.spin]="loadingOrders()"></i><span>Actualizar</span>
         </button>
@@ -71,7 +74,9 @@
               <div class="loading-item" [class.complete]="o.isComplete">
                 <div class="loading-head">
                   <span class="tile-order">OC {{ o.loadingOrder }}</span>
-                  @if (o.isComplete) {
+                  @if (o.replenishing) {
+                    <span class="state-chip replenishing"><i class="ti ti-refresh"></i> Reponiendo unidad</span>
+                  } @else if (o.isComplete) {
                     <span class="state-chip ok"><i class="ti ti-checks"></i> 100% cargada</span>
                   } @else {
                     <span class="state-chip">En cargue</span>
@@ -85,12 +90,18 @@
                 } @else {
                   <div class="small text-warning-emphasis"><i class="ti ti-alert-triangle"></i> Sin vehículo asignado por el administrativo</div>
                 }
-                <div class="loading-actions">
-                  <button type="button" class="btn-complete" [disabled]="!o.isComplete || !o.hasVehicle" (click)="openDispatch(o)">
-                    <i class="ti ti-truck-delivery"></i> Despachar
-                  </button>
-                  <button type="button" class="btn-missing" (click)="openMissing(o)"><i class="ti ti-alert-triangle"></i> Reportar faltante</button>
-                </div>
+                @if (o.replenishing) {
+                  <div class="small text-muted">
+                    <i class="ti ti-info-circle"></i> Prealistamiento está cargando la unidad de reemplazo. Cuando cierre, lea las unidades que faltan y despache.
+                  </div>
+                } @else {
+                  <div class="loading-actions">
+                    <button type="button" class="btn-complete" [disabled]="!o.isComplete || !o.hasVehicle" (click)="openDispatch(o)">
+                      <i class="ti ti-truck-delivery"></i> Despachar
+                    </button>
+                    <button type="button" class="btn-missing" (click)="openMissing(o)"><i class="ti ti-alert-triangle"></i> Reportar faltante</button>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -191,6 +202,112 @@
         </button>
       </div>
     </form>
+  </div>
+}
+
+<!-- DIÁLOGO: DEVOLUCIÓN DESDE MUELLE (no cupo / daño / cambio) -->
+@if (returnOpen()) {
+  <div class="dialog-backdrop" (click)="cancelReturn()" aria-hidden="true"></div>
+  <div class="dialog-panel return-panel" role="dialog" aria-modal="true" aria-labelledby="returnTitle">
+    <h5 id="returnTitle">
+      <i class="ti ti-arrow-back-up"></i> Devolución desde muelle
+      @if (returnOrder()) {
+        <span class="return-order">OC {{ returnOrder() }}</span>
+      }
+    </h5>
+
+    <!-- 1. Unidades -->
+    <div class="return-step">
+      <label for="returnScanInput" class="step-label"><span class="step-num">1</span> Lea las unidades que NO se van en el vehículo</label>
+      <input
+        #returnScanInput
+        id="returnScanInput"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        spellcheck="false"
+        class="form-control scan-input"
+        [maxlength]="serialLength + 5"
+        [(ngModel)]="returnScanValue"
+        (keydown.enter)="onReturnScan()"
+        placeholder="Escanee aquí..."
+      />
+      @if (returnValidating()) {
+        <small class="text-muted"><i class="ti ti-loader-2 spin"></i> Validando unidad...</small>
+      }
+      @if (returnUnits().length) {
+        <ul class="return-units">
+          @for (u of returnUnits(); track u.serial) {
+            <li>
+              <div class="unit-info">
+                <div class="fw-semibold">{{ u.reference }} <small class="text-muted">{{ u.productName }}</small></div>
+                <div class="serial-cell">{{ u.serial }}</div>
+              </div>
+              @if (u.loaded) {
+                <span class="state-chip loaded" title="Ya estaba subida al vehículo: bájela"><i class="ti ti-truck"></i> En vehículo</span>
+              }
+              <button type="button" class="btn-unit-remove" (click)="removeReturnUnit(u.serial)" title="Quitar de la devolución" [disabled]="submittingReturn()">
+                <i class="ti ti-x"></i><span class="visually-hidden">Quitar {{ u.serial }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+        <small class="text-muted">{{ returnUnits().length }} unidad(es) a devolver</small>
+      }
+    </div>
+
+    <!-- 2. Motivo -->
+    <div class="return-step">
+      <div class="step-label"><span class="step-num">2</span> Motivo</div>
+      <div class="reason-grid">
+        @for (r of returnReasons; track r.value) {
+          <button type="button" class="reason-chip" [attr.aria-pressed]="returnReason() === r.value" [class.active]="returnReason() === r.value" (click)="selectReturnReason(r.value)">
+            <i class="ti" [ngClass]="r.icon"></i> {{ r.label }}
+          </button>
+        }
+      </div>
+      @if (returnReason()) {
+        <div class="form-check form-switch mt-2">
+          <input id="returnReplace" class="form-check-input" type="checkbox" role="switch" [checked]="returnReplace()" (change)="returnReplace.set(!returnReplace())" />
+          <label for="returnReplace" class="form-check-label">
+            @if (returnReplace()) {
+              <strong>Reponer en la OC:</strong> la OC vuelve a prealistamiento para cargar el reemplazo y luego se lee aquí.
+            } @else {
+              <strong>Sin reposición:</strong> la OC se despacha sin estas unidades.
+            }
+          </label>
+        </div>
+      }
+    </div>
+
+    <!-- 3. Detalle -->
+    <div class="return-step">
+      <label for="returnDetail" class="step-label"><span class="step-num">3</span> Detalle (obligatorio, mínimo {{ returnDetailMin }} caracteres)</label>
+      <textarea
+        id="returnDetail"
+        class="form-control"
+        rows="3"
+        maxlength="1000"
+        [(ngModel)]="returnDetail"
+        placeholder="Ej.: La caja llegó abollada en la esquina; se retira y se pide reemplazo a prealistamiento."
+      ></textarea>
+      <small [class.text-success]="returnDetailLength() >= returnDetailMin" [class.text-muted]="returnDetailLength() < returnDetailMin">
+        {{ returnDetailLength() }}/{{ returnDetailMin }}
+      </small>
+    </div>
+
+    <p class="small text-muted mb-0">
+      Se envía el informe por correo y las unidades quedan <strong>retenidas</strong>: Bodega las libera al devolverlas a su ubicación.
+    </p>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-light" (click)="cancelReturn()" [disabled]="submittingReturn()">Cancelar</button>
+      <button type="button" class="btn btn-warning" (click)="confirmReturn()" [disabled]="!canSubmitReturn()">
+        @if (submittingReturn()) {
+          <i class="ti ti-loader-2 spin"></i>
+        }
+        Registrar devolución
+      </button>
+    </div>
   </div>
 }
 

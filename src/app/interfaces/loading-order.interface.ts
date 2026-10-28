@@ -12,11 +12,13 @@ export type LoadingOrderRejectReason =
   | 'ALREADY_READ_IN_ORDER'
   | 'COMMITTED_IN_OTHER_ORDER'
   | 'SERIAL_NOT_AVAILABLE'
+  | 'RETURN_PENDING'
   // Cargue en muelle
   | 'NOT_PICKED'
   | 'PICKED_IN_OTHER_ORDER'
   | 'ALREADY_LOADED'
-  | 'ORDER_NOT_READY';
+  | 'ORDER_NOT_READY'
+  | 'ORDER_REPLENISHING';
 
 export type LoadingOrderReadStatus = 'ACTIVE' | 'VOIDED' | 'REJECTED';
 export type LoadingOrderUploadRejectReason = 'DUPLICATE_IDENTICAL' | 'DUPLICATE_MODIFIED' | 'INVALID_FORMAT';
@@ -455,10 +457,12 @@ export const LOADING_ORDER_REJECT_LABELS: Record<LoadingOrderRejectReason, strin
   ALREADY_READ_IN_ORDER: 'Ya leído',
   COMMITTED_IN_OTHER_ORDER: 'En otra OC',
   SERIAL_NOT_AVAILABLE: 'No disponible',
+  RETURN_PENDING: 'Devuelta del muelle (retenida)',
   NOT_PICKED: 'Serial NO prealistado',
   PICKED_IN_OTHER_ORDER: 'Serial de OTRA OC',
   ALREADY_LOADED: 'Ya cargado',
-  ORDER_NOT_READY: 'OC sin prealistamiento cerrado'
+  ORDER_NOT_READY: 'OC sin prealistamiento cerrado',
+  ORDER_REPLENISHING: 'OC reponiendo unidad'
 };
 
 // ---------------------------------------------------------------------------------------
@@ -487,6 +491,8 @@ export interface DockOrder {
   loadingStartedBy: string;
   /** true cuando lo cargado coincide 100% con lo prealistado */
   isComplete: boolean;
+  /** Volvió a prealistamiento para reponer una unidad devuelta: el muelle espera su cierre */
+  replenishing?: boolean;
 }
 
 export interface DockRead {
@@ -562,3 +568,103 @@ export const DOCK_ALERT_LABELS: Record<DockAlertType, string> = {
   CLOSE_MISMATCH: 'Descuadre al cerrar',
   ORDER_NOT_READY: 'OC sin prealistamiento cerrado'
 };
+
+// ---------------------------------------------------------------------------------------
+// Devolución desde muelle (backend: /loadingOrders/dock/return*, /loadingOrders/returns/*)
+// ---------------------------------------------------------------------------------------
+
+export type DockReturnReason = 'NO_SPACE' | 'DAMAGED_PRODUCT' | 'DAMAGED_PACKAGING' | 'OTHER';
+
+export interface DockReturnReasonOption {
+  value: DockReturnReason;
+  label: string;
+  icon: string;
+  /** Reponer la unidad en la OC por defecto con este motivo */
+  replace: boolean;
+}
+
+export const DOCK_RETURN_REASONS: DockReturnReasonOption[] = [
+  { value: 'NO_SPACE', label: 'No cupo en el vehículo', icon: 'ti-box-off', replace: false },
+  { value: 'DAMAGED_PRODUCT', label: 'Producto dañado / abollado', icon: 'ti-box-model-2-off', replace: true },
+  { value: 'DAMAGED_PACKAGING', label: 'Caja o empaque dañado', icon: 'ti-package-off', replace: true },
+  { value: 'OTHER', label: 'Otro motivo', icon: 'ti-dots', replace: false }
+];
+
+export const DOCK_RETURN_REASON_LABELS: Record<DockReturnReason, string> = {
+  NO_SPACE: 'No cupo en el vehículo',
+  DAMAGED_PRODUCT: 'Producto dañado / abollado',
+  DAMAGED_PACKAGING: 'Caja o empaque dañado',
+  OTHER: 'Otro motivo'
+};
+
+/** Unidad validada para agregarla a la devolución. */
+export interface DockReturnPreview {
+  serial: string;
+  loadingOrderId: string;
+  loadingOrder: string;
+  product: string;
+  reference: string;
+  productName: string;
+  /** Ya estaba subida al vehículo (se baja al devolverla) */
+  loaded: boolean;
+}
+
+export interface DockReturnRequest {
+  serials: string[];
+  reason: DockReturnReason;
+  replace: boolean;
+  detail: string;
+}
+
+export interface DockReturnUnit {
+  serial: string;
+  product: string;
+  reference: string;
+  productName: string;
+  prefix: string;
+  authorization: string;
+  wasLoaded: boolean;
+  status: 'PENDING' | 'RELEASED';
+  releasedBy?: LoadingOrderActor;
+  releasedAt?: string;
+  releaseObservation?: string;
+}
+
+export interface DockReturn {
+  _id: string;
+  loadingOrderId: string;
+  loadingOrder: string;
+  reason: DockReturnReason;
+  replace: boolean;
+  detail: string;
+  status: 'OPEN' | 'CLOSED';
+  orderStatusBefore: LoadingOrderStatus;
+  orderStatusAfter: LoadingOrderStatus;
+  vehiclePlate: string;
+  driverName: string;
+  units: DockReturnUnit[];
+  totals: { units: number; pending: number };
+  summumExport: { status: string; version: number; msg: string };
+  emailAlert: { sent: boolean; recipients: string[]; error: string };
+  reportedBy: LoadingOrderActor;
+  dateCreate: string;
+  closedAt: string;
+}
+
+export interface DockReturnResult {
+  _id: string;
+  loadingOrder: string;
+  orderStatus: LoadingOrderStatus;
+  units: DockReturnUnit[];
+  failed: { serial: string; msg: string }[];
+  summumExport: { status: string; version: number; msg: string };
+}
+
+export interface ReleaseReturnedUnitResult {
+  returnId: string;
+  loadingOrder: string;
+  serial: string;
+  reference: string;
+  productName: string;
+  pending: number;
+}

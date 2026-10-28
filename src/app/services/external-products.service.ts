@@ -21,8 +21,8 @@ import {
   ExternalSaveProductResult,
   ExternalStockSummary,
   ExternalTrace,
-  ExternalUnit,
   ExternalUnitFilters,
+  ExternalUnitsResponse,
   WarrantyReturn,
   WarrantyReturnCloseRequest,
   WarrantyReturnListRequest,
@@ -75,10 +75,8 @@ export class ExternalProductsService {
       .pipe(catchError(this.handleError.bind(this)));
   }
 
-  listUnits(filters: ExternalUnitFilters): Observable<ExternalApiResponse<ExternalUnit[]>> {
-    return this.http
-      .post<ExternalApiResponse<ExternalUnit[]>>(`${this.EXTERNAL_ENDPOINT}/units`, filters)
-      .pipe(catchError(this.handleError.bind(this)));
+  listUnits(filters: ExternalUnitFilters): Observable<ExternalUnitsResponse> {
+    return this.http.post<ExternalUnitsResponse>(`${this.EXTERNAL_ENDPOINT}/units`, filters).pipe(catchError(this.handleError.bind(this)));
   }
 
   getStock(filters: ExternalUnitFilters): Observable<ExternalApiResponse<ExternalStockSummary>> {

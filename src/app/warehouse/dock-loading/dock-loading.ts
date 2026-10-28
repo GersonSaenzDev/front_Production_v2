@@ -6,6 +6,11 @@
 // alerta en pantalla y se notifica a Bodega, jefe de bodega y Auditoría. El vehículo (placa y
 // conductor del administrativo) se valida al despachar: el operario digita la placa que ve. Una OC
 // solo se despacha cuando lo cargado coincide 100% con lo prealistado.
+//
+// Devolución desde muelle: el operario lee una o varias unidades de una OC que NO se van (no cupo,
+// producto o empaque dañado...), elige el motivo y escribe el detalle (mín. 50). Con reposición la OC
+// vuelve a prealistamiento; sin ella se despacha sin esas unidades. Quedan retenidas hasta que
+// Bodega las libere.
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
@@ -14,12 +19,23 @@ import { ToastrService } from 'ngx-toastr';
 import { finalize } from 'rxjs';
 
 import { DashInventoryServices } from '../../services/dashInventory-services';
-import { DockOrder, DockRead, DockScanResponse, DockScanResult, LOADING_ORDER_REJECT_LABELS } from '../../interfaces/loading-order.interface';
+import {
+  DOCK_RETURN_REASONS,
+  DockOrder,
+  DockRead,
+  DockReturnPreview,
+  DockReturnReason,
+  DockScanResponse,
+  DockScanResult,
+  LOADING_ORDER_REJECT_LABELS
+} from '../../interfaces/loading-order.interface';
 import { normalizeDispatchSerial } from '../../shared/utils/gs1-barcode.util';
 
 const SERIAL_LENGTH = 27;
 // Con varios operarios en el muelle, el estado de las OC en cargue se sincroniza solo
 const SYNC_INTERVAL_MS = 15000;
+// Detalle obligatorio de la devolución desde muelle
+const RETURN_DETAIL_MIN = 50;
 
 interface DockAlertScreen {
   title: string;
@@ -41,8 +57,11 @@ export class DockLoading implements OnInit, OnDestroy {
 
   @ViewChild('scanInput') private scanInput?: ElementRef<HTMLInputElement>;
   @ViewChild('plateInput') private plateInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('returnScanInput') private returnScanInput?: ElementRef<HTMLInputElement>;
 
   readonly serialLength = SERIAL_LENGTH;
+  readonly returnDetailMin = RETURN_DETAIL_MIN;
+  readonly returnReasons = DOCK_RETURN_REASONS;
 
   // ============================================================
   //  ESTADO
@@ -68,14 +87,26 @@ export class DockLoading implements OnInit, OnDestroy {
   readonly reportingMissing = signal(false);
   missingObservation = '';
 
+  // Devolución desde muelle (no cupo / daño / cambio)
+  readonly returnOpen = signal(false);
+  readonly returnUnits = signal<DockReturnPreview[]>([]);
+  readonly returnValidating = signal(false);
+  readonly returnReason = signal<DockReturnReason | null>(null);
+  readonly returnReplace = signal(false);
+  readonly submittingReturn = signal(false);
+  returnScanValue = '';
+  returnDetail = '';
+  /** OC de la devolución en curso (todas las unidades deben ser de la misma) */
+  readonly returnOrder = computed(() => this.returnUnits()[0]?.loadingOrder ?? '');
+
   scanValue = '';
   private readonly scanQueue: string[] = [];
   private syncTimer: ReturnType<typeof setInterval> | null = null;
   private audioContext: AudioContext | null = null;
 
   /** Solo las OC que ya tienen lecturas en el muelle (no se lista lo que falta por cargar) */
-  readonly loadingNow = computed(() => this.orders().filter((o) => o.status === 'LOADING'));
-  readonly dialogOpen = computed(() => !!this.alertScreen() || !!this.dispatchTarget() || !!this.missingTarget());
+  readonly loadingNow = computed(() => this.orders().filter((o) => o.status === 'LOADING' || o.replenishing));
+  readonly dialogOpen = computed(() => !!this.alertScreen() || !!this.dispatchTarget() || !!this.missingTarget() || this.returnOpen());
 
   // ============================================================
   //  CICLO DE VIDA
@@ -191,6 +222,14 @@ export class DockLoading implements OnInit, OnDestroy {
       this.toastr.warning(body.msg, 'Ya cargado');
       return;
     }
+    // La OC volvió a prealistamiento para reponer una unidad devuelta: esperar, no es lectura errada
+    if (body?.rejectReason === 'ORDER_REPLENISHING') {
+      this.beep(false);
+      this.toastr.info(body.msg, 'OC reponiendo unidad', { timeOut: 8000 });
+      this.speak('Espere. Esta orden está reponiendo una unidad.');
+      this.loadOrders();
+      return;
+    }
     if (body?.rejectReason === 'NOT_PICKED' || body?.rejectReason === 'ORDER_NOT_READY' || body?.rejectReason === 'PICKED_IN_OTHER_ORDER') {
       // Se detiene la cola: las lecturas siguientes esperan a que el operario retire la unidad
       this.scanQueue.length = 0;
@@ -286,6 +325,136 @@ export class DockLoading implements OnInit, OnDestroy {
         },
         error: (err: Error) => this.toastr.error(this.clean(err.message), 'Reportar faltante')
       });
+  }
+
+  // ============================================================
+  //  DEVOLUCIÓN DESDE MUELLE
+  // ============================================================
+  openReturn(): void {
+    this.returnUnits.set([]);
+    this.returnReason.set(null);
+    this.returnReplace.set(false);
+    this.returnScanValue = '';
+    this.returnDetail = '';
+    this.returnOpen.set(true);
+    this.focusReturnScan();
+  }
+
+  cancelReturn(): void {
+    if (this.submittingReturn()) return;
+    this.returnOpen.set(false);
+    this.focusScan();
+  }
+
+  onReturnScan(): void {
+    const serial = normalizeDispatchSerial(this.returnScanValue || '');
+    this.returnScanValue = '';
+    if (!serial) return;
+    if (serial.length !== SERIAL_LENGTH) {
+      this.beep(false);
+      this.toastr.warning(`Lectura incompleta: el serial debe tener ${SERIAL_LENGTH} dígitos (se leyeron ${serial.length}). Vuelva a leer.`, 'Serial inválido');
+      return;
+    }
+    if (this.returnUnits().some((u) => u.serial === serial)) {
+      this.beep(false);
+      this.toastr.info('Esta unidad ya está en la devolución.', 'Devolución');
+      return;
+    }
+
+    this.returnValidating.set(true);
+    this.inventoryService
+      .previewDockReturn(serial)
+      .pipe(
+        finalize(() => {
+          this.returnValidating.set(false);
+          this.focusReturnScan();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          const unit = res.data as DockReturnPreview;
+          const current = this.returnOrder();
+          if (current && unit.loadingOrder !== current) {
+            this.beep(false);
+            this.toastr.warning(
+              `Esta unidad es de la OC ${unit.loadingOrder} y la devolución es de la OC ${current}. Registre una devolución por cada OC.`,
+              'Otra OC',
+              { timeOut: 8000 }
+            );
+            return;
+          }
+          this.returnUnits.update((list) => [unit, ...list]);
+          this.beep(true);
+        },
+        error: (err: Error) => {
+          this.beep(false);
+          this.toastr.error(this.clean(err.message), 'Devolución', { timeOut: 8000 });
+        }
+      });
+  }
+
+  removeReturnUnit(serial: string): void {
+    this.returnUnits.update((list) => list.filter((u) => u.serial !== serial));
+    this.focusReturnScan();
+  }
+
+  /** El motivo propone si se repone la unidad (daño: sí; no cupo: no); el operario lo puede cambiar. */
+  selectReturnReason(reason: DockReturnReason): void {
+    this.returnReason.set(reason);
+    this.returnReplace.set(this.returnReasons.find((r) => r.value === reason)?.replace ?? false);
+  }
+
+  /** El backend rechaza < > & (anti-inyección): se quitan del detalle. */
+  private cleanDetail(): string {
+    return this.returnDetail
+      .replace(/[<>&]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  returnDetailLength(): number {
+    return this.cleanDetail().length;
+  }
+
+  canSubmitReturn(): boolean {
+    return !!this.returnUnits().length && !!this.returnReason() && this.returnDetailLength() >= RETURN_DETAIL_MIN && !this.submittingReturn();
+  }
+
+  confirmReturn(): void {
+    const reason = this.returnReason();
+    if (!this.canSubmitReturn() || !reason) return;
+
+    this.submittingReturn.set(true);
+    this.inventoryService
+      .createDockReturn({
+        serials: this.returnUnits().map((u) => u.serial),
+        reason,
+        replace: this.returnReplace(),
+        detail: this.cleanDetail()
+      })
+      .pipe(finalize(() => this.submittingReturn.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.toastr.success(res.msg, 'Devolución registrada', { timeOut: 12000 });
+          this.speak('Devolución registrada.');
+          // Las unidades bajadas del vehículo ya no cuentan como cargadas en esta sesión
+          const returned = new Set((res.data?.units ?? []).map((u) => u.serial));
+          this.sessionReads.update((list) => list.filter((r) => !returned.has(r.serial)));
+          const last = this.lastOk();
+          if (last && returned.has(last.serial)) this.lastOk.set(null);
+          this.returnOpen.set(false);
+          this.loadOrders();
+          this.focusScan();
+        },
+        error: (err: Error) => {
+          this.beep(false);
+          this.toastr.error(this.clean(err.message), 'Devolución', { timeOut: 10000 });
+        }
+      });
+  }
+
+  private focusReturnScan(): void {
+    setTimeout(() => this.returnScanInput?.nativeElement.focus());
   }
 
   // ============================================================
