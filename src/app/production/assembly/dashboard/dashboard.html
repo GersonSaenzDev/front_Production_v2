@@ -25,77 +25,126 @@
         </div>
     </div>
 
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="abba-metric-card primary">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="metric-value d-block">
-                            {{ totalProductoTerminado | number }}
+    <!-- ===================== KPIs DE PRODUCCIÓN (una sola fila, compactos) ===================== -->
+    <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="abba-metric-card compact primary">
+            <div class="metric-icon">
+                <i class="ti ti-package"></i>
+            </div>
+            <div class="min-w-0">
+                <span class="metric-value d-block">{{ totalProductoTerminado | number }}</span>
+                <p class="metric-label mb-0">Total Producto Terminado</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="abba-metric-card compact success">
+            <div class="metric-icon">
+                <i class="ti ti-circle-check"></i>
+            </div>
+            <div class="min-w-0">
+                <span class="metric-value d-block">{{ productoValidado | number }}</span>
+                <p class="metric-label mb-0">Producto Validado</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="abba-metric-card compact danger stops-clickable" (click)="openErrorModal(errorModal)">
+            <div class="metric-icon">
+                <i class="ti ti-alert-circle"></i>
+            </div>
+            <div class="min-w-0">
+                <span class="metric-value d-block">{{ productoConError | number }}</span>
+                <p class="metric-label mb-0">Producto con Error <i class="ti ti-chevron-right"></i></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="abba-metric-card compact warning stops-clickable" (click)="openErrorModal(errorModal)">
+            <div class="metric-icon">
+                <i class="ti ti-copy"></i>
+            </div>
+            <div class="min-w-0">
+                <span class="metric-value d-block">{{ duplicados | number }}</span>
+                <p class="metric-label mb-0">Duplicados <i class="ti ti-chevron-right"></i></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== PARADAS DE PROCESO (Novedades) ===================== -->
+    <!-- Franja secundaria y compacta: no compite con los KPIs de producción. -->
+    <div class="col-12 mb-3">
+        <div class="stops-strip" [class.has-ongoing]="ongoingStops.length > 0">
+            <div class="stops-strip-head">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span class="stops-live-dot" [class.idle]="ongoingStops.length === 0"></span>
+                    <span class="stops-strip-title">Paradas de proceso</span>
+                </div>
+
+                <!-- KPIs en línea -->
+                <div class="stops-kpis">
+                    <div class="stops-kpi">
+                        <span class="stops-kpi-value" [class.text-danger]="ongoingStops.length > 0">{{ ongoingStops.length }}</span>
+                        <span class="stops-kpi-label">Detenidos ahora</span>
+                    </div>
+                    <div class="stops-kpi stops-clickable" (click)="openStopsModal(stopsModal)">
+                        <span class="stops-kpi-value">{{ durationLabel(dayStopsMinutes) }}</span>
+                        <span class="stops-kpi-label">
+                            En la fecha · {{ dayStops.length }} {{ dayStops.length === 1 ? 'parada' : 'paradas' }}
                         </span>
-                        <p class="metric-label mb-0 mt-2">Total Producto Terminado</p>
                     </div>
-                    <div class="metric-icon">
-                        <i class="ti ti-package"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="abba-metric-card success">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="metric-value d-block">
-                            {{ productoValidado | number }}
+                    <div class="stops-kpi stops-clickable min-w-0" (click)="openStopsModal(stopsModal)">
+                        <span class="stops-kpi-value text-truncate" [title]="topStopSection?.section || ''">
+                            {{ topStopSection?.section || '—' }}
                         </span>
-                        <p class="metric-label mb-0 mt-2">Producto Validado</p>
-                    </div>
-                    <div class="metric-icon">
-                        <i class="ti ti-circle-check"></i>
+                        <span class="stops-kpi-label">
+                            @if (topStopSection) {
+                                Más afectada · {{ durationLabel(topStopSection.minutes) }}
+                            } @else {
+                                Más afectada
+                            }
+                        </span>
                     </div>
                 </div>
+
+                <button type="button" class="btn btn-link btn-sm stops-link p-0 flex-shrink-0" (click)="openStopsModal(stopsModal)">
+                    Detalle del día <i class="ti ti-arrow-right"></i>
+                </button>
             </div>
+
+            <!-- Paradas abiertas en este momento: todo el ancho -->
+            <div class="stops-list">
+                @for (stop of visibleOngoingStops; track stop._id) {
+                    <div class="stops-item" [class]="'sev-' + stopSeverity(stop)">
+                        <div class="stops-item-main">
+                            <span class="stops-item-section text-truncate">{{ stopSection(stop) }}</span>
+                            <span class="stops-item-meta text-truncate" [title]="stopMachine(stop) + ' · Atiende ' + stopAttendedBy(stop)">
+                                {{ stopMachine(stop) }} · Atiende {{ stopAttendedBy(stop) }}
+                            </span>
+                        </div>
+                        <div class="stops-item-time">
+                            <span class="stops-pill">{{ durationLabel(stopMinutes(stop)) }}</span>
+                            <span class="stops-item-start">desde {{ stopStartLabel(stop) }}</span>
+                        </div>
+                    </div>
+                } @empty {
+                    <div class="stops-empty">
+                        <i class="ti ti-circle-check me-1"></i> Sin procesos detenidos en este momento
+                    </div>
+                }
+            </div>
+            @if (ongoingStops.length > maxVisibleStops) {
+                <button type="button" class="btn btn-link btn-sm stops-link stops-more" (click)="showAllStops = !showAllStops">
+                    {{ showAllStops ? 'Ver menos' : '+' + (ongoingStops.length - maxVisibleStops) + ' más' }}
+                </button>
+            }
         </div>
     </div>
 
-    <div class="col-xl-4 col-md-12">
-        <div class="abba-metric-card danger mb-3" 
-            style="cursor: pointer;" 
-            (click)="openErrorModal(errorModal)"> 
-            <div class="card-body p-3">
-                <div class="d-flex align-items-center">
-                    <div class="metric-icon me-3">
-                        <i class="ti ti-alert-circle"></i>
-                    </div>
-                    <div>
-                        <span class="metric-value d-block" style="font-size: 1.5rem;">{{ productoConError | number }}</span>
-                        <p class="metric-label mb-0">Producto con Error (Ver detalles)</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="abba-metric-card warning mb-3" 
-            style="cursor: pointer;" 
-            (click)="openErrorModal(errorModal)"> 
-            <div class="card-body p-3">
-                <div class="d-flex align-items-center">
-                    <div class="metric-icon me-3">
-                        <i class="ti ti-copy"></i>
-                    </div>
-                    <div>
-                        <span class="metric-value d-block" style="font-size: 1.5rem;">{{ duplicados | number }}</span>
-                        <p class="metric-label mb-0">Duplicados (Ver detalles)</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 mt-4">
+    <div class="col-12 mt-2">
         @if (barChartData.categories.length > 0) {
             <app-bar-chart [chartData]="barChartData" />
         } @else {
@@ -374,6 +423,95 @@
                 </tbody>
             </table>
         </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="modal.close()">Cerrar</button>
+    </div>
+</ng-template>
+
+<ng-template #stopsModal let-modal>
+    <div class="modal-header bg-warning">
+        <h5 class="modal-title text-dark">
+            <i class="ti ti-player-pause me-2"></i>
+            Paradas de Proceso - {{ selectedDate | date:'dd/MM/yyyy' }}
+            <small class="ms-2">({{ dayStops.length }} · {{ durationLabel(dayStopsMinutes) }})</small>
+        </h5>
+        <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body p-0">
+        @if (isLoadingStops) {
+            <div class="text-center py-4 text-muted">Cargando paradas...</div>
+        } @else {
+            <h6 class="px-3 pt-3 mb-2 text-muted text-uppercase">Resumen por sección</h6>
+            <div class="table-responsive">
+                <table class="abba-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Sección</th>
+                            <th class="text-end">Paradas</th>
+                            <th class="text-end">En curso</th>
+                            <th class="text-end pe-3">Tiempo detenido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (row of stopsBySection; track row.section) {
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">{{ row.section }}</td>
+                                <td class="text-end">{{ row.count }}</td>
+                                <td class="text-end">
+                                    @if (row.ongoing > 0) {
+                                        <span class="badge bg-danger">{{ row.ongoing }}</span>
+                                    } @else {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3 fw-bold">{{ durationLabel(row.minutes) }}</td>
+                            </tr>
+                        } @empty {
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No hay paradas de proceso reportadas en la fecha.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (dayStops.length > 0) {
+                <h6 class="px-3 pt-4 mb-2 text-muted text-uppercase">Paradas del día</h6>
+                <div class="table-responsive">
+                    <table class="abba-table">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Sección</th>
+                                <th>Máquina</th>
+                                <th>Tipo de parada</th>
+                                <th>Atiende</th>
+                                <th>Horario</th>
+                                <th class="text-end pe-3">Duración</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (stop of dayStops; track stop._id) {
+                                <tr>
+                                    <td class="ps-3 fw-bold text-dark">{{ stopSection(stop) }}</td>
+                                    <td>{{ stopMachine(stop) }}</td>
+                                    <td>{{ stop.stop?.stopType || stop.stopType || '—' }}</td>
+                                    <td>{{ stopAttendedBy(stop) }}</td>
+                                    <td>{{ stopSchedule(stop) }}</td>
+                                    <td class="text-end pe-3">
+                                        @if (stopIsOngoing(stop)) {
+                                            <span class="badge bg-danger">{{ durationLabel(stopMinutes(stop)) }} · En curso</span>
+                                        } @else {
+                                            <span class="fw-bold">{{ durationLabel(stopMinutes(stop)) }}</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="modal.close()">Cerrar</button>

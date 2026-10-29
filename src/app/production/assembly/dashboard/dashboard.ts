@@ -1,13 +1,27 @@
 // app/production/assembly/dashboard/dashboard.ts
-import { Component, LOCALE_ID, TemplateRef, inject, ViewChild } from '@angular/core';
+import { Component, LOCALE_ID, OnDestroy, TemplateRef, inject, ViewChild } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
-import localeEs from '@angular/common/locales/es'; 
-import { FormsModule } from '@angular/forms'; 
+import localeEs from '@angular/common/locales/es';
+import { FormsModule } from '@angular/forms';
+import { merge, Subscription } from 'rxjs';
 
 import { DashboardServices } from '../../../services/dashboard-services';
 import { PlanningService } from '../../../services/planning.service';
-import { ChartData, ChartDataResponse, CardAssemblyResponse, AssemblyMetrics, TopProductsItem, TopProductsResponse } from '../../../interfaces/assembly.interface';
+import { NewsServices } from '../../../services/news-services';
+import { EstadisticsService } from '../../../services/estadistics.service';
+import { SocketService } from '../../../services/socket-service';
+import { ChartData, ChartDataResponse, CardAssemblyResponse, AssemblyMetrics, TopProductsItem, TopProductsResponse, ProductionNews } from '../../../interfaces/assembly.interface';
 import { PlanningDayResponse } from '../../../interfaces/planning.interface';
+import { EstadisticNews } from '../../../interfaces/estadistics.interface';
+import { displayArea } from '../../../theme/layout/admin/navigation/area-display.util';
+import {
+  formatDurationLabel,
+  formatStopSchedule,
+  isStopCategory,
+  isStopOngoing,
+  minutesBetween,
+  stopStartMoment
+} from '../../../theme/layout/admin/navigation/stop-time.util';
 
 import { BarChartComponent } from '../apexchart/bar-chart/bar-chart.component';
 import { ErrorRecord, ErrorRecordsResponse } from '../../../interfaces/dashInventory.interface';
@@ -16,7 +30,18 @@ import { SharedModule } from '../../../theme/shared/shared.module';
 // import { ChartDataMonthComponent } from '../apexchart/chart-data-month/chart-data-month.component';
 
 // Registrar el locale de español
-registerLocaleData(localeEs, 'es'); 
+registerLocaleData(localeEs, 'es');
+
+/** Cada cuánto se refresca el tiempo transcurrido de las paradas en curso. */
+const STOPS_CLOCK_TICK_MS = 30_000;
+
+/** Resumen de paradas del día agrupadas por la sección (origen) que quedó detenida. */
+export interface StopSectionSummary {
+  section: string;
+  count: number;
+  ongoing: number;
+  minutes: number;
+}
 
 
 @Component({
@@ -33,13 +58,38 @@ registerLocaleData(localeEs, 'es');
     { provide: LOCALE_ID, useValue: 'es' },
   ]
 })
-export class Dashboard {
+export class Dashboard implements OnDestroy {
 
   @ViewChild(BarChartComponent) barChartComponent!: BarChartComponent;
-  
+
   private dashboardService = inject(DashboardServices);
   private planningService = inject(PlanningService);
+  private newsServices = inject(NewsServices);
+  private estadisticsService = inject(EstadisticsService);
+  private socketService = inject(SocketService);
   private modalService = inject(NgbModal);
+
+  // -----------------------------------------------------------
+  // PARADAS DE PROCESO (Novedades) — vista gerencial
+  // -----------------------------------------------------------
+
+  /** Paradas abiertas AHORA en todas las áreas (independiente de la fecha consultada). */
+  public ongoingStops: ProductionNews[] = [];
+  /** Paradas de proceso reportadas en la fecha seleccionada (abiertas y cerradas). */
+  public dayStops: EstadisticNews[] = [];
+  /** Paradas del día agrupadas por sección, de mayor a menor tiempo detenido. */
+  public stopsBySection: StopSectionSummary[] = [];
+  public dayStopsMinutes = 0;
+  public isLoadingStops = false;
+  public now: Date = new Date();
+  /** Paradas abiertas que se muestran antes de "+N más". */
+  public readonly maxVisibleStops = 8;
+  public showAllStops = false;
+
+  private stopsClockTimer: ReturnType<typeof setInterval> | null = null;
+  private stopsReloadTimer: ReturnType<typeof setTimeout> | null = null;
+  private stopsSocketSub: Subscription | null = null;
+  private lastStopsDate = '';
 
   public selectedDate: string = this.formatDate(new Date());
 
@@ -81,6 +131,14 @@ export class Dashboard {
     this.loadTopProductsData(todayBackendFormat);
     this.loadTotalProducts(todayBackendFormat, this.timeStart, this.timeEnd);
     this.refreshAllData(todayBackendFormat);
+    this.loadOngoingStops();
+    this.startStopsLiveUpdates();
+  }
+
+  ngOnDestroy(): void {
+    if (this.stopsClockTimer) clearInterval(this.stopsClockTimer);
+    if (this.stopsReloadTimer) clearTimeout(this.stopsReloadTimer);
+    this.stopsSocketSub?.unsubscribe();
   }
 
   // -----------------------------------------------------------
@@ -118,6 +176,7 @@ export class Dashboard {
     this.loadTopProductsData(date);
     this.loadTotalProducts(date, this.timeStart, this.timeEnd);
     this.loadErrorRecords(date);
+    this.loadDayStops(date);
   }
 
   /**
@@ -327,6 +386,162 @@ export class Dashboard {
       scrollable: true,
       centered: true 
     });
+  }
+
+  // -----------------------------------------------------------
+  // PARADAS DE PROCESO (Novedades)
+  // -----------------------------------------------------------
+
+  /** Paradas abiertas en este momento, de todas las áreas (las más largas primero). */
+  private loadOngoingStops(): void {
+    this.newsServices.getOngoingStops('', true).subscribe({
+      next: (res) => {
+        this.now = new Date();
+        this.ongoingStops = [...res.msg].sort((a, b) => this.stopMinutes(b) - this.stopMinutes(a));
+      },
+      error: (error) => {
+        console.error('Error cargando paradas en curso', error);
+        this.ongoingStops = [];
+      }
+    });
+  }
+
+  /**
+   * Paradas de proceso de la fecha consultada (abiertas y cerradas), para el tiempo
+   * total detenido y el ranking por sección.
+   * @param date Fecha en formato DD/MM/YYYY.
+   */
+  private loadDayStops(date: string): void {
+    this.lastStopsDate = date;
+    this.isLoadingStops = true;
+    this.estadisticsService.getViewNewsEstadistic({ date }).subscribe({
+      next: (response) => {
+        const news = response.ok && Array.isArray(response.msg) ? response.msg : [];
+        this.dayStops = news.filter((n) => isStopCategory(n.category));
+        this.buildStopsSummary();
+        this.isLoadingStops = false;
+      },
+      error: (error) => {
+        console.error('Error cargando paradas del día', error);
+        this.dayStops = [];
+        this.buildStopsSummary();
+        this.isLoadingStops = false;
+      }
+    });
+  }
+
+  private buildStopsSummary(): void {
+    const bySection = new Map<string, StopSectionSummary>();
+    let total = 0;
+    for (const stop of this.dayStops) {
+      const minutes = this.stopMinutes(stop);
+      const section = this.stopSection(stop);
+      const current = bySection.get(section) ?? { section, count: 0, ongoing: 0, minutes: 0 };
+      current.count += 1;
+      current.minutes += minutes;
+      if (isStopOngoing(stop)) current.ongoing += 1;
+      bySection.set(section, current);
+      total += minutes;
+    }
+    this.dayStopsMinutes = total;
+    this.stopsBySection = [...bySection.values()].sort((a, b) => b.minutes - a.minutes || b.count - a.count);
+  }
+
+  /** Reloj para el tiempo transcurrido + recarga en vivo cuando cambian las novedades. */
+  private startStopsLiveUpdates(): void {
+    this.stopsClockTimer = setInterval(() => {
+      this.now = new Date();
+      // El tiempo de las paradas abiertas del día sigue corriendo.
+      if (this.dayStops.some((s) => isStopOngoing(s))) this.buildStopsSummary();
+    }, STOPS_CLOCK_TICK_MS);
+
+    this.stopsSocketSub = merge(
+      this.socketService.productionNewsCreated$,
+      this.socketService.productionNewsRedirected$,
+      this.socketService.productionNewsClosed$,
+      this.socketService.productionNewsStopFinished$
+    ).subscribe(() => {
+      if (this.stopsReloadTimer) clearTimeout(this.stopsReloadTimer);
+      this.stopsReloadTimer = setTimeout(() => {
+        this.loadOngoingStops();
+        if (this.lastStopsDate) this.loadDayStops(this.lastStopsDate);
+      }, 400);
+    });
+  }
+
+  /** Minutos detenidos: en curso = inicio → ahora; cerrada = total registrado (HH:mm). */
+  public stopMinutes(stop: ProductionNews | EstadisticNews): number {
+    if (isStopOngoing(stop)) {
+      const start = stopStartMoment(stop);
+      return start ? Math.max(0, minutesBetween(start, this.now)) : 0;
+    }
+    const match = /^(\d+):(\d{2})/.exec(stop.stop?.totalTime || stop.totalTime || '');
+    return match ? +match[1] * 60 + +match[2] : 0;
+  }
+
+  /** Sección (origen) que quedó detenida: 'Área / Subárea'. */
+  public stopSection(stop: ProductionNews | EstadisticNews): string {
+    const area = displayArea(stop.origin?.area);
+    const subArea = stop.origin?.subArea;
+    return [area, subArea && subArea !== stop.origin?.area ? subArea : '']
+      .filter((v) => !!v)
+      .join(' / ') || 'Sin sección';
+  }
+
+  /** Área que está atendiendo la parada (asignación actual). */
+  public stopAttendedBy(stop: ProductionNews | EstadisticNews): string {
+    const area = displayArea(stop.assignment?.currentArea);
+    const subArea = stop.assignment?.currentSubArea;
+    return [area, subArea && subArea !== stop.assignment?.currentArea ? subArea : '']
+      .filter((v) => !!v)
+      .join(' / ') || '—';
+  }
+
+  public stopMachine(stop: ProductionNews | EstadisticNews): string {
+    return stop.origin?.machineName || stop.origin?.machineCode || '—';
+  }
+
+  public stopSchedule(stop: ProductionNews | EstadisticNews): string {
+    return formatStopSchedule(stop);
+  }
+
+  public stopIsOngoing(stop: ProductionNews | EstadisticNews): boolean {
+    return isStopOngoing(stop);
+  }
+
+  public durationLabel(minutes: number): string {
+    return formatDurationLabel(minutes);
+  }
+
+  /** Inicio legible de una parada en curso ('29/10 14:30'). */
+  public stopStartLabel(stop: ProductionNews): string {
+    return `${(stop.newsDate || '').slice(0, 5)} ${stop.stop?.startTime || ''}`.trim();
+  }
+
+  /** La parada abierta más larga (para la card "Procesos detenidos ahora"). */
+  public get longestOngoingMinutes(): number {
+    return this.ongoingStops.reduce((max, s) => Math.max(max, this.stopMinutes(s)), 0);
+  }
+
+  /** Paradas abiertas visibles en la franja (compacta: las más largas primero). */
+  public get visibleOngoingStops(): ProductionNews[] {
+    return this.showAllStops ? this.ongoingStops : this.ongoingStops.slice(0, this.maxVisibleStops);
+  }
+
+  /** Gravedad visual por tiempo detenido: >= 24h crítica, >= 2h alta. */
+  public stopSeverity(stop: ProductionNews): 'critical' | 'high' | 'normal' {
+    const minutes = this.stopMinutes(stop);
+    if (minutes >= 24 * 60) return 'critical';
+    if (minutes >= 2 * 60) return 'high';
+    return 'normal';
+  }
+
+  public get topStopSection(): StopSectionSummary | null {
+    return this.stopsBySection[0] ?? null;
+  }
+
+  public openStopsModal(content: TemplateRef<unknown>): void {
+    this.modalService.open(content, { size: 'xl', scrollable: true, centered: true });
   }
 
   // IMPORTANTE: El método 'private transformToChartData' ha sido ELIMINADO ya que la lógica
