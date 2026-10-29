@@ -1,0 +1,289 @@
+<!-- src/app/machining/mechanics-upload/mechanics-upload.html -->
+<div class="newsupload-container">
+  <div class="header">
+    <div>
+      <h1 class="header-title">Cargue de Intervención</h1>
+      <p class="header-subtitle mb-0">Solicitudes de Mecánica asignadas a {{ myFullName || 'ti' }}</p>
+    </div>
+    <button class="btn btn-light btn-sm" (click)="load()" [disabled]="isLoading">
+      <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isLoading" class="ti ti-refresh me-1"></i>
+      Actualizar
+    </button>
+  </div>
+
+  <div class="main-content">
+    <div class="row g-3">
+      <!-- Listado -->
+      <div class="col-lg-5">
+        <div class="right-panel">
+          <h6 class="mtto-section-title">
+            <i class="ti ti-clipboard-list"></i>
+            Asignadas a mí
+          </h6>
+          <p class="mtto-empty-text" *ngIf="!isLoading && orders.length === 0">
+            No tienes solicitudes de mecánica asignadas por el momento.
+          </p>
+          <ul class="newsupload-list" *ngIf="orders.length > 0">
+            <li
+              class="newsupload-list-item"
+              *ngFor="let order of orders"
+              [class.is-selected]="selectedOrder?.id === order.id"
+              (click)="select(order)"
+            >
+              <div class="newsupload-list-main">
+                <strong>SME #{{ order.consecutiveSme }}</strong>
+                — {{ order.toolName || order.machineName || order.toolCode || 'Herramental' }}
+                <span [ngClass]="statusClass(order.status)" class="ms-2">{{ statusLabel(order.status) }}</span>
+              </div>
+              <div class="newsupload-list-meta">
+                <span [ngClass]="priorityClass(order.priority)">{{ order.priority }}</span>
+                <span>
+                  <i class="ti ti-map-pin"></i>
+                  {{ order.area }} / {{ order.department }}
+                </span>
+                <span *ngIf="order.agreedDeliveryDate">
+                  <i class="ti ti-calendar"></i>
+                  Entrega {{ order.agreedDeliveryDate }}
+                </span>
+              </div>
+              <div class="newsupload-list-desc">{{ order.description }}</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Detalle + formulario -->
+      <div class="col-lg-7">
+        <div class="right-panel" *ngIf="selectedOrder; else noSelection">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h6 class="mtto-section-title mb-1">
+                <i class="ti ti-tool"></i>
+                SME #{{ selectedOrder.consecutiveSme }} · {{ selectedOrder.toolCode || selectedOrder.machineCode || '' }} {{
+                selectedOrder.toolName || selectedOrder.machineName }}
+              </h6>
+              <span [ngClass]="statusClass(selectedOrder.status)">{{ statusLabel(selectedOrder.status) }}</span>
+              <span [ngClass]="priorityClass(selectedOrder.priority)" class="ms-1">{{ selectedOrder.priority }}</span>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" (click)="closeDetail()"><i class="ti ti-x"></i></button>
+          </div>
+
+          <div class="alert alert-warning py-2" *ngIf="selectedOrder.status === 'PENDIENTE_ACEPTACION'">
+            <i class="ti ti-hourglass me-1"></i>
+            Esperando que {{ selectedOrder.requester?.name || 'el solicitante' }} acepte y evalúe la intervención.
+          </div>
+
+          <div class="mtto-detail-grid mb-3">
+            <div class="mtto-detail-item">
+              <strong>Secc. / Dpto.</strong>
+              <span>{{ selectedOrder.area }} / {{ selectedOrder.department }}</span>
+            </div>
+            <div class="mtto-detail-item">
+              <strong>Operación</strong>
+              <span>
+                {{ selectedOrder.operationNumber || '—' }}
+                <span *ngIf="selectedOrder.operationTotal">de {{ selectedOrder.operationTotal }}</span>
+              </span>
+            </div>
+            <div class="mtto-detail-item mtto-detail-item-full">
+              <strong>Problema detectado / Trabajo solicitado</strong>
+              <span>{{ selectedOrder.description }}</span>
+            </div>
+            <div class="mtto-detail-item mtto-detail-item-full" *ngIf="selectedOrder.diagnosis">
+              <strong>Diagnóstico / causa</strong>
+              <span>{{ selectedOrder.diagnosis }}</span>
+            </div>
+          </div>
+
+          <!-- Mis actividades -->
+          <div class="mtto-section">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="mtto-section-title mb-0">
+                <i class="ti ti-list-check"></i>
+                Mis actividades
+                <span class="text-muted fw-normal" *ngIf="mySessions.length">
+                  · {{ mySessions.length }} · Total {{ formatMinutes(myTotalMinutes) }}
+                </span>
+              </h6>
+              <span *ngIf="isLoadingOrder" class="spinner-border spinner-border-sm text-primary"></span>
+            </div>
+
+            <p class="mtto-empty-text" *ngIf="mySessions.length === 0">Aún no has registrado actividades en esta solicitud.</p>
+
+            <div class="mtto-intervention-item mb-2" *ngFor="let it of mySessions" [class.is-editing]="editingIntervention?.id === it.id">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="mtto-intervention-work">{{ it.workDone }}</div>
+                <span class="badge" [class.bg-primary]="it.role !== 'AYUDANTE'" [class.bg-secondary]="it.role === 'AYUDANTE'">
+                  {{ it.role === 'AYUDANTE' ? 'Auxiliar' : 'Responsable' }}
+                </span>
+              </div>
+              <div class="mtto-intervention-meta">
+                <span>
+                  <i class="ti ti-clock"></i>
+                  {{ it.startAt || '—' }} → {{ it.endAt || '—' }}
+                </span>
+                <span>
+                  <i class="ti ti-hourglass"></i>
+                  H. Hom {{ formatMinutes(it.durationMinutes) }}
+                </span>
+                <span *ngIf="it.machineType">
+                  <i class="ti ti-settings"></i>
+                  {{ machineTypeLabel(it.machineType) }} · H. Máq {{ formatMinutes(it.machineMinutes) }}
+                </span>
+                <span *ngIf="it.role !== 'AYUDANTE' && it.helper">
+                  <i class="ti ti-user-plus"></i>
+                  Auxiliar: {{ it.helper.fullName }}
+                </span>
+                <span *ngIf="it.role === 'AYUDANTE' && it.responsible">
+                  <i class="ti ti-user"></i>
+                  Responsable: {{ it.responsible.fullName || it.responsible.document }}
+                </span>
+              </div>
+              <div class="mt-2" *ngIf="it.role !== 'AYUDANTE'">
+                <button class="btn btn-sm btn-primary" *ngIf="canCorrect(it) && editingIntervention?.id !== it.id" (click)="startEdit(it)">
+                  <i class="ti ti-edit me-1"></i>
+                  Corregir (habilitado por el Jefe)
+                </button>
+                <small class="text-muted" *ngIf="!it.editUnlocked">
+                  <i class="ti ti-lock"></i>
+                  Para corregirla, pide al Jefe de Mecánica que la habilite.
+                </small>
+              </div>
+            </div>
+
+            <div class="text-end mt-2" *ngIf="isAssignee && !showForm && !isClosed">
+              <button class="btn btn-sm btn-success" (click)="startNew()">
+                <i class="ti ti-plus me-1"></i>
+                Registrar nueva actividad
+              </button>
+            </div>
+            <p class="mtto-empty-text mt-2 mb-0" *ngIf="isAssignee && isClosed">
+              La solicitud está cerrada. Si falta registrar algo, pide al Jefe que la reabra.
+            </p>
+            <p class="mtto-empty-text mt-2 mb-0" *ngIf="!isAssignee">
+              Participaste como auxiliar: el mecánico responsable registra las actividades.
+            </p>
+          </div>
+
+          <!-- Formulario -->
+          <div class="mtto-section" *ngIf="showForm">
+            <h6 class="mtto-section-title">
+              <i class="ti" [class.ti-plus]="!editingIntervention" [class.ti-edit]="editingIntervention"></i>
+              {{ editingIntervention ? 'Corregir actividad' : 'Registrar nueva actividad' }}
+            </h6>
+
+            <div class="mtto-form-row">
+              <div class="mtto-form-group mtto-form-group-full">
+                <label class="form-label">
+                  Trabajo realizado
+                  <span class="text-danger">*</span>
+                </label>
+                <textarea
+                  class="form-control form-control-sm"
+                  rows="2"
+                  [(ngModel)]="form.workDone"
+                  placeholder="Describa brevemente el trabajo realizado"
+                ></textarea>
+              </div>
+              <div class="mtto-form-group">
+                <label class="form-label">
+                  Inicio
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="datetime-local" class="form-control form-control-sm" [(ngModel)]="form.startAt" />
+              </div>
+              <div class="mtto-form-group">
+                <label class="form-label">
+                  Fin
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="datetime-local" class="form-control form-control-sm" [(ngModel)]="form.endAt" />
+              </div>
+              <div class="mtto-form-group">
+                <label class="form-label">H. Hom</label>
+                <div class="form-control form-control-sm bg-light">{{ formMinutes !== null ? formatMinutes(formMinutes) : '—' }}</div>
+              </div>
+              <div class="mtto-form-group">
+                <label class="form-label">Máquina-herramienta</label>
+                <select class="form-select form-select-sm" [(ngModel)]="form.machineType">
+                  <option value="">—</option>
+                  <option *ngFor="let m of machineTypes" [value]="m.value">{{ m.label }}</option>
+                </select>
+              </div>
+              <div class="mtto-form-group">
+                <label class="form-label">H. Máq (minutos)</label>
+                <input
+                  type="number"
+                  min="0"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="form.machineMinutes"
+                  placeholder="Tiempo de máquina"
+                />
+              </div>
+
+              <!-- Auxiliar (1 solo) -->
+              <div class="mtto-form-group mtto-form-group-full position-relative">
+                <label class="form-label">Auxiliar — opcional, máximo 1</label>
+                <div class="assignee-chips mt-0" *ngIf="form.helper; else helperSearch">
+                  <span class="assignee-chip">
+                    <i class="ti ti-user-plus"></i>
+                    {{ form.helper.fullName }}
+                    <small>· CC {{ form.helper.document }}</small>
+                    <button type="button" class="assignee-chip-remove" (click)="removeHelper()" title="Quitar auxiliar">×</button>
+                  </span>
+                </div>
+                <ng-template #helperSearch>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    autocomplete="off"
+                    [(ngModel)]="helperSearchTerm"
+                    (ngModelChange)="onHelperSearchChange($event)"
+                    (focus)="onHelperFocus()"
+                    (blur)="onHelperBlur()"
+                    placeholder="Buscar por nombre o cédula"
+                  />
+                  <div class="autocomplete-results" *ngIf="showHelperDropdown && helperResults.length > 0">
+                    <div class="autocomplete-item" *ngFor="let s of helperResults" (mousedown)="selectHelper(s)">
+                      <strong>{{ s.fullName }}</strong>
+                      — {{ s.specialty }}
+                      <small class="text-muted d-block">CC: {{ s.document }}</small>
+                    </div>
+                  </div>
+                  <small class="text-muted" *ngIf="helperPoolIsFallback">
+                    RH no tiene personal con cargo "Auxiliar": se muestra todo el personal de mecánica.
+                  </small>
+                </ng-template>
+                <small class="text-muted mt-1" *ngIf="form.helper">
+                  La actividad se guardará también a nombre del auxiliar, con el mismo tiempo.
+                </small>
+              </div>
+
+              <div class="mtto-form-group mtto-form-group-full">
+                <label class="form-label">Notas / detalles adicionales</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.notes"></textarea>
+              </div>
+            </div>
+
+            <div class="text-end mt-3">
+              <button class="btn btn-sm btn-secondary me-2" (click)="cancelForm()" [disabled]="isSaving">Cancelar</button>
+              <button class="btn btn-sm btn-success" (click)="submit()" [disabled]="isSaving">
+                <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!isSaving" class="ti ti-device-floppy me-1"></i>
+                {{ editingIntervention ? 'Guardar corrección' : 'Registrar actividad' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noSelection>
+          <div class="right-panel newsupload-empty-panel">
+            <i class="ti ti-hand-click"></i>
+            <p>Selecciona una solicitud de la lista para cargar tu intervención.</p>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

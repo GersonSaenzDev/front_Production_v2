@@ -1,0 +1,323 @@
+<!-- src/app/machining/mechanics-request/mechanics-request.html -->
+<div class="container-fluid py-3">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <h5 class="mb-0">Herramental Mecánica — Solicitud SME</h5>
+        <small>Formato SME55003 v.9 · El consecutivo SME lo asigna el sistema al guardar.</small>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="alert alert-info d-flex justify-content-between align-items-start" *ngIf="loadedFromNews">
+        <div>
+          <strong>
+            Formulario prellenado desde una novedad reportada
+            <span *ngIf="sourceCategory">({{ sourceCategory }})</span>
+            .
+          </strong>
+          Quien la reportó será el único que podrá aceptar y evaluar la intervención.
+        </div>
+        <button type="button" class="btn-close" aria-label="Cerrar" (click)="dismissDraftNotice()"></button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <!-- ================= SOLICITANTE (A) ================= -->
+        <div class="sme-block">
+          <div class="sme-block-title"><span>Solicitante (A)</span></div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Herramental (Htal)</label>
+              <input type="text" class="form-control" formControlName="toolName" placeholder="Nombre del herramental" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Cód. Htal</label>
+              <input type="text" class="form-control" formControlName="toolCode" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Requiere</label>
+              <select class="form-select" formControlName="requestedWork">
+                <option value="">Seleccione…</option>
+                <option *ngFor="let w of requestedWorkOptions" [value]="w.value">{{ w.label }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Operación N°</label>
+              <input type="text" class="form-control" formControlName="operationNumber" />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">de</label>
+              <input type="text" class="form-control" formControlName="operationTotal" />
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Descripción de la operación</label>
+              <input type="text" class="form-control" formControlName="operationDescription" />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">
+                Problema detectado / Trabajo solicitado
+                <span class="text-danger">*</span>
+              </label>
+              <textarea
+                class="form-control"
+                rows="2"
+                formControlName="description"
+                [class.is-invalid]="isFieldInvalid('description')"
+              ></textarea>
+              <div class="invalid-feedback">Describa el problema o el trabajo solicitado.</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">
+                Secc. / Área solicitante
+                <span class="text-danger">*</span>
+              </label>
+              <select class="form-select" formControlName="area" [class.is-invalid]="isFieldInvalid('area')">
+                <option value="">Seleccione el área…</option>
+                <option *ngFor="let g of groupedAreas" [value]="g.area">{{ g.area }}</option>
+              </select>
+              <div class="invalid-feedback">Seleccione el área.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">
+                Dpto. solicitante
+                <span class="text-danger">*</span>
+              </label>
+              <select
+                class="form-select"
+                formControlName="department"
+                [class.is-invalid]="isFieldInvalid('department')"
+                [attr.disabled]="availableDepartments.length === 0 ? '' : null"
+              >
+                <option value="">{{ availableDepartments.length ? 'Seleccione…' : 'Elija un área primero' }}</option>
+                <option *ngFor="let d of availableDepartments" [value]="d.subArea">{{ d.subArea }}</option>
+              </select>
+              <div class="invalid-feedback">Seleccione el departamento.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Nombre solicitante</label>
+              <input type="text" class="form-control" formControlName="requestedBy" />
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Máquina (si aplica)</label>
+              <input type="text" class="form-control" formControlName="machineCode" placeholder="Código" />
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">Nombre de máquina</label>
+              <input type="text" class="form-control" formControlName="machineName" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Fecha envío SME</label>
+              <input type="datetime-local" class="form-control" formControlName="reportedAt" />
+            </div>
+
+            <!-- Golpes montaje / Fecha -->
+            <div class="col-12">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label mb-0">Golpes montaje / Fecha</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addMountingHit()">
+                  <i class="ti ti-plus"></i>
+                  Agregar
+                </button>
+              </div>
+              <div class="sme-row sme-row-2" *ngFor="let h of mountingHits; let i = index">
+                <input
+                  type="number"
+                  class="form-control form-control-sm"
+                  min="0"
+                  [(ngModel)]="h.hits"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Golpes"
+                />
+                <input type="date" class="form-control form-control-sm" [(ngModel)]="h.date" [ngModelOptions]="{ standalone: true }" />
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeRow(mountingHits, i)">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= SME (A) ================= -->
+        <div class="sme-block">
+          <div class="sme-block-title"><span>SME (A) — Recepción en Mecánica</span></div>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">Solicitud</label>
+              <select class="form-select" formControlName="smeRequestType">
+                <option value="">—</option>
+                <option *ngFor="let t of smeRequestTypes" [value]="t.value">{{ t.label }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Cambio N°</label>
+              <input type="text" class="form-control" formControlName="changeNumber" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Proyecto N°</label>
+              <input type="text" class="form-control" formControlName="projectNumber" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Prioridad</label>
+              <select class="form-select" formControlName="priority">
+                <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Fecha recibido</label>
+              <input type="datetime-local" class="form-control" formControlName="receivedAt" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Fecha acuerdo entrega</label>
+              <input type="date" class="form-control" formControlName="agreedDeliveryDate" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Fecha programada</label>
+              <input type="date" class="form-control" formControlName="scheduledDate" />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Diagnóstico / causa</label>
+              <textarea class="form-control" rows="2" formControlName="diagnosis"></textarea>
+            </div>
+
+            <!-- Persona encargada -->
+            <div class="col-md-8 position-relative">
+              <label class="form-label">Persona encargada (1 o más mecánicos)</label>
+              <input
+                type="text"
+                class="form-control"
+                autocomplete="off"
+                [(ngModel)]="assigneeSearchTerm"
+                [ngModelOptions]="{ standalone: true }"
+                placeholder="Escriba nombre o número de documento"
+                (ngModelChange)="onAssigneeSearchChange($event)"
+                (focus)="onTechnicianFocus()"
+                (blur)="onTechnicianBlur()"
+              />
+              <div class="autocomplete-results" *ngIf="predictiveTechnicianList.length > 0 && showTechnicianDropdown">
+                <div class="autocomplete-item" *ngFor="let tech of predictiveTechnicianList" (mousedown)="addAssignee(tech)">
+                  <strong>{{ tech.fullName }}</strong>
+                  — {{ tech.specialty }}
+                  <small class="text-muted d-block">Doc: {{ tech.document }}</small>
+                </div>
+              </div>
+              <div class="assignee-chips" *ngIf="selectedAssignees.length">
+                <span class="assignee-chip" *ngFor="let a of selectedAssignees; let i = index">
+                  {{ a.fullName }}
+                  <small *ngIf="a.specialty">· {{ a.specialty }}</small>
+                  <button type="button" class="assignee-chip-remove" (click)="removeAssignee(i)" aria-label="Quitar">×</button>
+                </span>
+              </div>
+              <small class="text-muted">El auxiliar lo vincula cada mecánico al registrar su intervención.</small>
+            </div>
+
+            <!-- Material empleado -->
+            <div class="col-12">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label mb-0">Material empleado</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addMaterial()">
+                  <i class="ti ti-plus"></i>
+                  Agregar
+                </button>
+              </div>
+              <div class="sme-row sme-row-material" *ngFor="let m of materials; let i = index">
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="m.code"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Código"
+                />
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="m.description"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Descripción"
+                />
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="m.unit"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Und"
+                />
+                <input
+                  type="number"
+                  class="form-control form-control-sm"
+                  min="0"
+                  [(ngModel)]="m.quantity"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Cant"
+                />
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeRow(materials, i)">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Trabajo externo -->
+            <div class="col-12">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label mb-0">Trabajo externo</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="addExternalWork()">
+                  <i class="ti ti-plus"></i>
+                  Agregar
+                </button>
+              </div>
+              <div class="sme-row sme-row-external" *ngFor="let w of externalWork; let i = index">
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="w.description"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Descripción"
+                />
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="w.provider"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="Proveedor"
+                />
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  [(ngModel)]="w.orderNumber"
+                  [ngModelOptions]="{ standalone: true }"
+                  placeholder="N° orden"
+                />
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeRow(externalWork, i)">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-muted small mb-0">
+          El
+          <strong>trabajo realizado</strong>
+          y el
+          <strong>tiempo empleado</strong>
+          (H. Máq / H. Hom) los registra cada mecánico en "Cargue de Intervención". La
+          <strong>evaluación (B)</strong>
+          la hace quien reportó la novedad cuando Mecánica la envía a aceptación.
+        </p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="resetForm()" [disabled]="isSubmitting">Limpiar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-1"></span>
+            {{ isSubmitting ? 'Guardando…' : 'Crear solicitud' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

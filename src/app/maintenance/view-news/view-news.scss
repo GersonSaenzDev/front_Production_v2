@@ -732,3 +732,36 @@ $mtto-bg-light: #f8fafc;
 }
 
 .mtto-history-prev { color: #b45309; }
+
+// Contadores de aceptación del solicitante (filtran la tabla al hacer clic).
+.acceptance-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.acceptance-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+
+  &.is-waiting {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #78350f;
+  }
+
+  &.is-ready {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #14532d;
+  }
+
+  &.is-active {
+    box-shadow: 0 0 0 2px #1e3a8a;
+  }
+}

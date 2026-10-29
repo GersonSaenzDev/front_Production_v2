@@ -32,12 +32,21 @@ import { RhStaffServices } from '../../services/rh-staff-services';
 import { ProductionNewsRedirectedEvent, SocketService } from '../../services/socket-service';
 import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoing-stops/ongoing-stops.component';
 import { formatStopSchedule, isStopCategory, isStopOngoing } from '../../theme/layout/admin/navigation/stop-time.util';
+import { WorkOrderAcceptanceComponent } from '../../theme/layout/admin/navigation/work-order-acceptance/work-order-acceptance.component';
+import {
+  acceptanceState,
+  isReadyToClose,
+  requiresRequesterAcceptance,
+  WORK_ORDER_STATUSES,
+  workOrderStatusClass,
+  workOrderStatusLabel
+} from '../../theme/layout/admin/navigation/work-order-acceptance/work-order.util';
 import { calculateMinutes, formatMinutes, toBackendDateTime, toDatetimeLocal } from '../maintenance-time.util';
 
 @Component({
   selector: 'app-maintenance-view-news',
   standalone: true,
-  imports: [CommonModule, FormsModule, OngoingStopsComponent],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent, WorkOrderAcceptanceComponent],
   templateUrl: './view-news.html',
   styleUrl: './view-news.scss'
 })
@@ -63,7 +72,9 @@ export class ViewNews implements OnInit, OnDestroy {
   private socketSub: Subscription | null = null;
   private pendingNewsReloadTimer: ReturnType<typeof setTimeout> | null = null;
 
-  readonly statuses: MaintenanceStatus[] = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
+  readonly statuses: MaintenanceStatus[] = WORK_ORDER_STATUSES;
+  readonly statusLabel = workOrderStatusLabel;
+  readonly acceptanceState = acceptanceState;
   readonly priorities: MaintenancePriority[] = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
   readonly maintenanceTypes: MaintenanceType[] = ['PREVENTIVO', 'CORRECTIVO', 'PREDICTIVO'];
 
@@ -78,6 +89,10 @@ export class ViewNews implements OnInit, OnDestroy {
 
   orders: MaintenanceRequest[] = [];
   isLoading = false;
+
+  // Aceptación del solicitante: filtro rápido desde los contadores ('' = todas).
+  acceptanceFilter: '' | 'ESPERANDO' | 'LISTAS' = '';
+  isSavingAcceptance = false;
 
   // Novedades entrantes de otras áreas (productionNews asignadas a Mantenimiento, cualquier categoría).
   pendingNewsDate: string = this.formatDate(new Date());
@@ -257,18 +272,79 @@ export class ViewNews implements OnInit, OnDestroy {
   }
 
   statusClass(status: MaintenanceStatus): string {
-    switch (status) {
-      case 'PENDIENTE':
-        return 'badge bg-secondary';
-      case 'EN_PROCESO':
-        return 'badge bg-info text-dark';
-      case 'COMPLETADO':
-        return 'badge bg-success';
-      case 'CANCELADO':
-        return 'badge bg-danger';
-      default:
-        return 'badge bg-light text-dark';
+    return workOrderStatusClass(status);
+  }
+
+  // ============================================================
+  //  ACEPTACIÓN DEL SOLICITANTE (quien reportó la novedad)
+  // ============================================================
+
+  /** Enviadas al solicitante que aún no las acepta (no se pueden cerrar). */
+  get awaitingAcceptanceCount(): number {
+    return this.orders.filter((o) => acceptanceState(o) === 'ESPERANDO').length;
+  }
+
+  /** Aceptadas por el solicitante pero aún sin cerrar. */
+  get readyToCloseCount(): number {
+    return this.orders.filter((o) => isReadyToClose(o)).length;
+  }
+
+  get visibleOrders(): MaintenanceRequest[] {
+    if (this.acceptanceFilter === 'ESPERANDO') return this.orders.filter((o) => acceptanceState(o) === 'ESPERANDO');
+    if (this.acceptanceFilter === 'LISTAS') return this.orders.filter((o) => isReadyToClose(o));
+    return this.orders;
+  }
+
+  toggleAcceptanceFilter(filter: 'ESPERANDO' | 'LISTAS'): void {
+    this.acceptanceFilter = this.acceptanceFilter === filter ? '' : filter;
+  }
+
+  /**
+   * En el modal de edición: COMPLETADO solo si el solicitante ya aceptó (o no aplica) y
+   * PENDIENTE_ACEPTACION solo si hay solicitante. El backend aplica la misma regla.
+   */
+  isStatusOptionDisabled(order: MaintenanceRequest, status: MaintenanceStatus): boolean {
+    if (status === order.status) return false;
+    if (status === 'PENDIENTE_ACEPTACION') return !requiresRequesterAcceptance(order) || !order.interventions?.length;
+    if (status === 'COMPLETADO') return requiresRequesterAcceptance(order) && acceptanceState(order) !== 'ACEPTADA';
+    return false;
+  }
+
+  sendToAcceptance(order: MaintenanceRequest): void {
+    if (!confirm(`¿Enviar MTTO #${order.consecutiveMtto} a ${order.requester?.name || 'el solicitante'} para que acepte y evalúe la intervención?`)) {
+      return;
     }
+    this.changeStatus(order, 'PENDIENTE_ACEPTACION', 'Intervención enviada a aceptación del solicitante', 'Enviada a aceptación del solicitante.');
+  }
+
+  closeOrder(order: MaintenanceRequest): void {
+    const rating = order.requesterApproval?.rating;
+    this.changeStatus(
+      order,
+      'COMPLETADO',
+      `Cierre de la solicitud${rating ? ` (solicitante calificó ${rating}/5)` : ''}`,
+      'Solicitud cerrada.'
+    );
+  }
+
+  private changeStatus(order: MaintenanceRequest, status: MaintenanceStatus, observation: string, successMsg: string): void {
+    this.isSavingAcceptance = true;
+    this.maintenanceService.updateMaintenance(order.id, { status, observation }).subscribe({
+      next: (res) => {
+        this.isSavingAcceptance = false;
+        if (!res?.ok) {
+          this.toastr.error(res?.msg || 'No se pudo actualizar el estado.', 'Error');
+          return;
+        }
+        this.toastr.success(successMsg, 'Mantenimiento');
+        this.replaceInList(res.data);
+        if (this.detailOrder?.id === res.data.id) this.detailOrder = res.data;
+      },
+      error: (err: Error) => {
+        this.isSavingAcceptance = false;
+        this.toastr.error(err.message || 'Error al actualizar el estado.', 'Error');
+      }
+    });
   }
 
   priorityClass(priority: MaintenancePriority): string {

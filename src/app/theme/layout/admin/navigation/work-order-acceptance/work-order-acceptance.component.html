@@ -1,0 +1,89 @@
+<!-- src/app/theme/layout/admin/navigation/work-order-acceptance/work-order-acceptance.component.html -->
+<div class="woa">
+  <h6 class="woa-title">
+    <i class="ti ti-user-check"></i>
+    Aceptación del solicitante
+  </h6>
+
+  <!-- Sin novedad de origen: no se exige aceptación -->
+  <p class="woa-muted mb-0" *ngIf="state === 'NO_APLICA'">
+    Esta solicitud no proviene de una novedad: no requiere aceptación del solicitante y se puede cerrar directamente.
+  </p>
+
+  <ng-container *ngIf="state !== 'NO_APLICA'">
+    <div class="woa-requester">
+      <div>
+        <strong>{{ order.requester?.name }}</strong>
+        <small class="text-muted d-block">
+          Reportó la novedad · {{ order.requester?.originArea }}
+          <span *ngIf="order.requester?.originSubArea">/ {{ order.requester?.originSubArea }}</span>
+        </small>
+      </div>
+      <span
+        class="badge"
+        [ngClass]="{
+          'bg-light text-dark': state === 'SIN_ENVIAR',
+          'bg-warning text-dark': state === 'ESPERANDO',
+          'bg-success': state === 'ACEPTADA'
+        }"
+      >
+        <ng-container [ngSwitch]="state">
+          <span *ngSwitchCase="'SIN_ENVIAR'">Sin enviar a aceptación</span>
+          <span *ngSwitchCase="'ESPERANDO'">
+            <i class="ti ti-hourglass"></i>
+            Esperando aceptación
+          </span>
+          <span *ngSwitchCase="'ACEPTADA'">
+            <i class="ti ti-check"></i>
+            Aceptada
+          </span>
+        </ng-container>
+      </span>
+    </div>
+
+    <!-- Evaluación vigente -->
+    <div class="woa-current" *ngIf="order.requesterApproval?.accepted">
+      <span class="woa-stars">{{ ratingStars(order.requesterApproval?.rating) }}</span>
+      <strong>{{ order.requesterApproval?.rating }}/5</strong>
+      · {{ order.requesterApproval?.ratingLabel }}
+      <div class="woa-comment">"{{ order.requesterApproval?.comment }}"</div>
+      <small class="text-muted">{{ order.requesterApproval?.approvedBy }} · {{ order.requesterApproval?.approvedAt }}</small>
+    </div>
+
+    <p class="woa-muted" *ngIf="state === 'ESPERANDO'">
+      La solicitud solo podrá cerrarse cuando {{ order.requester?.name }} acepte y evalúe la intervención.
+    </p>
+
+    <!-- Acciones del Jefe -->
+    <div class="woa-actions" *ngIf="canManage">
+      <button type="button" class="btn btn-sm btn-warning" *ngIf="canSend" [disabled]="busy" (click)="sendToAcceptance.emit()">
+        <i class="ti ti-send me-1"></i>
+        Enviar a aceptación del solicitante
+      </button>
+      <button type="button" class="btn btn-sm btn-success" *ngIf="readyToClose" [disabled]="busy" (click)="closeOrder.emit()">
+        <i class="ti ti-circle-check me-1"></i>
+        Cerrar solicitud
+      </button>
+      <small class="woa-muted" *ngIf="state === 'SIN_ENVIAR' && !canSend">
+        Registre al menos una intervención para poder enviarla a aceptación.
+      </small>
+    </div>
+
+    <!-- Historial de evaluaciones -->
+    <div class="woa-history" *ngIf="evaluations.length">
+      <small class="text-muted fw-semibold d-block mb-1">Historial de evaluaciones</small>
+      <ul>
+        <li *ngFor="let e of evaluations" [class.is-rejected]="e.result === 'RECHAZADA'">
+          <span class="woa-stars">{{ ratingStars(e.rating) }}</span>
+          <strong>{{ e.rating }}/5</strong>
+          · {{ e.ratingLabel }}
+          <span class="badge ms-1" [class.bg-success]="e.result === 'ACEPTADA'" [class.bg-danger]="e.result === 'RECHAZADA'">
+            {{ e.result === 'ACEPTADA' ? 'Aceptada' : 'Rechazada · reabierta' }}
+          </span>
+          <div class="woa-comment">"{{ e.comment }}"</div>
+          <small class="text-muted">{{ e.evaluatedBy }} · {{ e.evaluatedAt }}</small>
+        </li>
+      </ul>
+    </div>
+  </ng-container>
+</div>

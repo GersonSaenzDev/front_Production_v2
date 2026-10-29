@@ -17,6 +17,7 @@ import { DashboardServices } from '../../../../../services/dashboard-services';
 import { NewsServices } from '../../../../../services/news-services';
 import { displayArea } from '../area-display.util';
 import { OngoingStopsComponent } from '../ongoing-stops/ongoing-stops.component';
+import { RequesterAcceptanceComponent } from '../work-order-acceptance/requester-acceptance.component';
 import { Time24Directive, TIME_24_PATTERN } from '../time-24.directive';
 import {
   formatDurationLabel,
@@ -37,7 +38,7 @@ const FUTURE_TOLERANCE_MINUTES = 5;
 @Component({
   selector: 'app-shared-news',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, OngoingStopsComponent, Time24Directive],
+  imports: [CommonModule, ReactiveFormsModule, OngoingStopsComponent, Time24Directive, RequesterAcceptanceComponent],
   templateUrl: './shared-news.component.html',
   styleUrls: ['./shared-news.component.scss']
 })

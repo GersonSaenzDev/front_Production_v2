@@ -13,7 +13,10 @@ import {
   DeleteMaintenanceResponse,
   MaintenanceListFilters,
   MaintenanceListResponse,
+  MaintenanceRequest,
   MaintenanceResponse,
+  RequesterEvaluationRequest,
+  RequesterPendingResponse,
   SeedConsecutiveRequest,
   SeedConsecutiveResponse,
   UpdateInterventionRequest,
@@ -149,6 +152,28 @@ export class MaintenanceServices {
   registerApproval(id: string, payload: ApprovalRequest): Observable<ApprovalResponse> {
     return this.http
       .patch<ApprovalResponse>(`${this.BASE_API}/${id}/approval`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * El solicitante (quien reportó la novedad) acepta y evalúa la intervención (1-5 + comentario).
+   * El backend valida que sea el mismo usuario del token. Calificación 1 reabre la solicitud.
+   */
+  evaluateByRequester(id: string, payload: RequesterEvaluationRequest): Observable<MaintenanceResponse> {
+    return this.http
+      .post<MaintenanceResponse>(`${this.BASE_API}/${id}/requester-evaluation`, payload)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Intervenciones esperando la aceptación del solicitante: las del usuario logueado (mine) y las
+   * del área que generó las novedades (`scope`: área o subárea, se resuelve contra el catálogo).
+   */
+  getRequesterPending(scope?: string): Observable<RequesterPendingResponse<MaintenanceRequest>> {
+    let params = new HttpParams();
+    if (scope) params = params.set('scope', scope);
+    return this.http
+      .get<RequesterPendingResponse<MaintenanceRequest>>(`${this.BASE_API}/requester/pending`, { params })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

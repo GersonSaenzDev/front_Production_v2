@@ -93,7 +93,8 @@ export class MenuAccessService {
     LOGÍSTICA: ['LOGISTICA'],
     ALMACÉN: ['ALMACEN', 'LOGISTICA'],
     MANTENIMIENTO: ['MANTENIMIENTO'],
-    MECANIZADO: ['MECANIZADO', 'MECANICA'],
+    // Grupo "Mecánica" (antes "Mecanizado"): mismas áreas autorizadas.
+    MECÁNICA: ['MECANIZADO', 'MECANICA'],
     INGENIERÍA: ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'GESTIÓN DE ESTRUCTURAS': ['INGENIERIA INDUSTRIAL', 'INGENIERIA PRODUCTO', 'INGENIERIA DE PRODUCTO'],
     'RECURSOS HUMANOS': ['TH', 'RECURSOS HUMANOS'],
@@ -113,7 +114,7 @@ export class MenuAccessService {
   // Mapeo: grupo top-level → departamentos autorizados (cuando el área no calza)
   // Útil cuando un usuario está en area=PRODUCCION pero su dept pertenece a otro grupo
   private readonly GROUP_DEPT_MAP: Record<string, string[]> = {
-    MECANIZADO: ['MECANICA']
+    MECÁNICA: ['MECANICA']
   };
 
   // Excepción puntual: usuarios de LOGISTICA EXTERNA (normalmente solo ven CASA CLIENTE)
@@ -276,6 +277,33 @@ export class MenuAccessService {
     return url === 'maintenance/maintenanceNews' || url === 'maintenance/viewNews';
   }
 
+  /**
+   * Técnico (mecánico / auxiliar) de Mecánica: solo debe ver/entrar a "Cargue de Intervención"
+   * (registrar su trabajo en lo que se le asignó). Crear solicitudes SME y la gestión completa
+   * (asignar, enviar a aceptación, cerrar, reabrir) son del Jefe de Mecánica. Mismo criterio
+   * conservador que isMaintenanceTechnician: sin typeUser se trata como Jefe.
+   */
+  isMechanicsTechnician(): boolean {
+    const userData = this.authService.userData();
+    if (!userData) return false;
+    const area = userData.area?.toUpperCase().trim() || '';
+    const dept = userData.departament?.toUpperCase().trim() || '';
+    const typeUser = userData.typeUser?.toUpperCase().trim() || '';
+    const isMechanicsStaff = area === 'MECANICA' || area === 'MECANIZADO' || dept === 'MECANICA';
+    return isMechanicsStaff && !!typeUser && !MenuAccessService.MAINTENANCE_MANAGER_TYPES.includes(typeUser);
+  }
+
+  /** Jefe de Mecánica (o perfil de gestión): mismos perfiles que el backend (MAINTENANCE_MANAGER_TYPES). */
+  isMechanicsManager(): boolean {
+    return this.isMaintenanceManager();
+  }
+
+  // Items del menú de Mecánica exclusivos del Jefe (ver isMechanicsTechnician).
+  private isMechanicsJefeOnlyNavItem(item: any): boolean {
+    const url = item.url || '';
+    return url === 'machining/mechanicsRequest' || url === 'machining/mechanicsManagement';
+  }
+
   // Items del menú que componen el collapse "Bodega" (grupo Logística + collapse
   // Bodega + sus items), usado por el permiso aditivo BODEGA_VIEWER_USERS. No
   // incluye los collapses "Casa Cliente" ni "Almacén" del mismo grupo.
@@ -396,7 +424,7 @@ export class MenuAccessService {
     COSTOS: { navTitles: ['GENERAR ETIQUETAS'], modules: ['production', 'printing'] },
     COMPRAS: { navTitles: ['COMPRAS'], modules: ['production'] },
     'GESTION AMBIENTAL': { navTitles: ['GESTIÓN AMBIENTAL'], modules: ['production'] },
-    MECANICA: { navTitles: ['MECANIZADO'], modules: ['production', 'machining'] },
+    MECANICA: { navTitles: ['MECÁNICA'], modules: ['production', 'machining'] },
     'ALMACEN GENERAL': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA DE PROCESOS': { navTitles: ['ALMACÉN'], modules: ['production', 'logistics'] },
     'LOGISTICA INTERNA': {
@@ -463,6 +491,11 @@ export class MenuAccessService {
     // solicitudes) ni "Visualizar Novedades" (gestión completa): solo su "Cargue de Novedad".
     if (this.isMaintenanceJefeOnlyNavItem(item)) {
       return !this.isMaintenanceTechnician();
+    }
+
+    // Igual para Mecánica: el técnico solo ve "Cargue de Intervención".
+    if (this.isMechanicsJefeOnlyNavItem(item)) {
+      return !this.isMechanicsTechnician();
     }
 
     // PLANEACIÓN ve el menú Estadístico además de su acceso normal (independiente del área)
@@ -623,7 +656,7 @@ export class MenuAccessService {
     // Si el grupo no está mapeado (ej. Panel de Control), se muestra a cualquier usuario
     if (!allowedAreas) return true;
     if (allowedAreas.includes(area)) return true;
-    // Override por departamento (ej. dept MECANICA en area PRODUCCION accede a Mecanizado)
+    // Override por departamento (ej. dept MECANICA en area PRODUCCION accede a Mecánica)
     const allowedDepts = this.GROUP_DEPT_MAP[title];
     return allowedDepts ? allowedDepts.includes(dept) : false;
   }

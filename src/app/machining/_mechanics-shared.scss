@@ -1,0 +1,139 @@
+// src/app/machining/_mechanics-shared.scss
+// Estilos comunes de las pantallas de Mecánica (formato SME55003).
+
+.sme-block {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+
+.sme-block-title {
+  margin: -1rem -1rem 1rem;
+  padding: 0.5rem 1rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 10px 10px 0 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #334155;
+}
+
+.sme-row {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  align-items: center;
+
+  &.sme-row-2 {
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  &.sme-row-material {
+    grid-template-columns: 1fr 2fr 0.7fr 0.7fr auto;
+  }
+
+  &.sme-row-external {
+    grid-template-columns: 2fr 1fr 1fr auto;
+  }
+
+  @media (max-width: 576px) {
+    &.sme-row-material,
+    &.sme-row-external {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+}
+
+// Buscador predictivo y chips de asignados (mismo look que Mantenimiento).
+.autocomplete-results {
+  position: absolute;
+  z-index: 1000;
+  width: calc(100% - 1.5rem);
+  max-height: 250px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.autocomplete-item {
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: #e7f1ff;
+    color: #084298;
+  }
+}
+
+.assignee-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #e7f1ff;
+  color: #084298;
+  border: 1px solid #bcd6f7;
+  border-radius: 999px;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  small {
+    color: #4a72a3;
+    font-weight: 400;
+  }
+}
+
+.assignee-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(8, 66, 152, 0.12);
+  color: #084298;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(8, 66, 152, 0.25);
+  }
+}
+
+// Tabla "TIEMPO EMPLEADO" (H. Máq / H. Hom por máquina-herramienta).
+.sme-time-table {
+  font-size: 0.8rem;
+
+  th,
+  td {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+}

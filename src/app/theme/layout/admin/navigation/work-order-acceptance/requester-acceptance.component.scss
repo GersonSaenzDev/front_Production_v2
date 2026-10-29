@@ -1,0 +1,154 @@
+.ra-card {
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+  background: #fffbeb;
+  overflow: hidden;
+}
+
+.ra-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fef3c7;
+  flex-wrap: wrap;
+}
+
+.ra-header-text {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+
+  > i {
+    font-size: 1.5rem;
+    color: #b45309;
+  }
+
+  small {
+    color: #78350f;
+  }
+}
+
+.ra-counters {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ra-body {
+  padding: 0.5rem 1rem 1rem;
+  background: #fff;
+}
+
+.ra-row-mine {
+  background: #f0fdf4;
+}
+
+.ra-desc {
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ra-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ra-dialog {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ra-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: #1e3a8a;
+  color: #fff;
+
+  small {
+    color: #dbeafe;
+  }
+}
+
+.ra-dialog-body {
+  padding: 1rem 1.1rem;
+  overflow-y: auto;
+}
+
+.ra-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.ra-work-list {
+  padding-left: 1.1rem;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.ra-ratings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ra-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+
+  input {
+    margin: 0;
+  }
+
+  &.is-selected {
+    border-color: #16a34a;
+    background: #f0fdf4;
+  }
+
+  &.is-reject.is-selected {
+    border-color: #dc2626;
+    background: #fef2f2;
+  }
+}
+
+.ra-rating-value {
+  font-weight: 700;
+  width: 1rem;
+  text-align: center;
+}
+
+.ra-rating-stars {
+  color: #f59e0b;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.ra-rating-label {
+  font-size: 0.88rem;
+}

@@ -32,6 +32,9 @@
   <!-- PARADAS EN CURSO (sin filtro de fecha; solo visible si hay paradas sin hora de fin) -->
   <app-ongoing-stops class="d-block mt-4" [area]="effectiveArea" (finished)="onStopFinished($event)"></app-ongoing-stops>
 
+  <!-- INTERVENCIONES DE MANTENIMIENTO / MECÁNICA POR ACEPTAR (solo visible si hay pendientes) -->
+  <app-requester-acceptance class="d-block mt-4" [scope]="effectiveArea"></app-requester-acceptance>
+
   <!-- TARJETA DE CONTENIDO -->
   <div class="card view-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">

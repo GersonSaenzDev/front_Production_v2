@@ -936,22 +936,47 @@ export const NavigationItems: NavigationItem[] = [
     ]
   },
   {
+    // Antes "Mecanizado". Ver MenuAccessService (GROUP_AREA_MAP / DEPARTMENT_ACCESS: 'MECÁNICA').
     id: 'mecanizado-group',
-    title: 'Mecanizado',
+    title: 'Mecánica',
     type: 'group',
     icon: 'ti ti-tool',
     children: [
       {
         id: 'mecanizado-collapse',
-        title: 'Mecanizado',
+        title: 'Mecánica',
         type: 'collapse',
         icon: 'ti ti-tool',
         classes: 'nav-item',
         isMainParent: true,
         children: [
           {
+            id: 'mecanica-request-item',
+            title: 'Solicitud Herramental (SME)',
+            type: 'item',
+            // Exclusivo del Jefe de Mecánica (ver isMechanicsTechnician).
+            url: 'machining/mechanicsRequest',
+            breadcrumbs: true
+          },
+          {
+            id: 'mecanica-management-item',
+            title: 'Gestión de Solicitudes',
+            type: 'item',
+            // Exclusivo del Jefe: novedades entrantes, paradas, asignar, aceptación y cierre.
+            url: 'machining/mechanicsManagement',
+            breadcrumbs: true
+          },
+          {
+            id: 'mecanica-upload-item',
+            title: 'Cargue de Intervención',
+            type: 'item',
+            // Item del mecánico: registrar su propio trabajo en lo que se le asignó.
+            url: 'machining/mechanicsUpload',
+            breadcrumbs: true
+          },
+          {
             id: 'mecanizado-novedades-item',
-            title: 'Novedades Mecanizado',
+            title: 'Reportar Novedad',
             type: 'item',
             url: 'machining/machiningNews',
             breadcrumbs: true

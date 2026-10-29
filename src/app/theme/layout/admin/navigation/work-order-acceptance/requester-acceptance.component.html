@@ -1,0 +1,159 @@
+<!-- src/app/theme/layout/admin/navigation/work-order-acceptance/requester-acceptance.component.html -->
+<div class="ra-card" *ngIf="items.length > 0">
+  <div class="ra-header" (click)="expanded = !expanded" role="button">
+    <div class="ra-header-text">
+      <i class="ti ti-clipboard-check"></i>
+      <div>
+        <h6 class="mb-0">Intervenciones por aceptar</h6>
+        <small>Mantenimiento y Mecánica no pueden cerrar estas solicitudes hasta que quien reportó la novedad las acepte y evalúe.</small>
+      </div>
+    </div>
+    <div class="ra-counters">
+      <span class="badge bg-danger" title="Las que usted reportó y debe aceptar">Mías: {{ mineCount }}</span>
+      <span class="badge bg-light text-dark" title="Pendientes del área">Del área: {{ areaCount }}</span>
+      <button
+        type="button"
+        class="btn btn-sm btn-light"
+        (click)="$event.stopPropagation(); load()"
+        [disabled]="isLoading"
+        title="Actualizar"
+      >
+        <span *ngIf="isLoading" class="spinner-border spinner-border-sm"></span>
+        <i *ngIf="!isLoading" class="ti ti-refresh"></i>
+      </button>
+      <i class="ti" [class.ti-chevron-up]="expanded" [class.ti-chevron-down]="!expanded"></i>
+    </div>
+  </div>
+
+  <div class="ra-body" *ngIf="expanded">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Área</th>
+            <th>Solicitud</th>
+            <th>Equipo / herramental</th>
+            <th>Trabajo solicitado</th>
+            <th>Reportó</th>
+            <th>Enviada</th>
+            <th class="text-end">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let it of items" [class.ra-row-mine]="it.mine">
+            <td>
+              <span class="badge" [class.bg-primary]="it.serviceArea === 'MANTENIMIENTO'" [class.bg-dark]="it.serviceArea === 'MECANICA'">
+                {{ serviceAreaLabel(it.serviceArea) }}
+              </span>
+            </td>
+            <td class="text-nowrap">
+              <strong>{{ it.consecutive }}</strong>
+            </td>
+            <td>{{ it.subject }}</td>
+            <td class="ra-desc" [title]="it.description">{{ it.description }}</td>
+            <td>
+              {{ it.requesterName }}
+              <small class="text-muted d-block" *ngIf="it.origin">{{ it.origin }}</small>
+            </td>
+            <td class="text-nowrap">
+              <small>{{ it.sentAt || '—' }}</small>
+            </td>
+            <td class="text-end text-nowrap">
+              <button type="button" class="btn btn-sm btn-success" *ngIf="it.mine" (click)="openEvaluation(it)">
+                <i class="ti ti-star me-1"></i>
+                Aceptar y evaluar
+              </button>
+              <small class="text-muted" *ngIf="!it.mine" title="Solo quien reportó la novedad puede aceptarla">
+                <i class="ti ti-lock"></i>
+                La acepta {{ it.requesterName }}
+              </small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL EVALUACIÓN ================= -->
+<div class="ra-backdrop" *ngIf="selected" (click)="closeEvaluation()">
+  <div class="ra-dialog" (click)="$event.stopPropagation()">
+    <div class="ra-dialog-header">
+      <div>
+        <h5 class="mb-0">
+          <i class="ti ti-star"></i>
+          Aceptar y evaluar la intervención
+        </h5>
+        <small>{{ serviceAreaLabel(selected.serviceArea) }} · {{ selected.consecutive }} · {{ selected.subject }}</small>
+      </div>
+      <button type="button" class="btn-close btn-close-white" (click)="closeEvaluation()" [disabled]="isSaving"></button>
+    </div>
+
+    <div class="ra-dialog-body">
+      <div class="mb-3">
+        <small class="text-muted fw-semibold d-block">Trabajo solicitado</small>
+        <div>{{ selected.description }}</div>
+      </div>
+
+      <div class="mb-3" *ngIf="selected.interventions.length">
+        <small class="text-muted fw-semibold d-block mb-1">Lo que hizo el área</small>
+        <ul class="ra-work-list">
+          <li *ngFor="let w of selected.interventions">
+            {{ w.workDone }}
+            <small class="text-muted d-block">
+              {{ w.person?.fullName || '' }} · {{ w.startAt }} → {{ w.endAt }} · {{ formatMinutes(w.durationMinutes) }}
+            </small>
+          </li>
+        </ul>
+      </div>
+
+      <label class="form-label fw-semibold">
+        Criterio de evaluación
+        <span class="text-danger">*</span>
+      </label>
+      <div class="ra-ratings">
+        <label
+          class="ra-rating"
+          *ngFor="let r of ratingOptions"
+          [class.is-selected]="rating === r.value"
+          [class.is-reject]="r.value === rejectRating"
+        >
+          <input type="radio" name="rating" [value]="r.value" [(ngModel)]="rating" />
+          <span class="ra-rating-value">{{ r.value }}</span>
+          <span class="ra-rating-stars">{{ ratingStars(r.value) }}</span>
+          <span class="ra-rating-label">{{ r.label }}</span>
+        </label>
+      </div>
+      <div class="alert alert-danger py-2 mt-2 mb-0" *ngIf="rating === rejectRating">
+        <i class="ti ti-alert-triangle me-1"></i>
+        La intervención no cumplió lo esperado: la solicitud se reabrirá para que el área vuelva a intervenir.
+      </div>
+
+      <label class="form-label fw-semibold mt-3">
+        Comentario / justificación
+        <span class="text-danger">*</span>
+      </label>
+      <textarea
+        class="form-control"
+        rows="3"
+        [(ngModel)]="comment"
+        placeholder="¿Qué vio en el proceso de intervención? ¿Quedó funcionando?"
+      ></textarea>
+    </div>
+
+    <div class="ra-dialog-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeEvaluation()" [disabled]="isSaving">Cancelar</button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-success]="rating !== rejectRating"
+        [class.btn-danger]="rating === rejectRating"
+        (click)="submitEvaluation()"
+        [disabled]="isSaving"
+      >
+        <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+        {{ rating === rejectRating ? 'Rechazar y reabrir' : 'Aceptar intervención' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -17,6 +17,9 @@
   <!-- PARADAS EN CURSO (solo visible si hay paradas sin hora de fin) -->
   <app-ongoing-stops class="d-block mt-4" [area]="stopsScope"></app-ongoing-stops>
 
+  <!-- INTERVENCIONES DE MANTENIMIENTO / MECÁNICA POR ACEPTAR (solo visible si hay pendientes) -->
+  <app-requester-acceptance class="d-block mt-4" [scope]="stopsScope"></app-requester-acceptance>
+
   <!-- TARJETA DEL FORMULARIO -->
   <div class="card form-card border-0 mt-4">
     <div class="card-body p-4 p-md-5">

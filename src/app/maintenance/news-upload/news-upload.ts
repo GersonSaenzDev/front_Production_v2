@@ -29,6 +29,7 @@ import { AuthService } from '../../services/auth-services';
 import { MaintenanceServices } from '../../services/maintenance-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
 import { calculateMinutes, formatMinutes, toBackendDateTime, toDatetimeLocal } from '../maintenance-time.util';
+import { workOrderStatusClass, workOrderStatusLabel } from '../../theme/layout/admin/navigation/work-order-acceptance/work-order.util';
 
 interface InterventionFormModel {
   workDone: string;
@@ -63,6 +64,7 @@ export class NewsUpload implements OnInit {
   }
 
   readonly formatMinutes = formatMinutes;
+  readonly statusLabel = workOrderStatusLabel;
 
   orders: MaintenanceRequest[] = [];
   isLoading = false;
@@ -310,18 +312,7 @@ export class NewsUpload implements OnInit {
   }
 
   statusClass(status: MaintenanceStatus): string {
-    switch (status) {
-      case 'PENDIENTE':
-        return 'badge bg-secondary';
-      case 'EN_PROCESO':
-        return 'badge bg-info text-dark';
-      case 'COMPLETADO':
-        return 'badge bg-success';
-      case 'CANCELADO':
-        return 'badge bg-danger';
-      default:
-        return 'badge bg-light text-dark';
-    }
+    return workOrderStatusClass(status);
   }
 
   priorityClass(priority: MaintenancePriority): string {

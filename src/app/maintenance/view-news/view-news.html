@@ -130,6 +130,20 @@
     </div>
 
     <div class="card-body">
+      <!-- Aceptación del solicitante: control de lo que falta para poder cerrar -->
+      <div class="acceptance-counters mb-3" *ngIf="awaitingAcceptanceCount || readyToCloseCount">
+        <button type="button" class="acceptance-counter is-waiting" [class.is-active]="acceptanceFilter === 'ESPERANDO'"
+          (click)="toggleAcceptanceFilter('ESPERANDO')" title="Filtrar">
+          <i class="ti ti-hourglass"></i>
+          <strong>{{ awaitingAcceptanceCount }}</strong> sin aceptar por el área solicitante (pendientes de cerrar)
+        </button>
+        <button type="button" class="acceptance-counter is-ready" [class.is-active]="acceptanceFilter === 'LISTAS'"
+          (click)="toggleAcceptanceFilter('LISTAS')" title="Filtrar">
+          <i class="ti ti-circle-check"></i>
+          <strong>{{ readyToCloseCount }}</strong> aceptadas, listas para cerrar
+        </button>
+      </div>
+
       <!-- Filtros -->
       <div class="row g-2 align-items-end mb-3">
         <div class="col-md-2">
@@ -191,10 +205,10 @@
                 <span class="spinner-border spinner-border-sm me-1"></span> Cargando…
               </td>
             </tr>
-            <tr *ngIf="!isLoading && orders.length === 0">
+            <tr *ngIf="!isLoading && visibleOrders.length === 0">
               <td colspan="9" class="text-center text-muted py-3">Sin solicitudes.</td>
             </tr>
-            <tr *ngFor="let o of orders">
+            <tr *ngFor="let o of visibleOrders">
               <td><strong>#{{ o.consecutiveMtto }}</strong></td>
               <td>
                 <div>{{ o.machineCode }}</div>
@@ -202,7 +216,7 @@
               </td>
               <td>{{ o.maintenanceType }}</td>
               <td><span [class]="priorityClass(o.priority)">{{ o.priority }}</span></td>
-              <td><span [class]="statusClass(o.status)">{{ o.status }}</span></td>
+              <td><span [class]="statusClass(o.status)">{{ statusLabel(o.status) }}</span></td>
               <td>{{ o.assignedTo || '—' }}</td>
               <td>{{ o.scheduledDate || '—' }}</td>
               <td>
@@ -210,8 +224,12 @@
                   [class.bg-light]="!o.supervisorApproval" [class.text-dark]="!o.supervisorApproval"
                   title="Supervisor">S</span>
                 <span class="badge ms-1" [class.bg-success]="o.requesterApproval"
-                  [class.bg-light]="!o.requesterApproval" [class.text-dark]="!o.requesterApproval"
-                  title="Solicitante">R</span>
+                  [class.bg-warning]="!o.requesterApproval && acceptanceState(o) === 'ESPERANDO'"
+                  [class.bg-light]="!o.requesterApproval && acceptanceState(o) !== 'ESPERANDO'"
+                  [class.text-dark]="!o.requesterApproval"
+                  [title]="o.requesterApproval?.rating ? 'Solicitante: ' + o.requesterApproval?.rating + '/5' : 'Solicitante'">
+                  R<span *ngIf="o.requesterApproval?.rating"> {{ o.requesterApproval?.rating }}</span>
+                </span>
               </td>
               <td class="text-end text-nowrap col-actions">
                 <button class="btn btn-sm btn-outline-info me-1" (click)="openDetail(o)" title="Ver detalle">
@@ -270,7 +288,7 @@
           </div>
           <div class="mtto-detail-item">
             <strong>Estado</strong>
-            <span [class]="statusClass(detailOrder.status)">{{ detailOrder.status }}</span>
+            <span [class]="statusClass(detailOrder.status)">{{ statusLabel(detailOrder.status) }}</span>
           </div>
           <div class="mtto-detail-item">
             <strong>Asignado a</strong>
@@ -497,7 +515,8 @@
                 [class.ti-circle]="!detailOrder.supervisorApproval"></i>
               Supervisor
             </button>
-            <button class="btn btn-sm" [class.btn-success]="detailOrder.requesterApproval"
+            <!-- Con novedad de origen, el Vo.Bo del solicitante lo da quien la reportó (ver Aceptación). -->
+            <button class="btn btn-sm" *ngIf="!detailOrder.requester" [class.btn-success]="detailOrder.requesterApproval"
               [class.btn-outline-success]="!detailOrder.requesterApproval"
               (click)="approve(detailOrder, 'SOLICITANTE')">
               <i class="ti me-1" [class.ti-check]="detailOrder.requesterApproval"
@@ -505,6 +524,12 @@
               Solicitante
             </button>
           </div>
+        </div>
+
+        <div class="mtto-section">
+          <app-work-order-acceptance [order]="detailOrder" [canManage]="canManage" [busy]="isSavingAcceptance"
+            (sendToAcceptance)="sendToAcceptance(detailOrder)" (closeOrder)="closeOrder(detailOrder)">
+          </app-work-order-acceptance>
         </div>
       </div>
       <div class="modal-footer">
@@ -541,8 +566,13 @@
             <div class="mtto-form-group">
               <label class="form-label">Estado</label>
               <select class="form-select" [(ngModel)]="editForm.status">
-                <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+                <option *ngFor="let s of statuses" [value]="s" [disabled]="isStatusOptionDisabled(editOrder, s)">
+                  {{ statusLabel(s) }}
+                </option>
               </select>
+              <small class="text-muted" *ngIf="isStatusOptionDisabled(editOrder, 'COMPLETADO')">
+                Para cerrar, {{ editOrder.requester?.name }} debe aceptar y evaluar la intervención.
+              </small>
             </div>
             <div class="mtto-form-group">
               <label class="form-label">Prioridad</label>
@@ -710,7 +740,7 @@
           </div>
           <div class="mtto-delete-row">
             <span class="mtto-delete-label">Estado</span>
-            <span [class]="statusClass(orderToDelete.status)">{{ orderToDelete.status }}</span>
+            <span [class]="statusClass(orderToDelete.status)">{{ statusLabel(orderToDelete.status) }}</span>
           </div>
           <div class="mtto-delete-row">
             <span class="mtto-delete-label">Asignado a</span>

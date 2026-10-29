@@ -38,7 +38,7 @@ export class MaintenanceWarehouse implements OnInit {
   private authService = inject(AuthService);
   private toastr = inject(ToastrService);
 
-  readonly statuses: MaintenanceStatus[] = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
+  readonly statuses: MaintenanceStatus[] = ['PENDIENTE', 'EN_PROCESO', 'PENDIENTE_ACEPTACION', 'COMPLETADO', 'CANCELADO'];
 
   // ============================================================
   //  LISTADO DE SOLICITUDES
@@ -88,6 +88,8 @@ export class MaintenanceWarehouse implements OnInit {
         return 'badge bg-secondary';
       case 'EN_PROCESO':
         return 'badge bg-info text-dark';
+      case 'PENDIENTE_ACEPTACION':
+        return 'badge bg-warning text-dark';
       case 'COMPLETADO':
         return 'badge bg-success';
       case 'CANCELADO':

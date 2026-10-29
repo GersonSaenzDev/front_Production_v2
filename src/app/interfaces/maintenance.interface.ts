@@ -3,7 +3,12 @@
 /* ===================== Catálogos ===================== */
 
 export type MaintenanceType = 'PREVENTIVO' | 'CORRECTIVO' | 'PREDICTIVO';
-export type MaintenanceStatus = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
+/**
+ * PENDIENTE_ACEPTACION: el Jefe envió la intervención a quien reportó la novedad para que la
+ * acepte y evalúe (1-5). Sin esa aceptación el backend no permite pasar a COMPLETADO.
+ * Compartido con Mecánica (mismo ciclo de orden de trabajo).
+ */
+export type MaintenanceStatus = 'PENDIENTE' | 'EN_PROCESO' | 'PENDIENTE_ACEPTACION' | 'COMPLETADO' | 'CANCELADO';
 export type MaintenancePriority = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 export type ApprovalRole = 'SUPERVISOR' | 'SOLICITANTE';
 
@@ -45,6 +50,40 @@ export interface Approval {
   approvedBy: string;
   approvedAt: string;
   observation: string | null;
+  /** Solo en requesterApproval: el solicitante aceptó la intervención (habilita el cierre). */
+  accepted?: boolean;
+  /** Solo en requesterApproval: criterio de evaluación 1..5 y su comentario. */
+  rating?: number;
+  ratingLabel?: string;
+  comment?: string;
+  approvedByUid?: string;
+}
+
+/**
+ * Quien reportó la novedad de origen (snapshot de productionNews.origin.reportedBy). Es el ÚNICO
+ * que puede aceptar y evaluar la intervención. null = solicitud sin novedad (no exige aceptación).
+ */
+export interface WorkOrderRequester {
+  uid: string;
+  userApp?: string;
+  name: string;
+  area?: string;
+  subArea?: string;
+  /** Área / subárea donde se originó la novedad (catálogo). */
+  originArea?: string;
+  originSubArea?: string;
+  newsId?: string;
+}
+
+/** Una evaluación del solicitante (historial: una por cada ronda de aceptación). */
+export interface RequesterEvaluation {
+  rating: number;
+  ratingLabel: string;
+  comment: string;
+  result: 'ACEPTADA' | 'RECHAZADA';
+  evaluatedBy: string;
+  evaluatedByUid: string;
+  evaluatedAt: string;
 }
 
 /** Ciclo de vida de la solicitud de escalamiento a mesa técnica de una intervención. */
@@ -151,6 +190,9 @@ export interface MaintenanceRequest {
   warehouseDeliveries: WarehouseDelivery[];
   supervisorApproval: Approval | null;
   requesterApproval: Approval | null;
+  /** Quien reportó la novedad de origen (único que acepta/evalúa); null si no aplica. */
+  requester: WorkOrderRequester | null;
+  requesterEvaluations: RequesterEvaluation[];
   auditTrail: AuditEntry[];
   active: boolean;
   userCreate: string | null;
@@ -268,6 +310,12 @@ export interface ApprovalRequest {
   observation?: string;
 }
 
+/** Aceptación + evaluación del solicitante. Calificación 1 ("No funciona") reabre la solicitud. */
+export interface RequesterEvaluationRequest {
+  rating: number;
+  comment: string;
+}
+
 export interface MaintenanceListFilters {
   consecutiveMtto?: string;
   status?: MaintenanceStatus;
@@ -306,6 +354,13 @@ export interface ApprovalResponse {
     supervisorApproval: Approval | null;
     requesterApproval: Approval | null;
   };
+}
+
+/** Intervenciones esperando aceptación: las del usuario (mine) y las de su área (area). */
+export interface RequesterPendingResponse<T> {
+  ok: boolean;
+  msg?: string;
+  data: { mine: T[]; area: T[] };
 }
 
 export interface DeleteMaintenanceResponse {

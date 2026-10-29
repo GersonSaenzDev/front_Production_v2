@@ -24,6 +24,8 @@ export class RhStaffServices {
 
   /** Término para identificar al personal de mantenimiento por área/departamento. */
   private readonly MAINTENANCE_KEYWORD = 'MANTENIMIENTO';
+  /** Término para identificar al personal de Mecánica (departamento MECANICA). */
+  private readonly MECHANICS_KEYWORD = 'MECANICA';
 
   private handleError(error: any) {
     console.error('RhStaffServices: Error en la petición:', error);
@@ -63,20 +65,32 @@ export class RhStaffServices {
    * endpoint dedicado aún no esté desplegado en el backend de RH.
    */
   getMaintenanceTechnicians(): Observable<MaintenanceTechnician[]> {
-    return this.getStaffByDepartment(this.MAINTENANCE_KEYWORD, this.MAINTENANCE_KEYWORD).pipe(
+    return this.getTechniciansByKeyword(this.MAINTENANCE_KEYWORD);
+  }
+
+  /**
+   * Personal de Mecánica (mecánicos y auxiliares) con su especialidad. Mismo mecanismo y
+   * fallback que getMaintenanceTechnicians.
+   */
+  getMechanicsTechnicians(): Observable<MaintenanceTechnician[]> {
+    return this.getTechniciansByKeyword(this.MECHANICS_KEYWORD);
+  }
+
+  private getTechniciansByKeyword(keyword: string): Observable<MaintenanceTechnician[]> {
+    return this.getStaffByDepartment(keyword, keyword).pipe(
       map((res) => (res?.ok && res.data ? res.data : [])),
       catchError(() => of([] as ActiveStaff[])),
-      switchMap((list) => (list.length ? of(list) : this.maintenanceFromActiveStaff())),
+      switchMap((list) => (list.length ? of(list) : this.keywordFromActiveStaff(keyword))),
       map((list) => list.map((s) => this.toTechnician(s))),
     );
   }
 
-  /** Fallback: trae el personal activo completo y filtra mantenimiento (solo Activo) en el cliente. */
-  private maintenanceFromActiveStaff(): Observable<ActiveStaff[]> {
+  /** Fallback: trae el personal activo completo y filtra por área/departamento (solo Activo) en el cliente. */
+  private keywordFromActiveStaff(keyword: string): Observable<ActiveStaff[]> {
     return this.getActiveStaff().pipe(
       map((res) => {
         const list = res?.ok && res.data ? res.data : [];
-        return list.filter((s) => this.isMaintenance(s) && this.isActive(s));
+        return list.filter((s) => this.matchesKeyword(s, keyword) && this.isActive(s));
       }),
       catchError(() => of([] as ActiveStaff[])),
     );
@@ -87,10 +101,12 @@ export class RhStaffServices {
     return !staff.CurrentEmployeeStatus || staff.CurrentEmployeeStatus === 'Activo';
   }
 
-  private isMaintenance(staff: ActiveStaff): boolean {
-    const kw = this.MAINTENANCE_KEYWORD.toLowerCase();
-    const area = (staff.staffAssignment?.area || '').toLowerCase();
-    const dept = (staff.staffAssignment?.departament || '').toLowerCase();
+  private matchesKeyword(staff: ActiveStaff, keyword: string): boolean {
+    // Sin tildes: RH puede tener "MECÁNICA" o "MECANICA".
+    const norm = (v: string) => v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const kw = norm(keyword);
+    const area = norm(staff.staffAssignment?.area || '');
+    const dept = norm(staff.staffAssignment?.departament || '');
     return area.includes(kw) || dept.includes(kw);
   }
 

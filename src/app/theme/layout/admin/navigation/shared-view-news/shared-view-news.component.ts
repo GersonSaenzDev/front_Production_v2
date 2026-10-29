@@ -15,6 +15,7 @@ import {
 } from '../../../../../services/socket-service';
 import { displayArea } from '../area-display.util';
 import { OngoingStopsComponent } from '../ongoing-stops/ongoing-stops.component';
+import { RequesterAcceptanceComponent } from '../work-order-acceptance/requester-acceptance.component';
 import { Time24Directive } from '../time-24.directive';
 import {
   formatDurationLabel,
@@ -39,7 +40,7 @@ export interface CategorySummary {
 @Component({
   selector: 'app-shared-view-news',
   standalone: true,
-  imports: [CommonModule, FormsModule, OngoingStopsComponent, Time24Directive],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent, Time24Directive, RequesterAcceptanceComponent],
   templateUrl: './shared-view-news.component.html',
   styleUrls: ['./shared-view-news.component.scss'],
   providers: [{ provide: LOCALE_ID, useValue: 'es' }]
