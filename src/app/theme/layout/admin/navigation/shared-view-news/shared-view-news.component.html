@@ -9,22 +9,59 @@
       </div>
       <div class="header-text">
         <h3 class="header-title mb-1">{{ displayTitle }}</h3>
-        <p class="header-subtitle mb-0">
-          Mostrando novedades para
-          <strong>{{ selectedDate | date:'fullDate':'':'es' }}</strong>
+        <p class="header-subtitle mb-0" *ngIf="startDate === endDate">
+          Mostrando novedades del <strong>{{ startDate | date:'fullDate':'':'es' }}</strong>
+        </p>
+        <p class="header-subtitle mb-0" *ngIf="startDate !== endDate">
+          Mostrando novedades del <strong>{{ startDate | date:'d MMM y':'':'es' }}</strong>
+          al <strong>{{ endDate | date:'d MMM y':'':'es' }}</strong>
+        </p>
+        <p class="header-subtitle mb-0" *ngIf="selectedScope">
+          <i class="ti ti-filter"></i> Área consultada: <strong>{{ selectedScopeLabel }}</strong>
         </p>
       </div>
 
       <div class="header-actions">
-        <div class="filter-group">
-          <label for="headerNewsDate" class="filter-label">Fecha de consulta</label>
-          <input
-            type="date"
-            id="headerNewsDate"
-            class="form-control filter-input"
-            [(ngModel)]="selectedDate"
-            (ngModelChange)="onDateChange()">
+        <div class="range-group">
+          <div class="filter-group">
+            <label for="headerStartDate" class="filter-label">Desde</label>
+            <input
+              type="date"
+              id="headerStartDate"
+              class="form-control filter-input"
+              [max]="endDate"
+              [(ngModel)]="startDate"
+              (ngModelChange)="onDateChange()">
+          </div>
+          <div class="filter-group">
+            <label for="headerEndDate" class="filter-label">Hasta</label>
+            <input
+              type="date"
+              id="headerEndDate"
+              class="form-control filter-input"
+              [min]="startDate"
+              [(ngModel)]="endDate"
+              (ngModelChange)="onDateChange()">
+          </div>
+          <!-- Filtro de área: solo jefes, dirección y gerencia -->
+          <div class="filter-group" *ngIf="canFilterAreas">
+            <label for="headerScope" class="filter-label">Área</label>
+            <select id="headerScope" class="form-select filter-input" [(ngModel)]="selectedScope" (ngModelChange)="onScopeChange()">
+              <option value="">Mi área</option>
+              <optgroup *ngFor="let g of areaOptions" [label]="g.area">
+                <option [value]="g.area">{{ g.area }} (todas)</option>
+                <option *ngFor="let s of g.subAreas" [value]="s.subArea">{{ s.subArea }}</option>
+              </optgroup>
+            </select>
+          </div>
         </div>
+        <div class="quick-ranges">
+          <button type="button" class="quick-range" [class.is-active]="activeQuickRange === 'today'" (click)="setQuickRange('today')">Hoy</button>
+          <button type="button" class="quick-range" [class.is-active]="activeQuickRange === 'week'" (click)="setQuickRange('week')">7 días</button>
+          <button type="button" class="quick-range" [class.is-active]="activeQuickRange === 'month30'" (click)="setQuickRange('month30')">30 días</button>
+          <button type="button" class="quick-range" [class.is-active]="activeQuickRange === 'thisMonth'" (click)="setQuickRange('thisMonth')">Este mes</button>
+        </div>
+        <small class="range-error" *ngIf="rangeError"><i class="ti ti-alert-circle"></i> {{ rangeError }}</small>
       </div>
     </div>
   </div>
@@ -32,8 +69,91 @@
   <!-- PARADAS EN CURSO (sin filtro de fecha; solo visible si hay paradas sin hora de fin) -->
   <app-ongoing-stops class="d-block mt-4" [area]="effectiveArea" (finished)="onStopFinished($event)"></app-ongoing-stops>
 
-  <!-- INTERVENCIONES DE MANTENIMIENTO / MECÁNICA POR ACEPTAR (solo visible si hay pendientes) -->
-  <app-requester-acceptance class="d-block mt-4" [scope]="effectiveArea"></app-requester-acceptance>
+  <!-- INTERVENCIONES DE MANTENIMIENTO / MECÁNICA POR APROBAR (solo visible si hay pendientes) -->
+  <app-requester-acceptance class="d-block mt-4" [scope]="effectiveScope" (evaluated)="onAcceptanceEvaluated($event)"></app-requester-acceptance>
+
+  <!-- APROBADAS POR EL ÁREA, PENDIENTES DE CIERRE POR MANTENIMIENTO / MECÁNICA -->
+  <app-closure-tracking class="d-block mt-4" mode="area" [scope]="effectiveScope"></app-closure-tracking>
+
+  <!-- PROYECTOS A MI CARGO (novedades con proyecto cuyo responsable es el usuario) -->
+  <div class="followed-card project-card mt-4" *ngIf="myProjects.length > 0">
+    <div class="followed-header" role="button" (click)="showMyProjects = !showMyProjects">
+      <div class="followed-title">
+        <i class="ti ti-briefcase"></i>
+        <div>
+          <h6 class="mb-0">Proyectos a mi cargo ({{ myProjects.length }})</h6>
+          <small>Novedades abiertas en las que usted fue asignado como responsable, sin importar la fecha.</small>
+        </div>
+      </div>
+      <i class="ti" [class.ti-chevron-up]="showMyProjects" [class.ti-chevron-down]="!showMyProjects"></i>
+    </div>
+    <div class="followed-list" *ngIf="showMyProjects">
+      <div class="followed-item" *ngFor="let item of myProjects" [ngClass]="getCategoryClass(item.category)">
+        <div class="followed-main">
+          <span class="project-pill"><i class="ti ti-briefcase"></i> {{ item.project?.name }}</span>
+          <span class="status-pill" [ngClass]="getStatusClass(item)">{{ getStatusLabel(item) }}</span>
+        </div>
+        <div class="followed-sub">
+          <span><i class="ti ti-calendar"></i> {{ item.newsDate }}</span>
+          <span><i class="ti ti-map-pin"></i> {{ getOriginLabel(item) }}</span>
+          <span><i class="ti ti-user"></i> {{ item.origin?.reportedBy?.name || '—' }}</span>
+        </div>
+        <p class="followed-detail" [title]="item.detail">{{ item.detail }}</p>
+        <div class="followed-actions">
+          <button type="button" class="btn-detail" (click)="openDetailModal(item)">
+            <i class="ti ti-eye"></i> <span class="btn-label">Detalle</span>
+          </button>
+          <button type="button" class="btn-respond" (click)="openResponseModal(item)" [disabled]="item.isClosed">
+            <i class="ti ti-message-circle-2"></i> <span class="btn-label">Responder</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOVEDADES EN SEGUIMIENTO (máx. 5 por usuario, sin importar la fecha) -->
+  <div class="followed-card mt-4" *ngIf="followedNews.length > 0">
+    <div class="followed-header" role="button" (click)="showFollowed = !showFollowed">
+      <div class="followed-title">
+        <i class="ti ti-star-filled"></i>
+        <div>
+          <h6 class="mb-0">Mis novedades en seguimiento ({{ followedNews.length }}/{{ maxFollowed }})</h6>
+          <small>Se muestran sin importar la fecha en que se crearon.</small>
+        </div>
+      </div>
+      <i class="ti" [class.ti-chevron-up]="showFollowed" [class.ti-chevron-down]="!showFollowed"></i>
+    </div>
+    <div class="followed-list" *ngIf="showFollowed">
+      <div class="followed-item" *ngFor="let item of followedNews" [ngClass]="getCategoryClass(item.category)">
+        <div class="followed-main">
+          <span class="cat-pill" [ngClass]="getCategoryClass(item.category)">{{ item.category }}</span>
+          <span class="status-pill" [ngClass]="getStatusClass(item)">{{ getStatusLabel(item) }}</span>
+          <span class="wo-chip" *ngFor="let wo of workOrdersOf(item)" [ngClass]="workOrderPhaseClass(wo)" [title]="workOrderPhaseLabel(wo)">
+            {{ wo.label }} · {{ workOrderPhaseLabel(wo) }}
+          </span>
+        </div>
+        <div class="followed-sub">
+          <span><i class="ti ti-calendar"></i> {{ item.newsDate }}</span>
+          <span><i class="ti ti-map-pin"></i> {{ getOriginLabel(item) }}</span>
+          <span><i class="ti ti-settings-cog"></i> {{ getMachineLabel(item) }}</span>
+        </div>
+        <p class="followed-detail" [title]="item.detail">{{ item.detail }}</p>
+        <div class="followed-actions">
+          <ng-container *ngFor="let wo of workOrdersOf(item)">
+            <button *ngIf="canApprove(wo)" type="button" class="btn-approve" (click)="approveWorkOrder(wo)">
+              <i class="ti ti-star"></i> Aprobar {{ wo.label }}
+            </button>
+          </ng-container>
+          <button type="button" class="btn-detail" (click)="openDetailModal(item)">
+            <i class="ti ti-eye"></i> <span class="btn-label">Detalle</span>
+          </button>
+          <button type="button" class="btn-unfollow" (click)="toggleFollow(item)" [disabled]="followBusyId === item._id" title="Quitar de seguimiento">
+            <i class="ti ti-star-off"></i> <span class="btn-label">Quitar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- TARJETA DE CONTENIDO -->
   <div class="card view-card border-0 mt-4">
@@ -43,7 +163,10 @@
       <div class="view-toolbar">
         <div class="toolbar-title">
           <h6 class="section-title mb-0">Novedades Reportadas</h6>
-          <small class="section-subtitle">Resumen y detalle del periodo seleccionado</small>
+          <small class="section-subtitle">
+            {{ totalNews }} novedad{{ totalNews === 1 ? '' : 'es' }} en el periodo
+            <ng-container *ngIf="searchTerm.trim()"> que coinciden con «{{ searchTerm.trim() }}»</ng-container>
+          </small>
         </div>
 
         <div class="search-wrapper">
@@ -51,13 +174,16 @@
           <input
             type="text"
             class="form-control search-input"
-            placeholder="Buscar por categoría, máquina, referencia, origen..."
+            placeholder="Buscar en todo el periodo: categoría, máquina, origen, MTTO/SME..."
             [(ngModel)]="searchTerm"
-            (input)="applyFilter()">
+            (ngModelChange)="onSearchChange($event)">
+          <button *ngIf="searchTerm" type="button" class="search-clear" (click)="clearSearch()" title="Limpiar búsqueda">
+            <i class="ti ti-x"></i>
+          </button>
         </div>
       </div>
 
-      <!-- SUMMARY -->
+      <!-- SUMMARY (sobre TODO el resultado, no solo el lote cargado) -->
       <div
         class="summary-counters"
         *ngIf="categorySummaries.length > 0 && !isLoading">
@@ -80,29 +206,44 @@
         <table class="news-table">
           <thead>
             <tr>
+              <th scope="col" class="follow-col" title="Seguimiento"><i class="ti ti-star"></i></th>
               <th scope="col">Categoría / Reporte</th>
               <th scope="col">Origen / Máquina</th>
               <th scope="col">Horario / Total</th>
-              <th scope="col">Estado</th>
+              <th scope="col">Estado / Orden</th>
               <th scope="col" class="action-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngIf="isLoading">
-              <td colspan="5" class="empty-cell">
+              <td colspan="6" class="empty-cell">
                 <span class="spinner-border spinner-border-sm me-2"></span>
                 Cargando novedades...
               </td>
             </tr>
 
             <tr *ngIf="!isLoading && paginatedNews.length === 0">
-              <td colspan="5" class="empty-cell">
+              <td colspan="6" class="empty-cell">
                 <i class="ti ti-database-off me-2"></i>
-                No se encontraron novedades para esta fecha.
+                {{ searchTerm.trim() ? 'Ninguna novedad del periodo coincide con la búsqueda.' : 'No se encontraron novedades para este periodo.' }}
               </td>
             </tr>
 
+            <ng-container *ngIf="!isLoading">
             <tr *ngFor="let item of paginatedNews" [ngClass]="getCategoryClass(item.category)">
+              <!-- Seguimiento -->
+              <td class="follow-col">
+                <button
+                  type="button"
+                  class="btn-follow"
+                  [class.is-followed]="isFollowed(item)"
+                  (click)="toggleFollow(item)"
+                  [disabled]="followBusyId === item._id || (!isFollowed(item) && isFollowLimitReached)"
+                  [title]="isFollowed(item) ? 'Quitar de seguimiento' : (isFollowLimitReached ? 'Ya sigue ' + maxFollowed + ' novedades' : 'Marcar en seguimiento')">
+                  <i class="ti" [class.ti-star-filled]="isFollowed(item)" [class.ti-star]="!isFollowed(item)"></i>
+                </button>
+              </td>
+
               <!-- Categoría + Tipo Parada · subtítulo con fecha de reporte -->
               <td class="cell-stacked">
                 <div class="cell-main">
@@ -115,6 +256,10 @@
                   <i class="ti ti-clock-hour-4"></i>
                   {{ item.origin?.reportedAt || item.dateCreate || '—' }}
                 </small>
+                <span class="project-pill" *ngIf="item.project?.name"
+                      [title]="'Responsable: ' + (item.project?.responsible?.fullName || '—')">
+                  <i class="ti ti-briefcase"></i> {{ item.project?.name }} · {{ item.project?.responsible?.fullName }}
+                </span>
               </td>
 
               <!-- Origen + Máquina -->
@@ -135,16 +280,36 @@
                 </span>
               </td>
 
-              <!-- Estado -->
-              <td>
-                <span class="status-pill" [ngClass]="getStatusClass(item)">
-                  {{ getStatusLabel(item) }}
+              <!-- Estado + Orden MTTO/SME + respuestas -->
+              <td class="cell-stacked">
+                <div class="cell-main">
+                  <span class="status-pill" [ngClass]="getStatusClass(item)">
+                    {{ getStatusLabel(item) }}
+                  </span>
+                  <span class="responses-count" *ngIf="responsesOf(item).length" title="Respuestas registradas">
+                    <i class="ti ti-messages"></i> {{ responsesOf(item).length }}
+                  </span>
+                </div>
+                <span class="wo-chip" *ngFor="let wo of workOrdersOf(item)" [ngClass]="workOrderPhaseClass(wo)" [title]="workOrderPhaseLabel(wo)">
+                  <strong>{{ wo.label }}</strong> · {{ workOrderPhaseLabel(wo) }}
+                  <span class="wo-stars" *ngIf="wo.acceptance">{{ ratingStars(wo.acceptance.rating) }}</span>
                 </span>
               </td>
 
               <!-- Acciones -->
               <td class="action-col">
                 <div class="action-group">
+                  <ng-container *ngFor="let wo of workOrdersOf(item)">
+                    <button
+                      *ngIf="canApprove(wo)"
+                      type="button"
+                      class="btn-approve"
+                      (click)="approveWorkOrder(wo)"
+                      [title]="'Aprobar el cierre de ' + wo.label + ' y calificar el servicio'">
+                      <i class="ti ti-star"></i>
+                      <span class="btn-label">Aprobar cierre</span>
+                    </button>
+                  </ng-container>
                   <button
                     *ngIf="isStopOngoing(item)"
                     type="button"
@@ -158,7 +323,7 @@
                     type="button"
                     class="btn-detail"
                     (click)="openDetailModal(item)"
-                    title="Ver detalle completo">
+                    title="Ver detalle completo, respuestas e intervenciones">
                     <i class="ti ti-eye"></i>
                     <span class="btn-label">Detalle</span>
                   </button>
@@ -174,21 +339,27 @@
                 </div>
               </td>
             </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
 
-      <!-- PAGINATION -->
+      <!-- PAGINATION (páginas de 10 dentro del lote de 100; cambia de lote automáticamente) -->
       <div class="pagination-controls">
-        <button type="button" class="btn-pagination" (click)="prevPage()" [disabled]="currentPage === 1">
+        <button type="button" class="btn-pagination" (click)="prevPage()" [disabled]="isLoading || (currentPage === 1 && !hasPrevBatch)">
           <i class="ti ti-chevron-left"></i> Anterior
         </button>
 
-        <span class="page-indicator">
-          Página <strong>{{ currentPage }}</strong> de <strong>{{ totalPages }}</strong>
-        </span>
+        <div class="page-info">
+          <span class="page-indicator">
+            Página <strong>{{ globalPage }}</strong> de <strong>{{ globalTotalPages }}</strong>
+          </span>
+          <small class="batch-indicator" *ngIf="totalNews > batchSize">
+            {{ batchLabel }} · se cargan de a {{ batchSize }}
+          </small>
+        </div>
 
-        <button type="button" class="btn-pagination" (click)="nextPage()" [disabled]="currentPage === totalPages">
+        <button type="button" class="btn-pagination" (click)="nextPage()" [disabled]="isLoading || (currentPage === totalPages && !hasNextBatch)">
           Siguiente <i class="ti ti-chevron-right"></i>
         </button>
       </div>
@@ -208,6 +379,7 @@
         <h5 class="modal-title">Detalle de la novedad</h5>
         <small class="modal-subtitle" *ngIf="detailNews">
           {{ detailNews.category }} · Ref. {{ detailNews.reference || '—' }}
+          <ng-container *ngFor="let wo of workOrdersOf(detailNews)"> · {{ wo.label }}</ng-container>
         </small>
       </div>
       <button type="button" class="modal-close" (click)="closeDetailModal()">
@@ -292,9 +464,20 @@
         </div>
       </div>
 
+      <!-- CONVERSACIÓN COMPLETA: proyecto, órdenes MTTO/SME (intervenciones + aprobaciones) y respuestas -->
+      <app-news-thread [news]="detailNews" [canApprove]="canApproveFn" (approve)="approveWorkOrder($event)"></app-news-thread>
+
       <div class="response-actions">
         <button type="button" class="btn-cancel" (click)="closeDetailModal()">
           Cerrar
+        </button>
+        <button
+          type="button"
+          class="btn-follow-text"
+          (click)="toggleFollow(detailNews)"
+          [disabled]="followBusyId === detailNews._id || (!isFollowed(detailNews) && isFollowLimitReached)">
+          <i class="ti me-1" [class.ti-star-filled]="isFollowed(detailNews)" [class.ti-star]="!isFollowed(detailNews)"></i>
+          {{ isFollowed(detailNews) ? 'Quitar seguimiento' : 'Seguir' }}
         </button>
         <button
           *ngIf="isStopOngoing(detailNews)"

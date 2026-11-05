@@ -40,6 +40,10 @@ export class MenuAccessService {
     if (module === 'inventories' && this.isExternalViewerUser(userData.userApp)) {
       return true;
     }
+    // Permiso aditivo de "Generar Etiquetas" (LABELS_VIEWER_USERS): habilita el módulo /printing.
+    if (module === 'printing' && this.isLabelsViewerUser(userData.userApp)) {
+      return true;
+    }
     return this.checkAccess(userData, module);
   }
 
@@ -181,6 +185,53 @@ export class MenuAccessService {
     return this.EXTERNAL_VIEWER_USERS.includes(code);
   }
 
+  // Usuarios de OTRAS áreas que, además de su menú normal, ven Producción > "Generar Etiquetas"
+  // (Control Impresión, Parámetros, Impresión, Procesos) y pueden entrar al módulo /printing.
+  // Permiso ADITIVO por userApp.
+  private readonly LABELS_VIEWER_USERS = ['JEVELASQUEZ'];
+
+  private isLabelsViewerUser(userApp?: string): boolean {
+    const code = userApp?.toUpperCase().trim() || '';
+    return this.LABELS_VIEWER_USERS.includes(code);
+  }
+
+  // Dirección de Producción (ej. ACPEÑA, Directora de Producción): además de su menú normal ven
+  // TODOS los collapses de novedades del grupo Producción, para registrar y consultar novedades
+  // de cualquier sección (el formulario deja elegir el área de origen). Permiso ADITIVO.
+  private readonly PRODUCTION_DIRECTOR_USERS = ['ACPEÑA'];
+
+  // Collapses del grupo "Producción" en navigation.ts (títulos en MAYÚSCULAS).
+  private static readonly PRODUCTION_NEWS_COLLAPSES = ['ENSAMBLE', 'CRUDO', 'VIDRIOS', 'ACABADOS', 'SATÉLITES'];
+  private static readonly PRODUCTION_LABELS_COLLAPSE = 'GENERAR ETIQUETAS';
+
+  /** Collapses del grupo Producción que el usuario ve por permiso aditivo (vacío si ninguno). */
+  private additiveProductionCollapses(userApp?: string): string[] {
+    const code = userApp?.toUpperCase().trim() || '';
+    const titles: string[] = [];
+    if (this.PRODUCTION_DIRECTOR_USERS.includes(code)) titles.push(...MenuAccessService.PRODUCTION_NEWS_COLLAPSES);
+    if (this.LABELS_VIEWER_USERS.includes(code)) titles.push(MenuAccessService.PRODUCTION_LABELS_COLLAPSE);
+    return titles;
+  }
+
+  /**
+   * Aplica los permisos aditivos del grupo Producción. Devuelve null si el item no aplica (sigue
+   * la lógica normal). Para los collapses de Producción que NO cubre el permiso, respeta el
+   * acceso propio del usuario (grupo + collapse) para no abrirle el resto de Producción.
+   */
+  private resolveAdditiveProductionAccess(item: any, area: string, dept: string, userApp?: string): boolean | null {
+    const extra = this.additiveProductionCollapses(userApp);
+    if (!extra.length) return null;
+    const title = item.title?.toUpperCase().trim() || '';
+    if (item.type === 'group' && title === 'PRODUCCIÓN') return true;
+    if (item.type !== 'collapse') return null;
+    const isProductionCollapse =
+      MenuAccessService.PRODUCTION_NEWS_COLLAPSES.includes(title) || title === MenuAccessService.PRODUCTION_LABELS_COLLAPSE;
+    if (!isProductionCollapse) return null;
+    if (extra.includes(title)) return true;
+    const ownGroup = this.baseNavAccess({ type: 'group', title: 'Producción' }, area, dept, userApp);
+    return ownGroup && this.baseNavAccess(item, area, dept, userApp);
+  }
+
   // Lista PUNTUAL de usuarios autorizados a entrar al Almacén de Mantenimiento (entrega de
   // repuestos/materiales por solicitud: qué se entrega, quién entrega y quién recibe).
   // Acceso EXCLUSIVO y restrictivo (al revés de BODEGA_VIEWER_USERS): ni siquiera el resto
@@ -263,6 +314,22 @@ export class MenuAccessService {
    * MAINTENANCE_MANAGER_TYPES del backend (api_produccion/src/maintenance/helpers/maintenance.js).
    */
   private static readonly MAINTENANCE_MANAGER_TYPES = ['JEFE', 'ADMIN', 'GERENCIA', 'DIRECCION'];
+
+  /**
+   * Puede consultar novedades de OTRAS áreas en la vista global (filtro "Área"): Gerencia /
+   * Desarrollo, la Dirección de Producción (PRODUCTION_DIRECTOR_USERS) y los perfiles de
+   * jefatura (JEFE, ADMIN, GERENCIA, DIRECCION). El resto solo ve su propia área.
+   */
+  canViewOtherAreas(): boolean {
+    const userData = this.authService.userData();
+    if (!userData) return false;
+    const area = userData.area?.toUpperCase().trim() || '';
+    const dept = userData.departament?.toUpperCase().trim() || '';
+    if (this.isManagerWithFullAccess(area, dept)) return true;
+    const code = userData.userApp?.toUpperCase().trim() || '';
+    if (this.PRODUCTION_DIRECTOR_USERS.includes(code)) return true;
+    return this.isMaintenanceManager();
+  }
 
   /** Jefe de Mantenimiento (o perfil de gestión): puede corregir/habilitar intervenciones. */
   isMaintenanceManager(): boolean {
@@ -543,6 +610,15 @@ export class MenuAccessService {
       return true;
     }
 
+    // Permisos aditivos del grupo Producción (Dirección de Producción, Generar Etiquetas).
+    const additiveProduction = this.resolveAdditiveProductionAccess(item, area, dept, userData.userApp);
+    if (additiveProduction !== null) return additiveProduction;
+
+    return this.baseNavAccess(item, area, dept, userData.userApp);
+  }
+
+  /** Reglas base (planeación, departamento, grupo y collapse) sin permisos aditivos por usuario. */
+  private baseNavAccess(item: any, area: string, dept: string, userApp?: string): boolean {
     // Prioridad: acceso configurado por departamento
     // Planeación (grupo, collapse "Cargue" e items sueltos): regla única compartida con
     // planningGuard. Va antes del filtro por departamento porque los items sueltos del grupo
@@ -561,7 +637,7 @@ export class MenuAccessService {
     }
 
     if (item.type === 'collapse') {
-      return this.canAccessCollapse(item.title, area, dept, userData.userApp);
+      return this.canAccessCollapse(item.title, area, dept, userApp);
     }
 
     return true;

@@ -57,7 +57,12 @@ export interface Approval {
   ratingLabel?: string;
   comment?: string;
   approvedByUid?: string;
+  /** Quién aceptó: el que reportó la novedad o el jefe de la subárea de origen. */
+  approvedByRole?: EvaluatorRole;
 }
+
+/** Quién puede aceptar/evaluar: quien reportó la novedad o el jefe de la subárea de origen. */
+export type EvaluatorRole = 'SOLICITANTE' | 'JEFE_AREA';
 
 /**
  * Quien reportó la novedad de origen (snapshot de productionNews.origin.reportedBy). Es el ÚNICO
@@ -83,6 +88,7 @@ export interface RequesterEvaluation {
   result: 'ACEPTADA' | 'RECHAZADA';
   evaluatedBy: string;
   evaluatedByUid: string;
+  evaluatedByRole?: EvaluatorRole;
   evaluatedAt: string;
 }
 
@@ -361,6 +367,17 @@ export interface RequesterPendingResponse<T> {
   ok: boolean;
   msg?: string;
   data: { mine: T[]; area: T[] };
+}
+
+/**
+ * Seguimiento de cierre de órdenes generadas desde novedades:
+ *  - awaitingRequester: el área de servicio terminó; falta que el área que reportó acepte.
+ *  - awaitingClose: el área ya aceptó; falta que el área de servicio la cierre (COMPLETADO).
+ */
+export interface ClosureTrackingResponse<T> {
+  ok: boolean;
+  msg?: string;
+  data: { awaitingRequester: T[]; awaitingClose: T[] };
 }
 
 export interface DeleteMaintenanceResponse {

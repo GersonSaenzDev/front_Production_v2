@@ -8,11 +8,12 @@
 //   - "Mías": las que debe aceptar el usuario logueado (es quien reportó la novedad).
 //   - "Del área": las de su área/subárea (scope), para que el área vea cuántas tiene
 //     pendientes aunque no sea quien las reportó (solo consulta).
-// Solo el usuario que reportó la novedad puede aceptar y evaluar (1-5 + comentario); el
-// backend lo valida con el documento del token. Calificación 1 reabre la solicitud.
+// Pueden aceptar y evaluar (1-5 + comentario) el usuario que reportó la novedad o el JEFE de la
+// subárea donde se originó; el backend lo valida con el token y devuelve en `mine` solo las
+// que el usuario puede aceptar. Calificación 1 reabre la solicitud.
 // Si no hay nada pendiente, el componente no se muestra.
 import { CommonModule } from '@angular/common';
-import { Component, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { forkJoin, Observable, of } from 'rxjs';
@@ -24,7 +25,14 @@ import { MaintenanceServices } from '../../../../../services/maintenance-service
 import { MechanicsServices } from '../../../../../services/mechanics-services';
 import { REQUESTER_RATING_OPTIONS, REQUESTER_REJECT_RATING, ratingStars } from './work-order.util';
 
-type ServiceArea = 'MANTENIMIENTO' | 'MECANICA';
+export type ServiceArea = 'MANTENIMIENTO' | 'MECANICA';
+
+/** Evaluación registrada (para que el contenedor refresque su vista). */
+export interface AcceptanceEvaluatedEvent {
+  serviceArea: ServiceArea;
+  id: string;
+  rating: number;
+}
 
 /** Vista normalizada de una solicitud pendiente de aceptación (Mantenimiento o Mecánica). */
 interface PendingAcceptance {
@@ -37,7 +45,10 @@ interface PendingAcceptance {
   origin: string;
   requesterName: string;
   sentAt: string;
+  /** El usuario puede aceptarla: la reportó él o es jefe de la subárea de origen. */
   mine: boolean;
+  /** La reportó el usuario logueado (si no, la acepta como jefe del área). */
+  reportedByMe: boolean;
   interventions: Intervention[];
 }
 
@@ -56,6 +67,9 @@ export class RequesterAcceptanceComponent implements OnInit, OnChanges {
 
   /** Área/subárea cuyas novedades se consultan (mismo scope del componente contenedor). */
   @Input() scope = '';
+
+  /** Se emite al registrar una evaluación (aceptada o rechazada). */
+  @Output() evaluated = new EventEmitter<AcceptanceEvaluatedEvent>();
 
   readonly ratingOptions = REQUESTER_RATING_OPTIONS;
   readonly rejectRating = REQUESTER_REJECT_RATING;
@@ -87,7 +101,7 @@ export class RequesterAcceptanceComponent implements OnInit, OnChanges {
     return this.items.length;
   }
 
-  load(): void {
+  load(onLoaded?: () => void): void {
     this.isLoading = true;
     // Cada área de servicio se consulta por separado: si una falla, la otra igual se muestra.
     forkJoin([
@@ -98,8 +112,34 @@ export class RequesterAcceptanceComponent implements OnInit, OnChanges {
         // Primero las mías (son las que el usuario puede aceptar).
         this.items = [...mtto, ...mech].sort((a, b) => Number(b.mine) - Number(a.mine));
         this.isLoading = false;
+        onLoaded?.();
       },
       error: () => (this.isLoading = false)
+    });
+  }
+
+  /** El usuario logueado puede aprobar esta orden (la reportó o es jefe del área de origen). */
+  canApprove(serviceArea: ServiceArea, id: string): boolean {
+    return this.items.some((i) => i.serviceArea === serviceArea && i.id === String(id) && i.mine);
+  }
+
+  /**
+   * Abre la evaluación de una orden puntual (p. ej. desde el botón "Aprobar cierre" de una
+   * novedad). Recarga la lista antes, para operar siempre sobre el estado vigente.
+   */
+  openByWorkOrder(serviceArea: ServiceArea, id: string): void {
+    this.load(() => {
+      const item = this.items.find((i) => i.serviceArea === serviceArea && i.id === String(id));
+      if (!item) {
+        this.toastr.info('La intervención ya no está pendiente de aceptación (pudo haber sido aceptada o reabierta).', 'Aprobación');
+        return;
+      }
+      if (!item.mine) {
+        this.toastr.warning(`Solo ${item.requesterName || 'quien reportó la novedad'} o el jefe del área pueden aprobarla.`, 'Aprobación');
+        return;
+      }
+      this.expanded = true;
+      this.openEvaluation(item);
     });
   }
 
@@ -143,8 +183,10 @@ export class RequesterAcceptanceComponent implements OnInit, OnChanges {
       origin: [o.requester?.originArea, o.requester?.originSubArea].filter((v) => !!v).join(' / '),
       requesterName: o.requester?.name || '',
       sentAt: o.dateUpdate || '',
-      // El backend ya lo resuelve con el token; se reconfirma contra la sesión por seguridad visual.
-      mine: mine && (!this.myUid || o.requester?.uid === this.myUid),
+      // El backend lo resuelve con el token: quien reportó la novedad O el jefe de la subárea de
+      // origen. No se reconfirma por uid aquí porque bloquearía al jefe (el backend igual valida).
+      mine,
+      reportedByMe: !!this.myUid && o.requester?.uid === this.myUid,
       interventions: (o.interventions || []).filter((i) => i.role !== 'AYUDANTE')
     };
   }
@@ -208,6 +250,7 @@ export class RequesterAcceptanceComponent implements OnInit, OnChanges {
         this.toastr.success(res.msg || 'Evaluación registrada.', this.serviceAreaLabel(item.serviceArea));
         this.selected = null;
         this.items = this.items.filter((i) => i.key !== item.key);
+        this.evaluated.emit({ serviceArea: item.serviceArea, id: item.id, rating: payload.rating });
       },
       error: (err: Error) => {
         this.isSaving = false;

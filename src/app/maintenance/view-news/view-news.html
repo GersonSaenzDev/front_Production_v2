@@ -3,36 +3,62 @@
   <app-ongoing-stops [area]="'Mantenimiento'" [actionLabel]="ongoingStopActionLabel"
     (action)="onOngoingStopAction($event)" (finished)="loadPendingNews()"></app-ongoing-stops>
 
+  <!-- ================= SEGUIMIENTO DE CIERRE (por aprobar del área / por cerrar de Mantenimiento) ================= -->
+  <app-closure-tracking class="d-block mb-3" mode="service" [serviceAreas]="['MANTENIMIENTO']"
+    (open)="openTrackedOrder($event)"></app-closure-tracking>
+
   <!-- ================= NOVEDADES ENTRANTES DE OTRAS ÁREAS ================= -->
   <div class="card shadow-sm mb-3">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Novedades entrantes de otras áreas</h5>
-      <small>Reportes de la fecha + todas las paradas de proceso en curso (fijadas arriba).</small>
+      <small>Reportes del rango elegido + todas las paradas de proceso en curso (fijadas arriba).</small>
     </div>
 
     <div class="card-body">
-      <div class="row g-2 align-items-end mb-3">
+      <div class="row g-2 align-items-end mb-2">
+        <div class="col-6 col-md-2">
+          <label class="form-label mb-1">Desde</label>
+          <input type="date" class="form-control form-control-sm" [max]="pendingEndDate"
+            [(ngModel)]="pendingStartDate" (ngModelChange)="loadPendingNews()" />
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label mb-1">Hasta</label>
+          <input type="date" class="form-control form-control-sm" [min]="pendingStartDate"
+            [(ngModel)]="pendingEndDate" (ngModelChange)="loadPendingNews()" />
+        </div>
         <div class="col-md-3">
-          <label class="form-label mb-1">Fecha</label>
-          <input type="date" class="form-control form-control-sm" [(ngModel)]="pendingNewsDate" />
+          <label class="form-label mb-1">Área de origen</label>
+          <select class="form-select form-select-sm" [(ngModel)]="pendingOriginScope" (ngModelChange)="loadPendingNews()">
+            <option value="">Todas las áreas</option>
+            <optgroup *ngFor="let g of groupedAreas" [label]="g.area">
+              <option [value]="g.area">{{ g.area }} (todas)</option>
+              <option *ngFor="let s of g.subAreas" [value]="s.subArea">{{ s.subArea }}</option>
+            </optgroup>
+          </select>
         </div>
-        <div class="col-md-2">
-          <button class="btn btn-sm btn-primary w-100" (click)="loadPendingNews()"
-            [disabled]="isLoadingPendingNews">
-            <span *ngIf="isLoadingPendingNews" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!isLoadingPendingNews" class="ti ti-search me-1"></i>
-            Buscar
-          </button>
-        </div>
-        <div class="col-md-5 ms-auto">
-          <label class="form-label mb-1">Buscador</label>
+        <div class="col-md-5">
+          <label class="form-label mb-1">Buscador (todo el rango)</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="ti ti-search"></i></span>
             <input type="text" class="form-control" [(ngModel)]="pendingNewsSearchTerm"
-              (ngModelChange)="applyPendingNewsFilter()"
-              placeholder="Busque por máquina, área, detalle, quien reportó, MTTO..." />
+              (ngModelChange)="onPendingSearchChange($event)"
+              placeholder="Máquina, área, detalle, quien reportó, MTTO, respuestas..." />
+            <button class="btn btn-outline-primary" type="button" (click)="loadPendingNews()" [disabled]="isLoadingPendingNews"
+              title="Actualizar">
+              <span *ngIf="isLoadingPendingNews" class="spinner-border spinner-border-sm"></span>
+              <i *ngIf="!isLoadingPendingNews" class="ti ti-refresh"></i>
+            </button>
           </div>
         </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="setPendingQuickRange(1)">Hoy</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="setPendingQuickRange(7)">7 días</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="setPendingQuickRange(30)">30 días</button>
+        <small class="text-danger" *ngIf="pendingRangeError"><i class="ti ti-alert-circle"></i> {{ pendingRangeError }}</small>
+        <small class="text-muted ms-auto" *ngIf="!pendingRangeError">
+          {{ pendingNews.length }} de {{ pendingNewsTotal }} novedad(es) del rango
+        </small>
       </div>
 
       <div class="table-responsive">
@@ -110,6 +136,11 @@
                 <span class="badge bg-warning text-dark" *ngIf="!generatedFrom(n._id)">Pendiente</span>
               </td>
               <td class="text-end col-actions">
+                <button class="btn btn-sm btn-outline-secondary me-1" (click)="openComments(n)"
+                  title="Respuestas, intervenciones y aprobaciones">
+                  <i class="ti ti-messages"></i>
+                  <span class="badge bg-primary ms-1" *ngIf="commentsCount(n)">{{ commentsCount(n) }}</span>
+                </button>
                 <button class="btn btn-sm btn-outline-primary" (click)="generateFromNews(n)">
                   <i class="ti me-1" [class.ti-refresh]="generatedFrom(n._id)"
                     [class.ti-tool]="!generatedFrom(n._id)"></i>
@@ -119,6 +150,28 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="text-center mt-2" *ngIf="hasMorePendingNews">
+        <button type="button" class="btn btn-sm btn-outline-primary" (click)="loadPendingNews(true)" [disabled]="isLoadingPendingNews">
+          <i class="ti ti-chevrons-down me-1"></i> Cargar 100 más ({{ pendingNews.length }} de {{ pendingNewsTotal }})
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONVERSACIÓN DE LA NOVEDAD (respuestas + intervenciones + aprobaciones) ================= -->
+  <div class="comments-backdrop" *ngIf="commentsNews" (click)="closeComments()">
+    <div class="comments-dialog" (click)="$event.stopPropagation()">
+      <div class="comments-header">
+        <div>
+          <h5 class="mb-0"><i class="ti ti-messages"></i> Comentarios de la novedad</h5>
+          <small>{{ commentsNews.category }} · {{ commentsNews.origin?.area }} / {{ commentsNews.origin?.subArea }} · {{ commentsNews.newsDate }}</small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="closeComments()"></button>
+      </div>
+      <div class="comments-body">
+        <p class="comments-detail">{{ commentsNews.detail }}</p>
+        <app-news-thread [news]="commentsNews"></app-news-thread>
       </div>
     </div>
   </div>

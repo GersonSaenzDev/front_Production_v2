@@ -8,11 +8,14 @@
 //   - Aceptación del solicitante: enviar a aceptación, ver evaluación (1-5 + comentario),
 //     cerrar solo cuando el solicitante aceptó; reabrir una solicitud cerrada para editarla.
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { merge, Subscription } from 'rxjs';
+import { merge, Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ProductionAreaGrouped } from '../../interfaces/production-news.interface';
+import { NewsThreadComponent } from '../../theme/layout/admin/navigation/news-thread/news-thread.component';
 import { ProductionNews } from '../../interfaces/assembly.interface';
 import { AuditEntry, MaintenanceAssignee, MaintenancePriority, MaintenanceStatus, PersonRef } from '../../interfaces/maintenance.interface';
 import {
@@ -42,6 +45,10 @@ import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoi
 import { formatStopSchedule, isStopCategory, isStopOngoing } from '../../theme/layout/admin/navigation/stop-time.util';
 import { WorkOrderAcceptanceComponent } from '../../theme/layout/admin/navigation/work-order-acceptance/work-order-acceptance.component';
 import {
+  ClosureTrackingComponent,
+  ClosureTrackingOpenEvent
+} from '../../theme/layout/admin/navigation/work-order-acceptance/closure-tracking.component';
+import {
   acceptanceState,
   isReadyToClose,
   requiresRequesterAcceptance,
@@ -56,12 +63,15 @@ import { calculateMinutes, formatMinutes, toBackendDate, toBackendDateTime, toDa
 @Component({
   selector: 'app-mechanics-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, OngoingStopsComponent, WorkOrderAcceptanceComponent],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent, WorkOrderAcceptanceComponent, ClosureTrackingComponent, NewsThreadComponent],
   templateUrl: './mechanics-management.html',
   styleUrl: './mechanics-management.scss'
 })
 export class MechanicsManagement implements OnInit, OnDestroy {
   private mechanicsService = inject(MechanicsServices);
+
+  /** Seguimiento de cierre (por aprobar del área / por cerrar de Mecánica). */
+  @ViewChild(ClosureTrackingComponent) private closureTracking?: ClosureTrackingComponent;
   private rhStaffService = inject(RhStaffServices);
   private newsServices = inject(NewsServices);
   private dashboardService = inject(DashboardServices);
@@ -103,8 +113,18 @@ export class MechanicsManagement implements OnInit, OnDestroy {
   acceptanceFilter: '' | 'ESPERANDO' | 'LISTAS' = '';
   isSavingAcceptance = false;
 
-  // Novedades entrantes + paradas en curso
-  pendingNewsDate: string = this.formatDate(new Date());
+  // Novedades entrantes + paradas en curso. Rango de fechas (por defecto la última semana) +
+  // filtro por área de origen + búsqueda en el servidor, en lotes de 100 ("Cargar más").
+  pendingStartDate: string = this.formatDate(this.addDays(new Date(), -6));
+  pendingEndDate: string = this.formatDate(new Date());
+  pendingOriginScope = '';
+  pendingNewsTotal = 0;
+  pendingRangeError = '';
+  private pendingSearch$ = new Subject<string>();
+  /** Catálogo agrupado (área → subáreas) para el filtro de área de origen. */
+  groupedAreas: ProductionAreaGrouped[] = [];
+  // Conversación (respuestas + intervenciones + aprobaciones) de una novedad.
+  commentsNews: ProductionNews | null = null;
   pendingNews: ProductionNews[] = [];
   ongoingStops: ProductionNews[] = [];
   filteredPendingNews: ProductionNews[] = [];
@@ -148,11 +168,17 @@ export class MechanicsManagement implements OnInit, OnDestroy {
       error: (err) => console.error('Error cargando personal de mecánica:', err)
     });
     this.search();
+    this.newsServices.getProductionAreasGrouped().subscribe({
+      next: (res) => (this.groupedAreas = res.ok ? res.msg : []),
+      error: (err) => console.error('Error cargando áreas para el filtro:', err)
+    });
+    this.pendingSearch$.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => this.loadPendingNews());
     this.loadPendingNews();
     this.listenRealtimeNews();
   }
 
   ngOnDestroy(): void {
+    this.pendingSearch$.complete();
     this.socketSub?.unsubscribe();
     if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
   }
@@ -211,7 +237,7 @@ export class MechanicsManagement implements OnInit, OnDestroy {
   }
 
   private schedulePendingNewsReload(news: ProductionNews): void {
-    const otherDate = !!news.newsDate && news.newsDate !== this.formatDateForBackend(this.pendingNewsDate);
+    const otherDate = !!news.newsDate && !this.isInPendingRange(news.newsDate);
     if (otherDate && !this.isStop(news)) return;
     if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
     this.pendingNewsReloadTimer = setTimeout(() => this.loadPendingNews(), 400);
@@ -277,21 +303,44 @@ export class MechanicsManagement implements OnInit, OnDestroy {
   //  NOVEDADES ENTRANTES + PARADAS EN CURSO
   // ============================================================
 
-  loadPendingNews(): void {
-    const date = this.formatDateForBackend(this.pendingNewsDate);
+  /**
+   * Novedades asignadas a Mecánica en el RANGO elegido, filtradas por área de origen y búsqueda
+   * (en el servidor). `append` = "Cargar más" (siguiente lote de 100).
+   */
+  loadPendingNews(append = false): void {
+    if (!this.validatePendingRange()) return;
+    const skip = append ? this.pendingNews.length : 0;
     this.isLoadingPendingNews = true;
-    this.dashboardService.viewNews(date, MechanicsManagement.MECHANICS_AREA).subscribe({
-      next: (res) => {
-        this.pendingNews = res.ok && res.msg ? res.msg : [];
-        this.applyPendingNewsFilter();
-      },
-      error: (err: Error) => {
-        this.pendingNews = [];
-        this.filteredPendingNews = [];
-        this.toastr.error(err.message || 'No se pudieron cargar las novedades entrantes.', 'Error');
-      },
-      complete: () => (this.isLoadingPendingNews = false)
-    });
+    this.dashboardService
+      .viewNewsPage({
+        startDate: this.formatDateForBackend(this.pendingStartDate),
+        endDate: this.formatDateForBackend(this.pendingEndDate),
+        area: MechanicsManagement.MECHANICS_AREA,
+        search: this.pendingNewsSearchTerm.trim(),
+        originScope: this.pendingOriginScope,
+        skip,
+        limit: 100
+      })
+      .subscribe({
+        next: (res) => {
+          const list = res.ok && res.msg ? res.msg : [];
+          const known = new Set(append ? this.pendingNews.map((n) => n._id) : []);
+          this.pendingNews = append ? [...this.pendingNews, ...list.filter((n) => !known.has(n._id))] : list;
+          this.pendingNewsTotal = res.total ?? this.pendingNews.length;
+          this.applyPendingNewsFilter();
+          this.isLoadingPendingNews = false;
+        },
+        error: (err: Error) => {
+          if (!append) {
+            this.pendingNews = [];
+            this.filteredPendingNews = [];
+            this.pendingNewsTotal = 0;
+          }
+          this.isLoadingPendingNews = false;
+          this.toastr.error(err.message || 'No se pudieron cargar las novedades entrantes.', 'Error');
+        }
+      });
+    if (append) return;
     this.newsServices.getOngoingStops(MechanicsManagement.MECHANICS_AREA).subscribe({
       next: (res) => {
         this.ongoingStops = res.ok ? res.msg : [];
@@ -301,11 +350,74 @@ export class MechanicsManagement implements OnInit, OnDestroy {
     });
   }
 
+  /** Hay más novedades en el servidor que las cargadas. */
+  get hasMorePendingNews(): boolean {
+    return this.pendingNews.length < this.pendingNewsTotal;
+  }
+
+  /** El buscador consulta en el servidor (todo el rango), con debounce. */
+  onPendingSearchChange(term: string): void {
+    this.applyPendingNewsFilter();
+    this.pendingSearch$.next((term || '').trim());
+  }
+
+  setPendingQuickRange(days: number): void {
+    this.pendingStartDate = this.formatDate(this.addDays(new Date(), -(days - 1)));
+    this.pendingEndDate = this.formatDate(new Date());
+    this.loadPendingNews();
+  }
+
+  private validatePendingRange(): boolean {
+    this.pendingRangeError = '';
+    if (!this.pendingStartDate || !this.pendingEndDate) {
+      this.pendingRangeError = 'Seleccione la fecha inicial y final.';
+    } else if (this.pendingStartDate > this.pendingEndDate) {
+      this.pendingRangeError = 'La fecha inicial no puede ser posterior a la final.';
+    } else {
+      const days = (new Date(this.pendingEndDate).getTime() - new Date(this.pendingStartDate).getTime()) / 86400000 + 1;
+      if (days > 366) this.pendingRangeError = 'El rango máximo es de 366 días.';
+    }
+    return !this.pendingRangeError;
+  }
+
+  /** 'DD/MM/YYYY' dentro del rango consultado. */
+  private isInPendingRange(ddmmyyyy: string): boolean {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy || '');
+    if (!m) return true;
+    const iso = `${m[3]}-${m[2]}-${m[1]}`;
+    return iso >= this.pendingStartDate && iso <= this.pendingEndDate;
+  }
+
+  /** Una parada en curso cumple el filtro de área de origen (si hay). */
+  private matchesOriginScope(n: ProductionNews): boolean {
+    const scope = this.pendingOriginScope.trim().toLowerCase();
+    if (!scope) return true;
+    return [n.origin?.area, n.origin?.subArea].some((v) => (v || '').trim().toLowerCase() === scope);
+  }
+
+  openComments(n: ProductionNews): void {
+    this.commentsNews = n;
+  }
+
+  closeComments(): void {
+    this.commentsNews = null;
+  }
+
+  /** Cantidad de mensajes (respuestas + aprobaciones) para el botón "Comentarios". */
+  commentsCount(n: ProductionNews): number {
+    const evaluations = (n.workOrders || []).reduce((acc, wo) => acc + (wo.evaluations?.length || (wo.acceptance ? 1 : 0)), 0);
+    return (n.responses?.length || 0) + evaluations;
+  }
+
   applyPendingNewsFilter(): void {
+    // Novedades del rango (filtradas en el servidor) + paradas en curso de cualquier fecha,
+    // a las que se les aplica aquí el mismo filtro de área y búsqueda.
     const ids = new Set(this.pendingNews.map((n) => n._id));
-    const all = [...this.pendingNews, ...this.ongoingStops.filter((s) => !ids.has(s._id))];
     const term = this.pendingNewsSearchTerm.trim().toLowerCase();
-    const list = !term ? all : all.filter((n) => this.pendingNewsHaystack(n).includes(term));
+    const extraStops = this.ongoingStops.filter(
+      (s) => !ids.has(s._id) && this.matchesOriginScope(s) && (!term || this.pendingNewsHaystack(s).includes(term))
+    );
+    const list = [...this.pendingNews, ...extraStops];
     // Paradas en curso siempre primero (prioridad); luego lo más reciente.
     const rank = (n: ProductionNews): number => (this.isOngoingStop(n) ? 0 : 1);
     list.sort((a, b) => rank(a) - rank(b) || (b.origin?.reportedAt || '').localeCompare(a.origin?.reportedAt || ''));
@@ -453,6 +565,7 @@ export class MechanicsManagement implements OnInit, OnDestroy {
           this.detailOrder = res.data;
           this.ratingObservationDraft = res.data.ratingObservation || '';
         }
+        this.closureTracking?.load();
       },
       error: (err: Error) => {
         this.isSavingAcceptance = false;
@@ -479,6 +592,19 @@ export class MechanicsManagement implements OnInit, OnDestroy {
   // ============================================================
   //  DETALLE
   // ============================================================
+
+  /** Desde el panel de seguimiento de cierre: abre la solicitud (de la lista o consultándola). */
+  openTrackedOrder(event: ClosureTrackingOpenEvent): void {
+    const order = this.orders.find((o) => String(o.id) === event.id);
+    if (order) {
+      this.openDetail(order);
+      return;
+    }
+    this.mechanicsService.getMechanicsById(event.id).subscribe({
+      next: (res) => (res?.ok && res.data ? this.openDetail(res.data) : this.toastr.warning('No se encontró la solicitud.', 'Mecánica')),
+      error: (err: Error) => this.toastr.error(err.message || 'No se pudo abrir la solicitud.', 'Error')
+    });
+  }
 
   openDetail(order: MechanicsRequest): void {
     this.detailOrder = order;
@@ -925,6 +1051,12 @@ export class MechanicsManagement implements OnInit, OnDestroy {
   private replaceInList(updated: MechanicsRequest): void {
     const idx = this.orders.findIndex((o) => o.id === updated.id);
     if (idx >= 0) this.orders[idx] = updated;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
   }
 
   private formatDate(date: Date): string {

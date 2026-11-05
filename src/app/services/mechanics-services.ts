@@ -6,6 +6,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import {
   ApprovalRequest,
+  ClosureTrackingResponse,
   DeleteMaintenanceResponse,
   RequesterEvaluationRequest,
   RequesterPendingResponse
@@ -104,6 +105,15 @@ export class MechanicsServices {
     if (scope) params = params.set('scope', scope);
     return this.http
       .get<RequesterPendingResponse<MechanicsRequest>>(`${this.BASE_API}/requester/pending`, { params })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Seguimiento de cierre (awaitingRequester / awaitingClose). `scope` opcional = área de origen. */
+  getClosureTracking(scope?: string): Observable<ClosureTrackingResponse<MechanicsRequest>> {
+    let params = new HttpParams();
+    if (scope) params = params.set('scope', scope);
+    return this.http
+      .get<ClosureTrackingResponse<MechanicsRequest>>(`${this.BASE_API}/requester/closure-tracking`, { params })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

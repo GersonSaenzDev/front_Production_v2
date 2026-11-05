@@ -1,10 +1,12 @@
 // src/app/maintenance/view-news/view-news.ts
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { merge, Subscription } from 'rxjs';
+import { merge, Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { NewsThreadComponent } from '../../theme/layout/admin/navigation/news-thread/news-thread.component';
 import { ProductionNews } from '../../interfaces/assembly.interface';
 import {
   AddInterventionRequest,
@@ -34,6 +36,10 @@ import { OngoingStopsComponent } from '../../theme/layout/admin/navigation/ongoi
 import { formatStopSchedule, isStopCategory, isStopOngoing } from '../../theme/layout/admin/navigation/stop-time.util';
 import { WorkOrderAcceptanceComponent } from '../../theme/layout/admin/navigation/work-order-acceptance/work-order-acceptance.component';
 import {
+  ClosureTrackingComponent,
+  ClosureTrackingOpenEvent
+} from '../../theme/layout/admin/navigation/work-order-acceptance/closure-tracking.component';
+import {
   acceptanceState,
   isReadyToClose,
   requiresRequesterAcceptance,
@@ -46,7 +52,7 @@ import { calculateMinutes, formatMinutes, toBackendDateTime, toDatetimeLocal } f
 @Component({
   selector: 'app-maintenance-view-news',
   standalone: true,
-  imports: [CommonModule, FormsModule, OngoingStopsComponent, WorkOrderAcceptanceComponent],
+  imports: [CommonModule, FormsModule, OngoingStopsComponent, WorkOrderAcceptanceComponent, ClosureTrackingComponent, NewsThreadComponent],
   templateUrl: './view-news.html',
   styleUrl: './view-news.scss'
 })
@@ -60,6 +66,9 @@ export class ViewNews implements OnInit, OnDestroy {
   private toastr = inject(ToastrService);
   private socketService = inject(SocketService);
   private menuAccessService = inject(MenuAccessService);
+
+  /** Seguimiento de cierre (por aprobar del área / por cerrar de Mantenimiento). */
+  @ViewChild(ClosureTrackingComponent) private closureTracking?: ClosureTrackingComponent;
 
   readonly formatMinutes = formatMinutes;
 
@@ -95,8 +104,18 @@ export class ViewNews implements OnInit, OnDestroy {
   isSavingAcceptance = false;
 
   // Novedades entrantes de otras áreas (productionNews asignadas a Mantenimiento, cualquier categoría).
-  pendingNewsDate: string = this.formatDate(new Date());
+  // Rango de fechas (por defecto la última semana) + filtro por área de origen + búsqueda en el
+  // servidor, en lotes de 100 ("Cargar más").
+  pendingStartDate: string = this.formatDate(this.addDays(new Date(), -6));
+  pendingEndDate: string = this.formatDate(new Date());
+  pendingOriginScope = '';
+  pendingNewsTotal = 0;
+  pendingRangeError = '';
+  private pendingSearch$ = new Subject<string>();
   pendingNews: ProductionNews[] = [];
+
+  // Conversación (respuestas + intervenciones + aprobaciones) de una novedad.
+  commentsNews: ProductionNews | null = null;
   // Paradas EN CURSO (sin importar la fecha): son prioridad, se fijan arriba en la tabla.
   ongoingStops: ProductionNews[] = [];
   filteredPendingNews: ProductionNews[] = [];
@@ -151,11 +170,13 @@ export class ViewNews implements OnInit, OnDestroy {
     this.loadTechnicians();
     this.loadGroupedAreas();
     this.search();
+    this.pendingSearch$.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => this.loadPendingNews());
     this.loadPendingNews();
     this.listenRealtimeNews();
   }
 
   ngOnDestroy(): void {
+    this.pendingSearch$.complete();
     this.socketSub?.unsubscribe();
     if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
   }
@@ -218,7 +239,7 @@ export class ViewNews implements OnInit, OnDestroy {
    * (las paradas en curso se muestran sin importar la fecha). Debounce para ráfagas.
    */
   private schedulePendingNewsReload(news: ProductionNews): void {
-    const otherDate = !!news.newsDate && news.newsDate !== this.formatDateForBackend(this.pendingNewsDate);
+    const otherDate = !!news.newsDate && !this.isInPendingRange(news.newsDate);
     if (otherDate && !this.isStop(news)) return;
     if (this.pendingNewsReloadTimer) clearTimeout(this.pendingNewsReloadTimer);
     this.pendingNewsReloadTimer = setTimeout(() => this.loadPendingNews(), 400);
@@ -311,10 +332,19 @@ export class ViewNews implements OnInit, OnDestroy {
   }
 
   sendToAcceptance(order: MaintenanceRequest): void {
-    if (!confirm(`¿Enviar MTTO #${order.consecutiveMtto} a ${order.requester?.name || 'el solicitante'} para que acepte y evalúe la intervención?`)) {
+    if (
+      !confirm(
+        `¿Enviar MTTO #${order.consecutiveMtto} a ${order.requester?.name || 'el solicitante'} para que acepte y evalúe la intervención?`
+      )
+    ) {
       return;
     }
-    this.changeStatus(order, 'PENDIENTE_ACEPTACION', 'Intervención enviada a aceptación del solicitante', 'Enviada a aceptación del solicitante.');
+    this.changeStatus(
+      order,
+      'PENDIENTE_ACEPTACION',
+      'Intervención enviada a aceptación del solicitante',
+      'Enviada a aceptación del solicitante.'
+    );
   }
 
   closeOrder(order: MaintenanceRequest): void {
@@ -339,6 +369,7 @@ export class ViewNews implements OnInit, OnDestroy {
         this.toastr.success(successMsg, 'Mantenimiento');
         this.replaceInList(res.data);
         if (this.detailOrder?.id === res.data.id) this.detailOrder = res.data;
+        this.closureTracking?.load();
       },
       error: (err: Error) => {
         this.isSavingAcceptance = false;
@@ -366,25 +397,107 @@ export class ViewNews implements OnInit, OnDestroy {
   //  NOVEDADES ENTRANTES (productionNews asignadas a Mantenimiento)
   // ============================================================
 
-  /** Trae, para la fecha seleccionada, las novedades de otras áreas asignadas a Mantenimiento. */
-  loadPendingNews(): void {
-    const date = this.formatDateForBackend(this.pendingNewsDate);
+  /**
+   * Trae las novedades de otras áreas asignadas a Mantenimiento en el RANGO elegido, filtradas
+   * por área de origen y búsqueda (en el servidor). `append` = "Cargar más" (siguiente lote de 100).
+   */
+  loadPendingNews(append = false): void {
+    if (!this.validatePendingRange()) return;
+    const skip = append ? this.pendingNews.length : 0;
     this.isLoadingPendingNews = true;
-    this.dashboardService.viewNews(date, 'Mantenimiento').subscribe({
-      next: (res) => {
-        // El backend ya filtra por área asignada (Mantenimiento): se muestran TODAS las
-        // categorías (Reporte Mantenimiento, Parada de Proceso, etc.), no solo los reportes.
-        this.pendingNews = res.ok && res.msg ? res.msg : [];
-        this.applyPendingNewsFilter();
-      },
-      error: (err: Error) => {
-        this.pendingNews = [];
-        this.filteredPendingNews = [];
-        this.toastr.error(err.message || 'No se pudieron cargar las novedades entrantes.', 'Error');
-      },
-      complete: () => (this.isLoadingPendingNews = false)
-    });
-    this.loadOngoingStops();
+    this.dashboardService
+      .viewNewsPage({
+        startDate: this.formatDateForBackend(this.pendingStartDate),
+        endDate: this.formatDateForBackend(this.pendingEndDate),
+        area: ViewNews.MAINTENANCE_AREA,
+        search: this.pendingNewsSearchTerm.trim(),
+        originScope: this.pendingOriginScope,
+        skip,
+        limit: 100
+      })
+      .subscribe({
+        next: (res) => {
+          // El backend ya filtra por área asignada (Mantenimiento): se muestran TODAS las
+          // categorías (Reporte Mantenimiento, Parada de Proceso, etc.), no solo los reportes.
+          const list = res.ok && res.msg ? res.msg : [];
+          const known = new Set(append ? this.pendingNews.map((n) => n._id) : []);
+          this.pendingNews = append ? [...this.pendingNews, ...list.filter((n) => !known.has(n._id))] : list;
+          this.pendingNewsTotal = res.total ?? this.pendingNews.length;
+          this.applyPendingNewsFilter();
+          this.isLoadingPendingNews = false;
+        },
+        error: (err: Error) => {
+          if (!append) {
+            this.pendingNews = [];
+            this.filteredPendingNews = [];
+            this.pendingNewsTotal = 0;
+          }
+          this.isLoadingPendingNews = false;
+          this.toastr.error(err.message || 'No se pudieron cargar las novedades entrantes.', 'Error');
+        }
+      });
+    if (!append) this.loadOngoingStops();
+  }
+
+  /** Hay más novedades en el servidor que las cargadas. */
+  get hasMorePendingNews(): boolean {
+    return this.pendingNews.length < this.pendingNewsTotal;
+  }
+
+  /** El buscador consulta en el servidor (todo el rango), con debounce. */
+  onPendingSearchChange(term: string): void {
+    this.applyPendingNewsFilter();
+    this.pendingSearch$.next((term || '').trim());
+  }
+
+  setPendingQuickRange(days: number): void {
+    this.pendingStartDate = this.formatDate(this.addDays(new Date(), -(days - 1)));
+    this.pendingEndDate = this.formatDate(new Date());
+    this.loadPendingNews();
+  }
+
+  private validatePendingRange(): boolean {
+    this.pendingRangeError = '';
+    if (!this.pendingStartDate || !this.pendingEndDate) {
+      this.pendingRangeError = 'Seleccione la fecha inicial y final.';
+    } else if (this.pendingStartDate > this.pendingEndDate) {
+      this.pendingRangeError = 'La fecha inicial no puede ser posterior a la final.';
+    } else {
+      const days = (new Date(this.pendingEndDate).getTime() - new Date(this.pendingStartDate).getTime()) / 86400000 + 1;
+      if (days > 366) this.pendingRangeError = 'El rango máximo es de 366 días.';
+    }
+    return !this.pendingRangeError;
+  }
+
+  /** 'DD/MM/YYYY' dentro del rango consultado. */
+  private isInPendingRange(ddmmyyyy: string): boolean {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy || '');
+    if (!m) return true;
+    const iso = `${m[3]}-${m[2]}-${m[1]}`;
+    return iso >= this.pendingStartDate && iso <= this.pendingEndDate;
+  }
+
+  /** Una parada en curso cumple el filtro de área de origen (si hay). */
+  private matchesOriginScope(n: ProductionNews): boolean {
+    const scope = this.pendingOriginScope.trim().toLowerCase();
+    if (!scope) return true;
+    return [n.origin?.area, n.origin?.subArea].some((v) => (v || '').trim().toLowerCase() === scope);
+  }
+
+  // ---------- Conversación de la novedad ----------
+
+  openComments(n: ProductionNews): void {
+    this.commentsNews = n;
+  }
+
+  closeComments(): void {
+    this.commentsNews = null;
+  }
+
+  /** Cantidad de mensajes (respuestas + aprobaciones) para el botón "Comentarios". */
+  commentsCount(n: ProductionNews): number {
+    const evaluations = (n.workOrders || []).reduce((acc, wo) => acc + (wo.evaluations?.length || (wo.acceptance ? 1 : 0)), 0);
+    return (n.responses?.length || 0) + evaluations;
   }
 
   /** Paradas en curso visibles para Mantenimiento, sin filtro de fecha (pueden durar días). */
@@ -400,12 +513,14 @@ export class ViewNews implements OnInit, OnDestroy {
 
   /** Filtro de texto libre (buscador inteligente) sobre cualquier dato visible de la novedad. */
   applyPendingNewsFilter(): void {
-    // Novedades de la fecha + paradas en curso de cualquier fecha (sin duplicar).
+    // Novedades del rango (ya filtradas por el servidor: búsqueda + área de origen) + paradas en
+    // curso de cualquier fecha (sin duplicar), a las que se les aplica el mismo filtro aquí.
     const ids = new Set(this.pendingNews.map((n) => n._id));
-    const all = [...this.pendingNews, ...this.ongoingStops.filter((s) => !ids.has(s._id))];
-
     const term = this.pendingNewsSearchTerm.trim().toLowerCase();
-    const list = !term ? all : all.filter((n) => this.pendingNewsHaystack(n).includes(term));
+    const extraStops = this.ongoingStops.filter(
+      (s) => !ids.has(s._id) && this.matchesOriginScope(s) && (!term || this.pendingNewsHaystack(s).includes(term))
+    );
+    const list = [...this.pendingNews, ...extraStops];
 
     // Paradas en curso siempre primero (prioridad); dentro de cada grupo, el orden elegido.
     const dir = this.pendingNewsSortDirection === 'asc' ? 1 : -1;
@@ -545,6 +660,12 @@ export class ViewNews implements OnInit, OnDestroy {
     this.router.navigate(['/maintenance/maintenanceNews']);
   }
 
+  private addDays(date: Date, days: number): Date {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+
   private formatDate(date: Date): string {
     const d = new Date(date);
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -562,6 +683,20 @@ export class ViewNews implements OnInit, OnDestroy {
   // ============================================================
   //  DETALLE
   // ============================================================
+
+  /** Desde el panel de seguimiento de cierre: abre la solicitud (de la lista o consultándola). */
+  openTrackedOrder(event: ClosureTrackingOpenEvent): void {
+    const order = this.orders.find((o) => String(o.id) === event.id);
+    if (order) {
+      this.openDetail(order);
+      return;
+    }
+    this.maintenanceService.getMaintenanceById(event.id).subscribe({
+      next: (res) =>
+        res?.ok && res.data ? this.openDetail(res.data) : this.toastr.warning('No se encontró la solicitud.', 'Mantenimiento'),
+      error: (err: Error) => this.toastr.error(err.message || 'No se pudo abrir la solicitud.', 'Error')
+    });
+  }
 
   openDetail(order: MaintenanceRequest): void {
     this.detailOrder = order;

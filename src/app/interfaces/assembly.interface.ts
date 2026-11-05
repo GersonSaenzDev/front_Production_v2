@@ -174,6 +174,10 @@ export interface ProductionNews {
   isClosed?: boolean;
   responses?: NewsResponseItem[];
   auditTrail?: NewsAuditItem[];
+  /** Órdenes de Mantenimiento/Mecánica generadas desde esta novedad (cruce por sourceNewsId). */
+  workOrders?: NewsWorkOrderSummary[];
+  /** Proyecto (opcional) y la persona responsable de atenderlo. */
+  project?: NewsProject;
 
   // Campos legacy (planos) que aún viajan en la respuesta del backend.
   assemblyLine?: string;
@@ -186,12 +190,114 @@ export interface ProductionNews {
   __v?: number;
 }
 
+/** Proyecto de la novedad y la persona responsable (documento = uid del token). */
+export interface NewsProject {
+  name: string;
+  responsible: { document: string; fullName: string };
+  assignedAt?: string;
+}
+
+/** Una evaluación del área sobre la intervención (historial de rondas, incluidas rechazadas). */
+export interface NewsWorkOrderEvaluation {
+  rating: number | null;
+  ratingLabel: string;
+  comment: string;
+  result: 'ACEPTADA' | 'RECHAZADA' | string;
+  evaluatedBy: string;
+  evaluatedByRole: 'SOLICITANTE' | 'JEFE_AREA';
+  evaluatedAt: string;
+}
+
+/** Una intervención (lo que hizo el área de servicio) dentro del resumen de la orden. */
+export interface NewsWorkOrderIntervention {
+  person: string;
+  helper: string;
+  workDone: string;
+  notes: string;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number | null;
+}
+
+/** Aceptación vigente del área que reportó (estrellas 1-5 + comentario). */
+export interface NewsWorkOrderAcceptance {
+  rating: number | null;
+  ratingLabel: string;
+  comment: string;
+  approvedBy: string;
+  approvedAt: string;
+  approvedByRole: 'SOLICITANTE' | 'JEFE_AREA';
+}
+
+/** Resumen de la orden MTTO / SME generada a partir de una novedad. */
+export interface NewsWorkOrderSummary {
+  serviceArea: 'MANTENIMIENTO' | 'MECANICA';
+  id: string;
+  consecutive: string;
+  /** 'MTTO #062600015' / 'SME #062600003' */
+  label: string;
+  status: 'PENDIENTE' | 'EN_PROCESO' | 'PENDIENTE_ACEPTACION' | 'COMPLETADO' | 'CANCELADO' | string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+  completedDate: string;
+  assignees: string[];
+  requester: { uid: string; name: string; originArea: string; originSubArea: string } | null;
+  acceptance: NewsWorkOrderAcceptance | null;
+  /** Historial de evaluaciones del área (puede faltar en respuestas de versiones anteriores). */
+  evaluations?: NewsWorkOrderEvaluation[];
+  interventions: NewsWorkOrderIntervention[];
+}
+
 /**
  * @description La respuesta completa del endpoint /assembly/viewNews.
+ * `total`, `skip`, `limit` y `summary` solo vienen en la consulta paginada (con `limit`).
  */
 export interface ProductionNewsResponse {
   ok: boolean;
   msg: ProductionNews[];
+  total?: number;
+  skip?: number;
+  limit?: number;
+  summary?: NewsCategorySummary[];
+}
+
+/** Resumen por categoría de TODO el resultado de la consulta (no solo del lote cargado). */
+export interface NewsCategorySummary {
+  category: string;
+  count: number;
+  totalMinutes: number;
+}
+
+/** Consulta paginada de novedades por rango de fechas (DD/MM/YYYY). */
+export interface ViewNewsQuery {
+  startDate: string;
+  endDate: string;
+  area: string;
+  /** Subárea puntual (vistas por subárea); si viene, tiene prioridad sobre `area`. */
+  subArea?: string;
+  search?: string;
+  /** Filtro por área/subárea de ORIGEN (Mantenimiento / Mecánica: "ver por área"). */
+  originScope?: string;
+  /** true cuando el usuario eligió un área puntual: no se suman las subáreas que gestiona. */
+  exactScope?: boolean;
+  skip?: number;
+  limit?: number;
+}
+
+/** Novedades en seguimiento del usuario (máx. 5). */
+export interface FollowedNewsResponse {
+  ok: boolean;
+  msg: ProductionNews[];
+  newsIds: string[];
+  max: number;
+}
+
+export interface FollowNewsToggleResponse {
+  ok: boolean;
+  msg: string;
+  newsIds: string[];
+  max: number;
 }
 
 /**

@@ -15,6 +15,7 @@ import {
 import { AuthService } from '../../../../../services/auth-services';
 import { DashboardServices } from '../../../../../services/dashboard-services';
 import { NewsServices } from '../../../../../services/news-services';
+import { RhStaffServices } from '../../../../../services/rh-staff-services';
 import { displayArea } from '../area-display.util';
 import { OngoingStopsComponent } from '../ongoing-stops/ongoing-stops.component';
 import { RequesterAcceptanceComponent } from '../work-order-acceptance/requester-acceptance.component';
@@ -31,6 +32,13 @@ import {
 
 /** Estado de la parada al reportarla: sigue detenida (sin fin) o ya terminó. */
 type StopStatus = 'ongoing' | 'finished';
+
+/** Persona elegible como responsable de un proyecto (personal activo de RH). */
+interface ResponsibleOption {
+  document: string;
+  fullName: string;
+  departament: string;
+}
 
 /** Tolerancia (min) para relojes levemente adelantados; igual a la del backend. */
 const FUTURE_TOLERANCE_MINUTES = 5;
@@ -53,7 +61,84 @@ export class SharedNewsComponent implements OnInit {
   private dashboardService = inject(DashboardServices);
   private fb = inject(FormBuilder);
   private newsServices = inject(NewsServices);
+  private rhStaffService = inject(RhStaffServices);
   private toastr = inject(ToastrService);
+
+  // --- Proyecto + responsable (opcional) ---
+  /** Personal activo (se carga una sola vez, al empezar a buscar). */
+  private staff: ResponsibleOption[] = [];
+  private staffLoaded = false;
+  isLoadingStaff = false;
+  responsibleSearch = '';
+  responsibleOptions: ResponsibleOption[] = [];
+  showResponsibleDropdown = false;
+  responsibleTouched = false;
+  projectResponsible: ResponsibleOption | null = null;
+
+  get projectNameFilled(): boolean {
+    return !!(this.novedadForm?.get('projectName')?.value || '').trim();
+  }
+
+  private loadStaffOnce(): void {
+    if (this.staffLoaded || this.isLoadingStaff) return;
+    this.isLoadingStaff = true;
+    this.rhStaffService.getActiveStaff().subscribe({
+      next: (res) => {
+        this.staff = (res?.data || [])
+          .filter((s) => !!s.document && !!s.full_name)
+          .map((s) => ({ document: s.document, fullName: s.full_name, departament: s.staffAssignment?.departament || '' }));
+        this.staffLoaded = true;
+        this.isLoadingStaff = false;
+        this.filterResponsibles();
+      },
+      error: (err) => {
+        this.isLoadingStaff = false;
+        console.error('Error cargando personal activo:', err);
+        this.toastr.warning('No se pudo cargar el personal para elegir el responsable.', 'Proyecto');
+      }
+    });
+  }
+
+  onResponsibleSearch(term: string): void {
+    this.responsibleSearch = term || '';
+    this.loadStaffOnce();
+    this.filterResponsibles();
+  }
+
+  private filterResponsibles(): void {
+    const t = this.responsibleSearch.trim().toLowerCase();
+    if (t.length < 2) {
+      this.responsibleOptions = [];
+      this.showResponsibleDropdown = false;
+      return;
+    }
+    this.responsibleOptions = this.staff
+      .filter((p) => p.fullName.toLowerCase().includes(t) || p.document.toLowerCase().includes(t))
+      .slice(0, 20);
+    this.showResponsibleDropdown = this.responsibleOptions.length > 0;
+  }
+
+  onResponsibleFocus(): void {
+    this.loadStaffOnce();
+    if (this.responsibleOptions.length) this.showResponsibleDropdown = true;
+  }
+
+  onResponsibleBlur(): void {
+    this.responsibleTouched = true;
+    setTimeout(() => (this.showResponsibleDropdown = false), 150);
+  }
+
+  selectResponsible(p: ResponsibleOption): void {
+    this.projectResponsible = p;
+    this.responsibleSearch = '';
+    this.responsibleOptions = [];
+    this.showResponsibleDropdown = false;
+  }
+
+  clearResponsible(): void {
+    this.projectResponsible = null;
+    this.responsibleTouched = false;
+  }
 
   @ViewChild(OngoingStopsComponent) private ongoingStops?: OngoingStopsComponent;
 
@@ -167,7 +252,8 @@ export class SharedNewsComponent implements OnInit {
       fechaFin: [{ value: '', disabled: true }],
       horaFin: [{ value: '', disabled: true }],
       totalParada: [{ value: '00:00', disabled: true }],
-      detalle: ['', [Validators.required, Validators.minLength(50)]]
+      detalle: ['', [Validators.required, Validators.minLength(50)]],
+      projectName: ['']
     });
 
     this.loadProductionAreas();
@@ -483,6 +569,19 @@ export class SharedNewsComponent implements OnInit {
     }
 
     const formValues = this.novedadForm.getRawValue();
+
+    // Proyecto opcional: si tiene nombre, el responsable es obligatorio (y viceversa).
+    const projectName = (formValues.projectName || '').toString().trim();
+    if (projectName && !this.projectResponsible) {
+      this.responsibleTouched = true;
+      this.toastr.warning('Seleccione la persona responsable del proyecto.', 'Proyecto');
+      return;
+    }
+    if (!projectName && this.projectResponsible) {
+      this.toastr.warning('Indique el nombre del proyecto o quite el responsable.', 'Proyecto');
+      return;
+    }
+
     const [year, month, day] = formValues.fecha.split('-');
     const newsDate = `${day}/${month}/${year}`;
 
@@ -503,7 +602,15 @@ export class SharedNewsComponent implements OnInit {
         ...(machineCode ? { machine: { code: machineCode, name: machineName || 'Definir Nombre' } } : {}),
         ...(partCode ? { part: { code: partCode, name: '' } } : {})
       },
-      assignment: { currentArea: formValues.assignmentArea, currentSubArea: formValues.assignmentSubArea || '' }
+      assignment: { currentArea: formValues.assignmentArea, currentSubArea: formValues.assignmentSubArea || '' },
+      ...(projectName && this.projectResponsible
+        ? {
+            project: {
+              name: projectName,
+              responsible: { document: this.projectResponsible.document, fullName: this.projectResponsible.fullName }
+            }
+          }
+        : {})
     };
 
     const isOngoingStop = this.isLineaParada && !this.isStopFinished;
@@ -578,8 +685,12 @@ export class SharedNewsComponent implements OnInit {
       fechaFin: '',
       horaFin: '',
       totalParada: '00:00',
-      detalle: ''
+      detalle: '',
+      projectName: ''
     });
+    this.projectResponsible = null;
+    this.responsibleSearch = '';
+    this.responsibleTouched = false;
     this.predictiveList = [];
     this.showDropdown = false;
     this.predictiveMachineList = [];

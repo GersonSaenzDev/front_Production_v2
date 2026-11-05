@@ -446,3 +446,34 @@ textarea.form-control {
   color: #991b1b;
   font-size: 0.875rem;
 }
+
+// =======================
+//  PROYECTO + RESPONSABLE (opcional)
+// =======================
+.project-block {
+  border: 1px dashed #c7d2fe;
+  background: #f5f7ff;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+
+  .project-block-title {
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 0.6rem;
+
+    i { margin-right: 0.25rem; }
+  }
+}
+
+.responsible-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 38px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.9rem;
+}

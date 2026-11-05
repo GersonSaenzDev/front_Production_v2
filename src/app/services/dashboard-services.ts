@@ -23,7 +23,10 @@ import {
     LoadAssemblyResponse,
     CleanDuplicateBarcodesResponse,
     WarehouseEntryValidationPayload,
-    WarehouseEntryValidationResponse
+    WarehouseEntryValidationResponse,
+    ViewNewsQuery,
+    FollowedNewsResponse,
+    FollowNewsToggleResponse
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -53,6 +56,7 @@ export class DashboardServices {
   private readonly PACKING_LIST_ENTRY_VALIDATION_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/packingList/entryValidation`;
   private readonly LOAD_ASSEMBLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/loadAssembly`;
   private readonly CLEAN_DUPLICATE_BARCODES_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/cleanDuplicateBarcodes`;
+  private readonly FOLLOW_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews/follow`;
 
 
   private handleError(error: any) {
@@ -167,6 +171,42 @@ export class DashboardServices {
                   return response;
               })
           );
+  }
+
+  /**
+   * @description Novedades por RANGO de fechas, en lotes (máx. 100) y con búsqueda en el
+   * servidor (sobre todo el rango, incluido el consecutivo MTTO/SME). La respuesta trae
+   * `total` y `summary` (resumen por categoría de todo el resultado).
+   */
+  viewNewsPage(query: ViewNewsQuery): Observable<ProductionNewsResponse> {
+    const body = { ...query, limit: Math.min(query.limit ?? 100, 100), skip: query.skip ?? 0 };
+    return this.http.post<ProductionNewsResponse>(this.VIEW_NEWS_ENDPOINT, body).pipe(
+      catchError(this.handleError.bind(this)),
+      map((response) => ({ ...response, msg: response.msg || [] }))
+    );
+  }
+
+  /** Novedades que el usuario logueado tiene en seguimiento (máx. 5, sin filtro de fecha). */
+  getFollowedNews(): Observable<FollowedNewsResponse> {
+    return this.http.get<FollowedNewsResponse>(this.FOLLOW_NEWS_ENDPOINT).pipe(
+      catchError(this.handleError.bind(this)),
+      map((response) => ({ ...response, msg: response.msg || [], newsIds: response.newsIds || [] }))
+    );
+  }
+
+  /** Novedades con proyecto cuyo responsable es el usuario logueado (abiertas, sin filtro de fecha). */
+  getMyProjectNews(): Observable<ProductionNewsResponse> {
+    return this.http.get<ProductionNewsResponse>(`${this.BASE_URL}${this.BASE_API}/assembly/productionNews/myProjects`).pipe(
+      catchError(this.handleError.bind(this)),
+      map((response) => ({ ...response, msg: response.msg || [] }))
+    );
+  }
+
+  /** Marca (`follow` true) o desmarca una novedad en seguimiento. */
+  toggleFollowNews(newsId: string, follow: boolean): Observable<FollowNewsToggleResponse> {
+    return this.http
+      .post<FollowNewsToggleResponse>(this.FOLLOW_NEWS_ENDPOINT, { newsId, follow })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**

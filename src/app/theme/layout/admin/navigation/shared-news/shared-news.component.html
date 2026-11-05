@@ -252,6 +252,48 @@
               <label for="detalle" class="form-label">Detalle de Novedad <span class="required-mark">*</span></label>
               <textarea id="detalle" class="form-control" rows="4" formControlName="detalle" placeholder="Describa la novedad de forma clara y concisa (mínimo 50 caracteres)." [ngClass]="{'is-invalid': isFieldInvalid('detalle')}"></textarea>
             </div>
+
+            <!-- PROYECTO (opcional): se asigna a una persona responsable concreta -->
+            <div class="col-12">
+              <div class="project-block">
+                <div class="project-block-title">
+                  <i class="ti ti-briefcase"></i> Proyecto <small class="text-muted">(opcional)</small>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="projectName" class="form-label">Nombre del proyecto</label>
+                    <input type="text" id="projectName" class="form-control" formControlName="projectName" maxlength="120"
+                           placeholder="Ej: Cambio de troquel línea 2" autocomplete="off">
+                  </div>
+                  <div class="col-md-6 position-relative">
+                    <label for="projectResponsible" class="form-label">
+                      Responsable <span class="required-mark" *ngIf="projectNameFilled">*</span>
+                    </label>
+                    <ng-container *ngIf="!projectResponsible">
+                      <input type="text" id="projectResponsible" class="form-control" [value]="responsibleSearch"
+                             (input)="onResponsibleSearch($any($event.target).value)" (focus)="onResponsibleFocus()"
+                             (blur)="onResponsibleBlur()" placeholder="Buscar por nombre o documento" autocomplete="off"
+                             [ngClass]="{ 'is-invalid': projectNameFilled && responsibleTouched }">
+                      <div class="autocomplete-results" *ngIf="showResponsibleDropdown && responsibleOptions.length > 0">
+                        <div class="autocomplete-item" *ngFor="let p of responsibleOptions" (mousedown)="selectResponsible(p)">
+                          <strong>{{ p.fullName }}</strong> — {{ p.document }}
+                          <small class="text-muted d-block" *ngIf="p.departament">{{ p.departament }}</small>
+                        </div>
+                      </div>
+                      <small class="field-help" *ngIf="isLoadingStaff"><span class="spinner-border spinner-border-sm"></span> Cargando personal...</small>
+                    </ng-container>
+                    <div class="responsible-chip" *ngIf="projectResponsible">
+                      <i class="ti ti-user-check"></i>
+                      <span><strong>{{ projectResponsible.fullName }}</strong> · {{ projectResponsible.document }}</span>
+                      <button type="button" class="btn btn-sm btn-link p-0 ms-auto" (click)="clearResponsible()" title="Cambiar responsable">
+                        <i class="ti ti-x"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <small class="field-help">El responsable verá esta novedad en "Proyectos a mi cargo" de su vista de novedades.</small>
+              </div>
+            </div>
           </div>
         </div>
 

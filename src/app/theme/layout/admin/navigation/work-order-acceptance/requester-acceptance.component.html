@@ -5,11 +5,14 @@
       <i class="ti ti-clipboard-check"></i>
       <div>
         <h6 class="mb-0">Intervenciones por aceptar</h6>
-        <small>Mantenimiento y Mecánica no pueden cerrar estas solicitudes hasta que quien reportó la novedad las acepte y evalúe.</small>
+        <small>
+          Mantenimiento y Mecánica ya terminaron estas intervenciones. No pueden cerrarlas hasta que quien reportó la novedad
+          (o el jefe del área) las apruebe y califique de 1 a 5 estrellas.
+        </small>
       </div>
     </div>
     <div class="ra-counters">
-      <span class="badge bg-danger" title="Las que usted reportó y debe aceptar">Mías: {{ mineCount }}</span>
+      <span class="badge bg-danger" title="Las que usted puede aprobar (las reportó o es jefe del área)">Por aprobar: {{ mineCount }}</span>
       <span class="badge bg-light text-dark" title="Pendientes del área">Del área: {{ areaCount }}</span>
       <button
         type="button"
@@ -61,11 +64,11 @@
             <td class="text-end text-nowrap">
               <button type="button" class="btn btn-sm btn-success" *ngIf="it.mine" (click)="openEvaluation(it)">
                 <i class="ti ti-star me-1"></i>
-                Aceptar y evaluar
+                {{ it.reportedByMe ? 'Aprobar y evaluar' : 'Aprobar (jefe de área)' }}
               </button>
-              <small class="text-muted" *ngIf="!it.mine" title="Solo quien reportó la novedad puede aceptarla">
+              <small class="text-muted" *ngIf="!it.mine" title="Solo quien reportó la novedad o el jefe del área pueden aprobarla">
                 <i class="ti ti-lock"></i>
-                La acepta {{ it.requesterName }}
+                La aprueba {{ it.requesterName }} o su jefe
               </small>
             </td>
           </tr>

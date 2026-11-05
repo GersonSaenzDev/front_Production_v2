@@ -9,6 +9,7 @@ import {
   AddWarehouseDeliveryRequest,
   ApprovalRequest,
   ApprovalResponse,
+  ClosureTrackingResponse,
   CreateMaintenanceRequest,
   DeleteMaintenanceResponse,
   MaintenanceListFilters,
@@ -174,6 +175,18 @@ export class MaintenanceServices {
     if (scope) params = params.set('scope', scope);
     return this.http
       .get<RequesterPendingResponse<MaintenanceRequest>>(`${this.BASE_API}/requester/pending`, { params })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Seguimiento de cierre: enviadas que el área aún no acepta (awaitingRequester) y aceptadas que
+   * Mantenimiento aún no cierra (awaitingClose). `scope` opcional limita al área de origen.
+   */
+  getClosureTracking(scope?: string): Observable<ClosureTrackingResponse<MaintenanceRequest>> {
+    let params = new HttpParams();
+    if (scope) params = params.set('scope', scope);
+    return this.http
+      .get<ClosureTrackingResponse<MaintenanceRequest>>(`${this.BASE_API}/requester/closure-tracking`, { params })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

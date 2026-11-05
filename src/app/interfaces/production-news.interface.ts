@@ -74,6 +74,8 @@ export interface ProductionNewsRequest {
     origin: NewsOrigin;               // Área que reporta
     assignment: NewsAssignment;       // Área a la que se le carga la novedad
     stop?: NewsStop;                  // Solo si category === 'Parada de Proceso'
+    /** Proyecto (opcional) + persona responsable; si se envía, ambos son obligatorios. */
+    project?: { name: string; responsible: { document: string; fullName: string } };
 
     // -----------------------------------------------------------------
     // CAMPOS LEGACY (opcionales — se mantienen mientras el backend los acepte)

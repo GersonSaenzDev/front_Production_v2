@@ -1,0 +1,97 @@
+<!-- src/app/theme/layout/admin/navigation/news-thread/news-thread.component.html -->
+
+<!-- PROYECTO -->
+<div class="nt-section nt-project" *ngIf="news.project?.name">
+  <i class="ti ti-briefcase"></i>
+  <div>
+    <strong>Proyecto: {{ news.project?.name }}</strong>
+    <small class="d-block text-muted">
+      Responsable: {{ news.project?.responsible?.fullName || news.project?.responsible?.document || '—' }}
+      <ng-container *ngIf="news.project?.assignedAt"> · asignado {{ news.project?.assignedAt }}</ng-container>
+    </small>
+  </div>
+</div>
+
+<!-- ORDEN DE SERVICIO (Mantenimiento / Mecánica) -->
+<div class="nt-section" *ngFor="let wo of workOrders">
+  <div class="nt-header">
+    <h6 class="mb-0">
+      <i class="ti ti-tool"></i>
+      {{ serviceAreaLabel(wo.serviceArea) }} · <strong>{{ wo.label }}</strong>
+    </h6>
+    <span class="wo-chip" [ngClass]="phaseClass(wo)">{{ phaseLabel(wo) }}</span>
+  </div>
+
+  <div class="nt-meta">
+    <span><i class="ti ti-calendar-plus"></i> Generada: {{ wo.createdAt || '—' }}</span>
+    <span *ngIf="wo.assignees.length"><i class="ti ti-users"></i> Técnicos: {{ wo.assignees.join(', ') }}</span>
+    <span *ngIf="wo.completedDate"><i class="ti ti-lock-check"></i> Cerrada: {{ wo.completedDate }}</span>
+  </div>
+
+  <small class="nt-label">Lo que hizo {{ serviceAreaLabel(wo.serviceArea) }}</small>
+  <div *ngIf="wo.interventions.length; else noInterventions">
+    <div class="nt-item" *ngFor="let it of wo.interventions">
+      <div class="nt-dot nt-dot-service"></div>
+      <div class="nt-body">
+        <p class="mb-1">{{ it.workDone || '—' }}</p>
+        <small class="text-muted">
+          {{ it.person || '—' }}<ng-container *ngIf="it.helper"> + {{ it.helper }}</ng-container>
+          · {{ it.startAt || '—' }} → {{ it.endAt || '—' }} · {{ formatMinutes(it.durationMinutes) }}
+        </small>
+        <p class="nt-note mb-0" *ngIf="it.notes"><i class="ti ti-note"></i> {{ it.notes }}</p>
+      </div>
+    </div>
+  </div>
+  <ng-template #noInterventions>
+    <small class="text-muted d-block mb-2">Aún no hay intervenciones registradas.</small>
+  </ng-template>
+
+  <ng-container *ngIf="evaluationsOf(wo).length">
+    <small class="nt-label mt-2">Aprobación del área</small>
+    <div class="nt-eval" *ngFor="let e of evaluationsOf(wo)" [class.is-rejected]="e.result === 'RECHAZADA'">
+      <span class="nt-stars" [title]="e.ratingLabel">{{ ratingStars(e.rating) }}</span>
+      <div>
+        <strong>{{ e.result === 'RECHAZADA' ? 'Rechazada · ' : '' }}{{ e.ratingLabel }}</strong>
+        <small class="d-block text-muted">
+          {{ e.evaluatedBy || '—' }}<ng-container *ngIf="e.evaluatedByRole === 'JEFE_AREA'"> (jefe de área)</ng-container>
+          · {{ e.evaluatedAt }}
+        </small>
+        <p class="mb-0 mt-1" *ngIf="e.comment">“{{ e.comment }}”</p>
+      </div>
+    </div>
+  </ng-container>
+
+  <div class="nt-awaiting" *ngIf="isAwaitingApproval(wo)">
+    <i class="ti ti-hourglass"></i>
+    {{ serviceAreaLabel(wo.serviceArea) }} terminó la intervención. Falta que
+    {{ wo.requester?.name || 'quien reportó' }} o el jefe del área la aprueben para poder cerrarla.
+    <button *ngIf="showApprove(wo)" type="button" class="btn btn-sm btn-success ms-2" (click)="approve.emit(wo)">
+      <i class="ti ti-star"></i> Aprobar cierre
+    </button>
+  </div>
+</div>
+
+<!-- RESPUESTAS DE LAS ÁREAS -->
+<div class="nt-section">
+  <div class="nt-header">
+    <h6 class="mb-0"><i class="ti ti-messages"></i> Respuestas de las áreas ({{ responses.length }})</h6>
+  </div>
+  <div *ngIf="responses.length; else noResponses">
+    <div class="nt-item" *ngFor="let r of responses">
+      <div class="nt-dot"></div>
+      <div class="nt-body">
+        <small class="text-muted d-block">
+          <strong>{{ r.respondedBy?.name || '—' }}</strong>
+          <ng-container *ngIf="r.respondedBy?.subArea || r.respondedBy?.area"> · {{ r.respondedBy?.subArea || r.respondedBy?.area }}</ng-container>
+          · {{ r.respondedAt || '—' }}
+        </small>
+        <p class="mb-1"><span class="nt-key">Observación:</span> {{ r.observation }}</p>
+        <p class="mb-1" *ngIf="r.actionTaken"><span class="nt-key">Acción tomada:</span> {{ r.actionTaken }}</p>
+        <p class="mb-0" *ngIf="r.rootCause"><span class="nt-key">Causa raíz:</span> {{ r.rootCause }}</p>
+      </div>
+    </div>
+  </div>
+  <ng-template #noResponses>
+    <small class="text-muted">Aún no hay respuestas registradas.</small>
+  </ng-template>
+</div>

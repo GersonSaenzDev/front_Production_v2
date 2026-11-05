@@ -1,0 +1,98 @@
+<!-- src/app/theme/layout/admin/navigation/work-order-acceptance/closure-tracking.component.html -->
+<div class="ct-card" *ngIf="hasItems">
+  <div class="ct-header" (click)="expanded = !expanded" role="button">
+    <div class="ct-header-text">
+      <i class="ti ti-progress-check"></i>
+      <div>
+        <h6 class="mb-0">Seguimiento de cierre de intervenciones</h6>
+        <small *ngIf="mode === 'area'">
+          Su área ya aprobó estas intervenciones; falta que {{ serviceLabel }} las cierre para finalizar.
+        </small>
+        <small *ngIf="mode === 'service'">
+          Intervenciones generadas desde novedades: las que esperan la aprobación del área y las que {{ serviceLabel }} debe cerrar.
+        </small>
+      </div>
+    </div>
+    <div class="ct-counters" (click)="$event.stopPropagation()">
+      <button
+        *ngIf="showRequesterStage"
+        type="button"
+        class="ct-chip ct-chip-warning"
+        [class.is-active]="activeStage === 'AWAITING_REQUESTER'"
+        (click)="setStage('AWAITING_REQUESTER')"
+        title="Enviadas al área; aún no las aprueba">
+        Por aprobar del área: <strong>{{ awaitingRequester.length }}</strong>
+      </button>
+      <button
+        type="button"
+        class="ct-chip ct-chip-success"
+        [class.is-active]="!showRequesterStage || activeStage === 'AWAITING_CLOSE'"
+        (click)="setStage('AWAITING_CLOSE')"
+        [title]="'Aprobadas por el área; ' + serviceLabel + ' debe cerrarlas'">
+        Por cerrar {{ mode === 'service' ? '(' + serviceLabel + ')' : 'de ' + serviceLabel }}: <strong>{{ awaitingClose.length }}</strong>
+      </button>
+      <button type="button" class="btn btn-sm btn-light" (click)="load()" [disabled]="isLoading" title="Actualizar">
+        <span *ngIf="isLoading" class="spinner-border spinner-border-sm"></span>
+        <i *ngIf="!isLoading" class="ti ti-refresh"></i>
+      </button>
+      <i class="ti" [class.ti-chevron-up]="expanded" [class.ti-chevron-down]="!expanded" (click)="expanded = !expanded"></i>
+    </div>
+  </div>
+
+  <div class="ct-body" *ngIf="expanded">
+    <div class="ct-empty" *ngIf="visibleItems.length === 0">
+      <i class="ti ti-circle-check me-1"></i> No hay intervenciones en esta etapa.
+    </div>
+
+    <div class="table-responsive" *ngIf="visibleItems.length > 0">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Área</th>
+            <th>Solicitud</th>
+            <th>Equipo / herramental</th>
+            <th>Trabajo solicitado</th>
+            <th>Origen / Reportó</th>
+            <th *ngIf="(showRequesterStage ? activeStage : 'AWAITING_CLOSE') === 'AWAITING_CLOSE'">Aprobación</th>
+            <th class="text-nowrap">Esperando</th>
+            <th class="text-end" *ngIf="mode === 'service'">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let it of visibleItems" [class.ct-row-late]="(it.daysWaiting ?? 0) >= 3">
+            <td>
+              <span class="badge" [class.bg-primary]="it.serviceArea === 'MANTENIMIENTO'" [class.bg-dark]="it.serviceArea === 'MECANICA'">
+                {{ serviceAreaLabel(it.serviceArea) }}
+              </span>
+            </td>
+            <td class="text-nowrap"><strong>{{ it.consecutive }}</strong></td>
+            <td>{{ it.subject }}</td>
+            <td class="ct-desc" [title]="it.description">{{ it.description }}</td>
+            <td>
+              {{ it.origin || '—' }}
+              <small class="text-muted d-block" *ngIf="it.requesterName">{{ it.requesterName }}</small>
+            </td>
+            <td *ngIf="it.stage === 'AWAITING_CLOSE'">
+              <span class="ct-stars" [title]="it.ratingLabel">{{ ratingStars(it.rating) }}</span>
+              <small class="text-muted d-block">
+                {{ it.approvedBy || '—' }}<span *ngIf="it.approvedByBoss"> (jefe de área)</span>
+              </small>
+              <small class="ct-comment d-block" *ngIf="it.ratingComment" [title]="it.ratingComment">“{{ it.ratingComment }}”</small>
+            </td>
+            <td class="text-nowrap">
+              <span class="ct-wait" [class.is-late]="(it.daysWaiting ?? 0) >= 3">{{ waitingLabel(it.daysWaiting) }}</span>
+              <small class="text-muted d-block">{{ it.since || '—' }}</small>
+            </td>
+            <td class="text-end text-nowrap" *ngIf="mode === 'service'">
+              <button type="button" class="btn btn-sm" [class.btn-success]="it.stage === 'AWAITING_CLOSE'"
+                [class.btn-outline-secondary]="it.stage !== 'AWAITING_CLOSE'" (click)="onOpen(it)">
+                <i class="ti me-1" [class.ti-lock-check]="it.stage === 'AWAITING_CLOSE'" [class.ti-eye]="it.stage !== 'AWAITING_CLOSE'"></i>
+                {{ it.stage === 'AWAITING_CLOSE' ? 'Abrir para cerrar' : 'Ver' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
