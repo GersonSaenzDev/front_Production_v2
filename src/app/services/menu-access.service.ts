@@ -19,6 +19,24 @@ export type AppModule =
   | 'logistics'
   | 'all';
 
+/**
+ * Código de usuario normalizado para comparar con las listas por usuario: sin tildes ni ñ,
+ * en MAYÚSCULAS y sin espacios. Así 'acpeña', 'ACPEÑA' y 'acpena' coinciden (el backend de RH
+ * a veces entrega el userApp sin la ñ).
+ */
+export function normalizeUserCode(userApp?: string | null): string {
+  return (userApp || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+}
+
+/** El código (ya normalizado) está en una lista de usuarios (normalizada al comparar). */
+function inUserList(list: readonly string[], code: string): boolean {
+  return !!code && list.some((u) => normalizeUserCode(u) === code);
+}
+
 // Perfiles de las cuentas de kiosco de Bodega (ver BODEGA_KIOSK_PROFILES)
 type BodegaKioskProfile = 'INVENTARIO' | 'PREALISTAMIENTO' | 'MUELLE';
 
@@ -126,8 +144,8 @@ export class MenuAccessService {
   private readonly LOGISTICA_EXTERNA_BODEGA_USERS = ['DSPULGARIN', 'DEVERDUGO'];
 
   private isLogisticaExternaBodegaUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.LOGISTICA_EXTERNA_BODEGA_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.LOGISTICA_EXTERNA_BODEGA_USERS, code);
   }
 
   // Usuarios de OTRAS áreas (ej. Jefatura de Producción) que, además de su menú
@@ -138,8 +156,8 @@ export class MenuAccessService {
   private readonly BODEGA_VIEWER_USERS = ['ACPEÑA', 'EJBARRAGAN'];
 
   private isBodegaViewerUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.BODEGA_VIEWER_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.BODEGA_VIEWER_USERS, code);
   }
 
   // Usuarios de OTRAS áreas que, además de su menú normal, deben ver el menú
@@ -148,8 +166,8 @@ export class MenuAccessService {
   private readonly STADISTICS_VIEWER_USERS = ['ACPEÑA'];
 
   private isStadisticsViewerUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.STADISTICS_VIEWER_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.STADISTICS_VIEWER_USERS, code);
   }
 
   // Salida manual de Importaciones / Externos (daño, devolución a proveedor, ajuste): solo el
@@ -158,8 +176,8 @@ export class MenuAccessService {
   private readonly EXTERNAL_EXIT_USERS = ['LYLEON'];
 
   private isExternalExitUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.EXTERNAL_EXIT_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.EXTERNAL_EXIT_USERS, code);
   }
 
   private isExternalExitNavItem(item: any): boolean {
@@ -181,8 +199,8 @@ export class MenuAccessService {
   ];
 
   private isExternalViewerUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.EXTERNAL_VIEWER_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.EXTERNAL_VIEWER_USERS, code);
   }
 
   // Usuarios de OTRAS áreas que, además de su menú normal, ven Producción > "Generar Etiquetas"
@@ -191,8 +209,8 @@ export class MenuAccessService {
   private readonly LABELS_VIEWER_USERS = ['JEVELASQUEZ'];
 
   private isLabelsViewerUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.LABELS_VIEWER_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.LABELS_VIEWER_USERS, code);
   }
 
   // Dirección de Producción (ej. ACPEÑA, Directora de Producción): además de su menú normal ven
@@ -206,10 +224,10 @@ export class MenuAccessService {
 
   /** Collapses del grupo Producción que el usuario ve por permiso aditivo (vacío si ninguno). */
   private additiveProductionCollapses(userApp?: string): string[] {
-    const code = userApp?.toUpperCase().trim() || '';
+    const code = normalizeUserCode(userApp);
     const titles: string[] = [];
-    if (this.PRODUCTION_DIRECTOR_USERS.includes(code)) titles.push(...MenuAccessService.PRODUCTION_NEWS_COLLAPSES);
-    if (this.LABELS_VIEWER_USERS.includes(code)) titles.push(MenuAccessService.PRODUCTION_LABELS_COLLAPSE);
+    if (inUserList(this.PRODUCTION_DIRECTOR_USERS, code)) titles.push(...MenuAccessService.PRODUCTION_NEWS_COLLAPSES);
+    if (inUserList(this.LABELS_VIEWER_USERS, code)) titles.push(MenuAccessService.PRODUCTION_LABELS_COLLAPSE);
     return titles;
   }
 
@@ -242,8 +260,8 @@ export class MenuAccessService {
   private readonly MAINTENANCE_WAREHOUSE_USERS: string[] = [];
 
   private isMaintenanceWarehouseUser(userApp?: string): boolean {
-    const code = userApp?.toUpperCase().trim() || '';
-    return this.MAINTENANCE_WAREHOUSE_USERS.includes(code);
+    const code = normalizeUserCode(userApp);
+    return inUserList(this.MAINTENANCE_WAREHOUSE_USERS, code);
   }
 
   /**
@@ -278,8 +296,8 @@ export class MenuAccessService {
     const dept = userData.departament?.toUpperCase().trim() || '';
     if (this.isManagerWithFullAccess(area, dept) || this.isBudgetAnalyst(area, dept)) return true;
     if (dept === 'PLANEACION') return true;
-    const code = userData.userApp?.toUpperCase().trim() || '';
-    return this.PLANNING_PRODUCTION_USERS.includes(code);
+    const code = normalizeUserCode(userData.userApp);
+    return inUserList(this.PLANNING_PRODUCTION_USERS, code);
   }
 
   // Identifica el item de menú "Almacén de Mantenimiento" (url dedicada, ver navigation.ts).
@@ -326,8 +344,8 @@ export class MenuAccessService {
     const area = userData.area?.toUpperCase().trim() || '';
     const dept = userData.departament?.toUpperCase().trim() || '';
     if (this.isManagerWithFullAccess(area, dept)) return true;
-    const code = userData.userApp?.toUpperCase().trim() || '';
-    if (this.PRODUCTION_DIRECTOR_USERS.includes(code)) return true;
+    const code = normalizeUserCode(userData.userApp);
+    if (inUserList(this.PRODUCTION_DIRECTOR_USERS, code)) return true;
     return this.isMaintenanceManager();
   }
 
@@ -462,7 +480,7 @@ export class MenuAccessService {
   }
 
   private getBodegaKioskProfile(userApp?: string) {
-    const code = userApp?.toUpperCase().trim() || '';
+    const code = normalizeUserCode(userApp);
     const profile = this.BODEGA_KIOSK_USERS.find((k) => k.pattern.test(code))?.profile;
     return profile ? this.BODEGA_KIOSK_PROFILES[profile] : undefined;
   }

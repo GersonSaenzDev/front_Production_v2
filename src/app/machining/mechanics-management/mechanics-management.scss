@@ -53,3 +53,241 @@
   font-size: 0.9rem;
   white-space: pre-wrap;
 }
+
+// =======================
+//  BARRA DE FILTROS DE NOVEDADES ENTRANTES (nf-*)
+//  Clases propias: no depende de .input-group ni de las reglas globales de label/form-control.
+// =======================
+$nf-blue: #004a99;
+$nf-blue-dark: #003366;
+$nf-border: #dbe3ef;
+$nf-muted: #64748b;
+
+.nf-toolbar {
+  display: grid;
+  grid-template-columns: minmax(150px, 170px) minmax(150px, 170px) minmax(220px, 1fr) minmax(280px, 2fr);
+  gap: 0.85rem;
+  align-items: end;
+  padding: 1rem;
+  border: 1px solid #e8eef7;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%);
+}
+
+.nf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.nf-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: $nf-blue-dark;
+
+  small {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: $nf-muted;
+  }
+}
+
+.nf-input {
+  width: 100%;
+  height: 44px;
+  border: 1.5px solid $nf-border;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 0.85rem;
+  font-size: 0.9rem;
+  color: #1e293b;
+  color-scheme: light;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+
+  &:hover {
+    border-color: #c3cfe0;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $nf-blue;
+    box-shadow: 0 0 0 4px rgba($nf-blue, 0.12);
+  }
+}
+
+// Ãconos dentro del campo (select de Ã¡rea y buscador)
+.nf-select-wrap,
+.nf-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > .ti {
+    position: absolute;
+    left: 0.85rem;
+    font-size: 1.05rem;
+    color: $nf-muted;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .nf-input {
+    padding-left: 2.4rem;
+  }
+}
+
+.nf-select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23334155' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 12px;
+}
+
+.nf-search-wrap .nf-input {
+  padding-right: 3.2rem;
+}
+
+// BotÃ³n actualizar, integrado al final del buscador
+.nf-icon-btn {
+  position: absolute;
+  right: 5px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, $nf-blue 0%, $nf-blue-dark 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba($nf-blue, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  .ti {
+    font-size: 1.05rem;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba($nf-blue, 0.35);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+}
+
+.nf-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.nf-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.nf-chip {
+  border: 1px solid $nf-border;
+  background: #fff;
+  color: $nf-blue-dark;
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: $nf-blue;
+    border-color: $nf-blue;
+    color: #fff;
+  }
+}
+
+.nf-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.4rem 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #e0ecff;
+  color: $nf-blue-dark;
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  button {
+    border: none;
+    background: rgba($nf-blue, 0.12);
+    color: $nf-blue-dark;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 0.75rem;
+
+    &:hover {
+      background: $nf-blue;
+      color: #fff;
+    }
+  }
+}
+
+.nf-count {
+  font-size: 0.82rem;
+  color: $nf-muted;
+
+  strong {
+    color: $nf-blue-dark;
+  }
+}
+
+.nf-error {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+@media (max-width: 1100px) {
+  .nf-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .nf-area,
+  .nf-search {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 576px) {
+  .nf-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .nf-area,
+  .nf-search {
+    grid-column: span 1;
+  }
+  .nf-subbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

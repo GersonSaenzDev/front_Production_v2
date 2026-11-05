@@ -15,35 +15,39 @@
     </div>
 
     <div class="card-body">
-      <div class="row g-2 align-items-end mb-2">
-        <div class="col-6 col-md-2">
-          <label class="form-label mb-1">Desde</label>
-          <input type="date" class="form-control form-control-sm" [max]="pendingEndDate"
+      <!-- Barra de filtros: rango + área de origen + buscador (servidor) -->
+      <div class="nf-toolbar">
+        <div class="nf-field nf-date">
+          <span class="nf-label">Desde</span>
+          <input type="date" class="nf-input" [max]="pendingEndDate"
             [(ngModel)]="pendingStartDate" (ngModelChange)="loadPendingNews()" />
         </div>
-        <div class="col-6 col-md-2">
-          <label class="form-label mb-1">Hasta</label>
-          <input type="date" class="form-control form-control-sm" [min]="pendingStartDate"
+        <div class="nf-field nf-date">
+          <span class="nf-label">Hasta</span>
+          <input type="date" class="nf-input" [min]="pendingStartDate"
             [(ngModel)]="pendingEndDate" (ngModelChange)="loadPendingNews()" />
         </div>
-        <div class="col-md-3">
-          <label class="form-label mb-1">Área de origen</label>
-          <select class="form-select form-select-sm" [(ngModel)]="pendingOriginScope" (ngModelChange)="loadPendingNews()">
-            <option value="">Todas las áreas</option>
-            <optgroup *ngFor="let g of groupedAreas" [label]="g.area">
-              <option [value]="g.area">{{ g.area }} (todas)</option>
-              <option *ngFor="let s of g.subAreas" [value]="s.subArea">{{ s.subArea }}</option>
-            </optgroup>
-          </select>
+        <div class="nf-field nf-area">
+          <span class="nf-label">Área de origen</span>
+          <div class="nf-select-wrap">
+            <i class="ti ti-building-factory-2"></i>
+            <select class="nf-input nf-select" [(ngModel)]="pendingOriginScope" (ngModelChange)="loadPendingNews()">
+              <option value="">Todas las áreas</option>
+              <optgroup *ngFor="let g of groupedAreas" [label]="g.area">
+                <option [value]="g.area">{{ g.area }} (todas)</option>
+                <option *ngFor="let s of g.subAreas" [value]="s.subArea">{{ s.subArea }}</option>
+              </optgroup>
+            </select>
+          </div>
         </div>
-        <div class="col-md-5">
-          <label class="form-label mb-1">Buscador (todo el rango)</label>
-          <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="ti ti-search"></i></span>
-            <input type="text" class="form-control" [(ngModel)]="pendingNewsSearchTerm"
+        <div class="nf-field nf-search">
+          <span class="nf-label">Buscador <small>(todo el rango)</small></span>
+          <div class="nf-search-wrap">
+            <i class="ti ti-search"></i>
+            <input type="text" class="nf-input" [(ngModel)]="pendingNewsSearchTerm"
               (ngModelChange)="onPendingSearchChange($event)"
               placeholder="Máquina, área, detalle, quien reportó, MTTO, respuestas..." />
-            <button class="btn btn-outline-primary" type="button" (click)="loadPendingNews()" [disabled]="isLoadingPendingNews"
+            <button type="button" class="nf-icon-btn" (click)="loadPendingNews()" [disabled]="isLoadingPendingNews"
               title="Actualizar">
               <span *ngIf="isLoadingPendingNews" class="spinner-border spinner-border-sm"></span>
               <i *ngIf="!isLoadingPendingNews" class="ti ti-refresh"></i>
@@ -51,14 +55,21 @@
           </div>
         </div>
       </div>
-      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="setPendingQuickRange(1)">Hoy</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="setPendingQuickRange(7)">7 días</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="setPendingQuickRange(30)">30 días</button>
-        <small class="text-danger" *ngIf="pendingRangeError"><i class="ti ti-alert-circle"></i> {{ pendingRangeError }}</small>
-        <small class="text-muted ms-auto" *ngIf="!pendingRangeError">
-          {{ pendingNews.length }} de {{ pendingNewsTotal }} novedad(es) del rango
-        </small>
+
+      <div class="nf-subbar">
+        <div class="nf-chips">
+          <button type="button" class="nf-chip" (click)="setPendingQuickRange(1)">Hoy</button>
+          <button type="button" class="nf-chip" (click)="setPendingQuickRange(7)">7 días</button>
+          <button type="button" class="nf-chip" (click)="setPendingQuickRange(30)">30 días</button>
+          <span class="nf-filter-tag" *ngIf="pendingOriginScope">
+            <i class="ti ti-filter"></i> {{ pendingOriginScope }}
+            <button type="button" (click)="pendingOriginScope = ''; loadPendingNews()" title="Quitar filtro"><i class="ti ti-x"></i></button>
+          </span>
+        </div>
+        <span class="nf-error" *ngIf="pendingRangeError"><i class="ti ti-alert-circle"></i> {{ pendingRangeError }}</span>
+        <span class="nf-count" *ngIf="!pendingRangeError">
+          <strong>{{ pendingNews.length }}</strong> de <strong>{{ pendingNewsTotal }}</strong> novedad(es) del rango
+        </span>
       </div>
 
       <div class="table-responsive">
