@@ -208,6 +208,12 @@ export class MenuAccessService {
   // Permiso ADITIVO por userApp.
   private readonly LABELS_VIEWER_USERS = ['JEVELASQUEZ'];
 
+  // Usuarios DESARROLLADORES (soporte del sistema): acceso de Jefe en Mantenimiento y Mecánica
+  // (respuesta administrativa, ajuste del consecutivo del fechero, correcciones, cierre) sin
+  // cambiar de usuario. IMPORTANTE: mantener alineado con DEVELOPER_USERS del backend
+  // (api_produccion/src/maintenance/helpers/maintenance.js).
+  private readonly DEVELOPER_USERS = ['GLSAENZ'];
+
   private isLabelsViewerUser(userApp?: string): boolean {
     const code = normalizeUserCode(userApp);
     return inUserList(this.LABELS_VIEWER_USERS, code);
@@ -349,10 +355,16 @@ export class MenuAccessService {
     return this.isMaintenanceManager();
   }
 
-  /** Jefe de Mantenimiento (o perfil de gestión): puede corregir/habilitar intervenciones. */
+  /** Jefe de Mantenimiento (o perfil de gestión, o desarrollador): puede corregir/habilitar intervenciones. */
   isMaintenanceManager(): boolean {
-    const typeUser = this.authService.userData()?.typeUser?.toUpperCase().trim() || '';
-    return MenuAccessService.MAINTENANCE_MANAGER_TYPES.includes(typeUser);
+    const userData = this.authService.userData();
+    const typeUser = userData?.typeUser?.toUpperCase().trim() || '';
+    return MenuAccessService.MAINTENANCE_MANAGER_TYPES.includes(typeUser) || this.isDeveloperUser();
+  }
+
+  /** Usuario desarrollador del sistema (DEVELOPER_USERS). */
+  isDeveloperUser(): boolean {
+    return inUserList(this.DEVELOPER_USERS, normalizeUserCode(this.authService.userData()?.userApp));
   }
 
   // Items del menú de Mantenimiento exclusivos del Jefe (crear solicitudes / ver todo, asignar,
