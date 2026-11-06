@@ -45,10 +45,9 @@
               placeholder="07-2024" />
           </div>
 
+          <!-- Consecutivo del fechero: lo asigna el servidor al guardar (antes sello manual) -->
           <div class="col-md-4">
-            <label class="form-label">Consecutivo Summum</label>
-            <input type="text" class="form-control" formControlName="consecutiveSummum"
-              placeholder="Código de seguimiento en Summum" />
+            <app-stamp-consecutive #stampField serviceArea="MTTO"></app-stamp-consecutive>
           </div>
 
           <!-- Máquina (buscador predictivo) -->

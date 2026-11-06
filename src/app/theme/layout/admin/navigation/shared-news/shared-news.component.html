@@ -146,6 +146,104 @@
           </div>
         </div>
 
+        <!-- SECCIÓN 3b: SOLICITANTE (A) — HERRAMENTAL MECÁNICA (solo si el destino es Mecánica) -->
+        <div class="section-block mech-block" *ngIf="isMechanicsAssignment" formGroupName="mechanics">
+          <div class="section-header">
+            <div class="section-number mech-number"><i class="ti ti-tools"></i></div>
+            <div>
+              <h6 class="section-title">Solicitante (A) · Herramental Mecánica</h6>
+              <small class="section-subtitle">Formato SME55003 — obligatorio para enviar la novedad a Mecánica</small>
+            </div>
+            <span class="mech-badge ms-auto">SME</span>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-7">
+              <label for="mechToolName" class="form-label">Herramental (Htal) <span class="required-mark">*</span></label>
+              <input type="text" id="mechToolName" class="form-control" formControlName="toolName" maxlength="150"
+                     placeholder="Ej: Bombeador AT-101" autocomplete="off"
+                     [ngClass]="{ 'is-invalid': isMechInvalid('toolName') }">
+            </div>
+            <div class="col-md-5">
+              <label for="mechToolCode" class="form-label">Cód. Htal <span class="required-mark">*</span></label>
+              <div class="mech-code-wrap">
+                <input type="text" id="mechToolCode" class="form-control" formControlName="toolCode" maxlength="60"
+                       placeholder="Código del herramental" autocomplete="off"
+                       [ngClass]="{ 'is-invalid': isMechInvalid('toolCode') }">
+                <label class="mech-na-toggle" title="El herramental no tiene código">
+                  <input type="checkbox" formControlName="toolCodeNA"> No aplica
+                </label>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <span class="form-label d-block">Operación <span class="required-mark">*</span></span>
+              <div class="mech-operation" [class.is-invalid]="operationRangeError">
+                <span class="mech-operation-label">N°</span>
+                <input type="text" inputmode="numeric" class="form-control" formControlName="operationNumber" maxlength="3"
+                       aria-label="Operación número" [ngClass]="{ 'is-invalid': isMechInvalid('operationNumber') }">
+                <span class="mech-operation-label">de</span>
+                <input type="text" inputmode="numeric" class="form-control" formControlName="operationTotal" maxlength="3"
+                       aria-label="Total de operaciones" [ngClass]="{ 'is-invalid': isMechInvalid('operationTotal') }">
+              </div>
+              <small class="mech-error" *ngIf="operationRangeError">La operación no puede ser mayor que el total.</small>
+            </div>
+            <div class="col-md-8">
+              <label for="mechOpDescription" class="form-label">Descripción de la operación <span class="required-mark">*</span></label>
+              <input type="text" id="mechOpDescription" class="form-control" formControlName="operationDescription" maxlength="300"
+                     placeholder="Ej: Punzonado de lámina" autocomplete="off"
+                     [ngClass]="{ 'is-invalid': isMechInvalid('operationDescription') }">
+            </div>
+
+            <div class="col-12">
+              <span class="form-label d-block">Requiere <span class="required-mark">*</span></span>
+              <div class="mech-chips" role="radiogroup" aria-label="Trabajo requerido"
+                   [class.is-invalid]="isMechInvalid('requestedWork')">
+                <button type="button" class="mech-chip" *ngFor="let w of mechanicsRequestedWork"
+                        role="radio" [attr.aria-checked]="mechanicsGroup.get('requestedWork')?.value === w.value"
+                        [class.active]="mechanicsGroup.get('requestedWork')?.value === w.value"
+                        (click)="setRequestedWork(w.value)">
+                  <i class="ti {{ w.icon }}"></i> {{ w.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="mech-hits-head">
+                <span class="form-label mb-0">Golpes montaje / Fecha <span class="required-mark">*</span></span>
+                <button type="button" class="btn btn-sm mech-add-row" (click)="addHitRow()"
+                        [disabled]="mountingHits.length >= maxHitRows">
+                  <i class="ti ti-plus"></i> Agregar fila
+                </button>
+              </div>
+              <div class="mech-hits" formArrayName="mountingHits">
+                <div class="mech-hit-row" *ngFor="let row of mountingHits.controls; let i = index" [formGroupName]="i">
+                  <span class="mech-hit-index">{{ i + 1 }}</span>
+                  <input type="text" inputmode="numeric" class="form-control" formControlName="hits" maxlength="9"
+                         placeholder="Golpes" aria-label="Golpes de montaje"
+                         [ngClass]="{ 'is-invalid': isMechInvalid('mountingHits.' + i + '.hits') }">
+                  <input type="date" class="form-control" formControlName="date" aria-label="Fecha"
+                         [ngClass]="{ 'is-invalid': isMechInvalid('mountingHits.' + i + '.date') }">
+                  <button type="button" class="mech-hit-remove" (click)="removeHitRow(i)"
+                          [disabled]="mountingHits.length <= 1" title="Quitar fila" aria-label="Quitar fila">
+                    <i class="ti ti-x"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="mech-note">
+                <i class="ti ti-info-circle"></i>
+                <span>
+                  <strong>Problema detectado / Trabajo solicitado</strong> es el <em>Detalle de Novedad</em> (sección 4).
+                  Secc./Dpto., Nombre y Fecha de envío se toman del área que reporta, su usuario y la fecha de la novedad.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- SECCIÓN 4: DETALLES DE LA NOVEDAD -->
         <div class="section-block">
           <div class="section-header">

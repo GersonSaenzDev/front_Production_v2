@@ -1,0 +1,81 @@
+<div class="stamp-field">
+  <span class="form-label stamp-label">
+    {{ label }}
+    <span class="stamp-auto"><i class="ti ti-bolt"></i> Automático</span>
+  </span>
+
+  <div class="stamp-box" [class.stamp-box--warn]="status && !status.configured">
+    <i class="ti ti-lock stamp-lock" aria-hidden="true"></i>
+
+    <div class="stamp-value">
+      @if (loading) {
+        <span class="stamp-muted">Consultando…</span>
+      } @else if (loadError) {
+        <span class="stamp-muted">Se asigna al guardar</span>
+      } @else if (status && status.configured) {
+        <span class="stamp-number">{{ status.nextFormatted }}</span>
+        <span class="stamp-hint">próximo · se confirma al guardar</span>
+      } @else if (status) {
+        <span class="stamp-warn">Sin configurar</span>
+        <span class="stamp-hint">el Jefe debe fijar el último número</span>
+      }
+    </div>
+
+    @if (status?.canAdjust) {
+      <button type="button" class="stamp-icon-btn" [class.active]="adjustOpen" (click)="toggleAdjust()"
+        title="Ajustar consecutivo (Jefe)" aria-label="Ajustar consecutivo">
+        <i class="ti ti-adjustments-horizontal"></i>
+      </button>
+    }
+  </div>
+
+  @if (adjustOpen && status?.canAdjust) {
+    <div class="stamp-panel" role="dialog" aria-label="Ajustar consecutivo del fechero">
+      <div class="stamp-panel-head">
+        <strong>Ajustar consecutivo</strong>
+        <button type="button" class="btn-close btn-close-sm" aria-label="Cerrar" (click)="adjustOpen = false"></button>
+      </div>
+
+      <p class="stamp-panel-text">
+        Indique el <b>último número usado</b> en el fechero.
+        @if (status?.configured) {
+          Hoy: <b>{{ status?.lastUsedFormatted }}</b>.
+        }
+      </p>
+
+      <label class="stamp-panel-label" for="stampLastUsed">Último número usado</label>
+      <input id="stampLastUsed" type="number" min="0" step="1" class="form-control form-control-sm"
+        [(ngModel)]="adjustValue" [ngModelOptions]="{ standalone: true }" />
+
+      <label class="stamp-panel-label" for="stampReason">Motivo</label>
+      <input id="stampReason" type="text" class="form-control form-control-sm" maxlength="200"
+        placeholder="Ej. Arranque con el número del sello fechero" [(ngModel)]="adjustReason"
+        [ngModelOptions]="{ standalone: true }" />
+
+      <div class="stamp-panel-preview">
+        La siguiente solicitud será <b>{{ adjustPreview }}</b>
+      </div>
+
+      @if (isLowering) {
+        <div class="stamp-panel-alert">
+          <i class="ti ti-alert-triangle"></i>
+          Está bajando el contador: los números ya entregados se saltan automáticamente.
+        </div>
+      }
+
+      @if (status?.lastAdjustment; as adj) {
+        <div class="stamp-panel-audit">
+          Último ajuste: {{ adj.by }} · {{ adj.at }}<br />
+          <span>{{ adj.from ?? '—' }} → {{ adj.to }} · {{ adj.reason }}</span>
+        </div>
+      }
+
+      <div class="stamp-panel-actions">
+        <button type="button" class="btn btn-sm btn-light" (click)="adjustOpen = false">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary" [disabled]="!canSaveAdjust" (click)="saveAdjust()">
+          {{ saving ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  }
+</div>

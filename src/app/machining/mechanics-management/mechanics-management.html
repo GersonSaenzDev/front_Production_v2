@@ -146,7 +146,8 @@
                 <span class="badge bg-warning text-dark" *ngIf="!generatedFrom(n._id)">Pendiente</span>
               </td>
               <td class="text-end col-actions">
-                <button class="btn btn-sm btn-outline-secondary me-1" (click)="openComments(n)" title="Respuestas, intervenciones y aprobaciones">
+                <button class="btn btn-sm btn-outline-secondary me-1" (click)="openComments(n)"
+                  [title]="canManage ? 'Comentarios y respuesta administrativa' : 'Respuestas, intervenciones y aprobaciones'">
                   <i class="ti ti-messages"></i>
                   <span class="badge bg-primary ms-1" *ngIf="commentsCount(n)">{{ commentsCount(n) }}</span>
                 </button>
@@ -179,7 +180,8 @@
       </div>
       <div class="comments-body">
         <p class="comments-detail">{{ commentsNews.detail }}</p>
-        <app-news-thread [news]="commentsNews"></app-news-thread>
+        <app-news-thread [news]="commentsNews" [canAdminRespond]="canManage"
+          (adminResponded)="onAdminResponded($event)"></app-news-thread>
       </div>
     </div>
   </div>
@@ -271,7 +273,12 @@
               <td colspan="9" class="text-center text-muted py-3">Sin solicitudes.</td>
             </tr>
             <tr *ngFor="let o of visibleOrders">
-              <td><strong>#{{ o.consecutiveSme }}</strong></td>
+              <td>
+                <strong>#{{ o.consecutiveSme }}</strong>
+                <small *ngIf="o.consecutiveSummum" class="d-block text-muted font-monospace" title="Consecutivo Summum">
+                  {{ o.consecutiveSummum }}
+                </small>
+              </td>
               <td>
                 <div>{{ o.toolCode || o.machineCode || '—' }}</div>
                 <small class="text-muted">{{ o.toolName || o.machineName }}</small>
@@ -321,7 +328,10 @@
             <i class="ti ti-tool"></i>
             SME #{{ detailOrder.consecutiveSme }} · {{ detailOrder.toolCode || detailOrder.machineCode || 'Herramental' }}
           </h5>
-          <p class="modal-subtitle">{{ detailOrder.toolName || detailOrder.machineName || 'Sin nombre' }}</p>
+          <p class="modal-subtitle">
+            {{ detailOrder.toolName || detailOrder.machineName || 'Sin nombre' }}
+            <span *ngIf="detailOrder.consecutiveSummum"> · Consecutivo {{ detailOrder.consecutiveSummum }}</span>
+          </p>
         </div>
         <button type="button" class="btn-close btn-close-white" (click)="closeDetail()"></button>
       </div>

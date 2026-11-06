@@ -64,6 +64,23 @@ export interface NewsStop {
  *              Soporta el formato nuevo (origin/assignment/stop) y mantiene
  *              campos legacy opcionales por compatibilidad con el backend.
  */
+/** Lo que pide el solicitante a Mecánica (SME55003, bloque SOLICITANTE (A)). */
+export type MechanicsRequestedWork = 'REPARAR' | 'ACONDICIONAR' | 'MEJORAR_REPONER';
+
+/**
+ * SOLICITANTE (A) del formato SME55003 diligenciado por el área al reportar una novedad a
+ * Mecánica. Problema/Trabajo = detail; Secc/Dpto, Nombre y Fecha envío salen de la novedad.
+ */
+export interface NewsMechanicsRequest {
+    toolName: string;              // Htal
+    toolCode: string;              // Cód. Htal ('N/A' si no aplica)
+    operationNumber: string;       // Operación N° ...
+    operationTotal: string;        // ... de ...
+    operationDescription: string;  // Descripción de la operación
+    requestedWork: MechanicsRequestedWork;
+    mountingHits: { hits: number; date: string }[]; // Golpes montaje / Fecha (DD/MM/YYYY)
+}
+
 export interface ProductionNewsRequest {
     newsDate: string;                 // Formato: "DD/MM/YYYY"
     category: string;                 // Ej: "Parada de Proceso", "Reporte de Calidad"
@@ -76,6 +93,8 @@ export interface ProductionNewsRequest {
     stop?: NewsStop;                  // Solo si category === 'Parada de Proceso'
     /** Proyecto (opcional) + persona responsable; si se envía, ambos son obligatorios. */
     project?: { name: string; responsible: { document: string; fullName: string } };
+    /** Bloque SOLICITANTE (A) del SME55003: obligatorio cuando la novedad se asigna a Mecánica. */
+    mechanicsRequest?: NewsMechanicsRequest;
 
     // -----------------------------------------------------------------
     // CAMPOS LEGACY (opcionales — se mantienen mientras el backend los acepte)

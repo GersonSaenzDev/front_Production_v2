@@ -1,6 +1,6 @@
 // src/app/maintenance/maintenance-news/maintenance-news.ts
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { debounceTime, filter } from 'rxjs';
@@ -21,11 +21,12 @@ import { MaintenanceDraft, MaintenanceDraftService } from '../../services/mainte
 import { MaintenanceServices } from '../../services/maintenance-services';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
+import { StampConsecutiveComponent } from '../../theme/layout/admin/navigation/work-order-acceptance/stamp-consecutive.component';
 
 @Component({
   selector: 'app-maintenance-news',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, StampConsecutiveComponent],
   templateUrl: './maintenance-news.html',
   styleUrl: './maintenance-news.scss',
 })
@@ -37,6 +38,9 @@ export class MaintenanceNews implements OnInit {
   private authService = inject(AuthService);
   private draftService = inject(MaintenanceDraftService);
   private toastr = inject(ToastrService);
+
+  /** Consecutivo del fechero (Summum): se refresca tras crear para mostrar el siguiente. */
+  @ViewChild('stampField') private stampField?: StampConsecutiveComponent;
 
   readonly maintenanceTypes: MaintenanceType[] = ['PREVENTIVO', 'CORRECTIVO', 'PREDICTIVO'];
   readonly priorities: MaintenancePriority[] = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
@@ -78,7 +82,6 @@ export class MaintenanceNews implements OnInit {
 
     this.form = this.fb.group({
       consecutiveSection: [''],
-      consecutiveSummum: [''],
       machineArea: ['', Validators.required],
       machineDepartment: ['', Validators.required],
       machineCode: ['', Validators.required],
@@ -330,7 +333,7 @@ export class MaintenanceNews implements OnInit {
 
     // Solo enviamos los opcionales con contenido.
     if (v.consecutiveSection?.trim()) payload.consecutiveSection = v.consecutiveSection.trim();
-    if (v.consecutiveSummum?.trim()) payload.consecutiveSummum = v.consecutiveSummum.trim();
+    // consecutiveSummum (fechero) NO se envía: lo asigna el servidor al guardar.
     if (v.machineName?.trim()) payload.machineName = v.machineName.trim();
     if (v.machineArea?.trim()) payload.area = v.machineArea.trim();
     if (v.machineDepartment?.trim()) payload.department = v.machineDepartment.trim();
@@ -361,11 +364,15 @@ export class MaintenanceNews implements OnInit {
           return;
         }
         const consecutivo = res.data?.consecutiveMtto;
+        const stamp = res.data?.consecutiveSummum;
+        const parts = [consecutivo ? `MTTO #${consecutivo}` : '', stamp ? `Consecutivo ${stamp}` : ''].filter(Boolean);
         this.toastr.success(
-          consecutivo ? `Solicitud creada. MTTO #${consecutivo}` : 'Solicitud creada.',
+          parts.length ? `Solicitud creada. ${parts.join(' · ')}` : 'Solicitud creada.',
           'Mantenimiento',
+          { timeOut: 9000 },
         );
         this.resetForm();
+        this.stampField?.load();
       },
       error: (err: Error) => {
         this.isSubmitting = false;
@@ -378,7 +385,6 @@ export class MaintenanceNews implements OnInit {
     const user = this.authService.userData();
     this.form.reset({
       consecutiveSection: '',
-      consecutiveSummum: '',
       machineArea: '',
       machineDepartment: '',
       machineCode: '',

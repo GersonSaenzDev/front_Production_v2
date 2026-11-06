@@ -1,5 +1,6 @@
 // src/app/services/mechanics-draft-service.ts
 import { Injectable } from '@angular/core';
+import { NewsMechanicsRequest } from '../interfaces/production-news.interface';
 
 /**
  * Datos de una novedad (productionNews) para prellenar la Solicitud de Mecánica (SME55003).
@@ -17,6 +18,8 @@ export interface MechanicsDraft {
   requestedBy: string;
   /** Formato backend 'DD/MM/YYYY, HH:mm:ss'. */
   reportedAt: string;
+  /** SOLICITANTE (A) que diligenció el área al reportar la novedad (si existe). */
+  mechanicsRequest?: NewsMechanicsRequest;
 }
 
 /**

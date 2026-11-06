@@ -403,6 +403,15 @@ export class MechanicsManagement implements OnInit, OnDestroy {
     this.commentsNews = null;
   }
 
+  /** Respuesta administrativa del Jefe: actualiza la novedad en las listas (contador de comentarios). */
+  onAdminResponded(updated: ProductionNews): void {
+    const merge = (list: ProductionNews[]) => list.map((n) => (n._id === updated._id ? { ...n, ...updated } : n));
+    this.pendingNews = merge(this.pendingNews);
+    this.ongoingStops = merge(this.ongoingStops);
+    this.commentsNews = updated;
+    this.applyPendingNewsFilter();
+  }
+
   /** Cantidad de mensajes (respuestas + aprobaciones) para el botón "Comentarios". */
   commentsCount(n: ProductionNews): number {
     const evaluations = (n.workOrders || []).reduce((acc, wo) => acc + (wo.evaluations?.length || (wo.acceptance ? 1 : 0)), 0);
@@ -492,7 +501,8 @@ export class MechanicsManagement implements OnInit, OnDestroy {
       machineName: item.origin?.machineName || '',
       description: `${item.detail || ''}${stop}`.trim(),
       requestedBy: item.origin?.reportedBy?.name || '',
-      reportedAt: item.origin?.reportedAt || ''
+      reportedAt: item.origin?.reportedAt || '',
+      mechanicsRequest: item.mechanicsRequest
     });
     this.router.navigate(['/machining/mechanicsRequest']);
   }

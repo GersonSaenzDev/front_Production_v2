@@ -1,11 +1,13 @@
 // src/app/theme/layout/admin/navigation/shared-news/shared-news.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, inject, Input, OnInit, ViewChild } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { debounceTime, filter, switchMap, tap } from 'rxjs';
 import {
   Machine,
+  MechanicsRequestedWork,
+  NewsMechanicsRequest,
   ProductionArea,
   ProductionAreaGrouped,
   ProductionNewsRequest,
@@ -42,6 +44,19 @@ interface ResponsibleOption {
 
 /** Tolerancia (min) para relojes levemente adelantados; igual a la del backend. */
 const FUTURE_TOLERANCE_MINUTES = 5;
+
+/** El Área Destino es Mecánica (sin tildes ni mayúsculas; el catálogo la guarda como 'Mecanica'). */
+function isMechanicsArea(area: string | null | undefined): boolean {
+  return (area || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase() === 'MECANICA';
+}
+
+/** Operación N° debe estar entre 1 y el total ("Operación 2 de 3"). */
+function operationRangeValidator(group: AbstractControl): ValidationErrors | null {
+  const n = Number(group.get('operationNumber')?.value);
+  const total = Number(group.get('operationTotal')?.value);
+  if (!n || !total) return null;
+  return n > total ? { operationRange: true } : null;
+}
 
 @Component({
   selector: 'app-shared-news',
@@ -170,6 +185,29 @@ export class SharedNewsComponent implements OnInit {
     return displayArea(realName);
   }
 
+  // ============================================================
+  //  SOLICITANTE (A) — Herramental Mecánica (SME55003)
+  //  Obligatorio cuando el Área Destino es Mecánica.
+  // ============================================================
+
+  /** Opciones de "Requiere" del formato (mismo catálogo del backend). */
+  readonly mechanicsRequestedWork: { value: MechanicsRequestedWork; label: string; icon: string }[] = [
+    { value: 'REPARAR', label: 'Reparar', icon: 'ti-tool' },
+    { value: 'MEJORAR_REPONER', label: 'Mejorar / reponer', icon: 'ti-refresh' },
+    { value: 'ACONDICIONAR', label: 'Acondicionar', icon: 'ti-adjustments' },
+  ];
+  readonly maxHitRows = 10;
+  /** La novedad va dirigida a Mecánica: se muestra y exige el bloque SOLICITANTE (A). */
+  isMechanicsAssignment = false;
+
+  get mechanicsGroup(): FormGroup {
+    return this.novedadForm.get('mechanics') as FormGroup;
+  }
+
+  get mountingHits(): FormArray<FormGroup> {
+    return this.mechanicsGroup.get('mountingHits') as FormArray<FormGroup>;
+  }
+
   categoriasNovedad = [
     'Parada de Proceso',
     'Reporte de Calidad',
@@ -253,8 +291,12 @@ export class SharedNewsComponent implements OnInit {
       horaFin: [{ value: '', disabled: true }],
       totalParada: [{ value: '00:00', disabled: true }],
       detalle: ['', [Validators.required, Validators.minLength(50)]],
-      projectName: ['']
+      projectName: [''],
+      mechanics: this.buildMechanicsGroup()
     });
+    // Deshabilitado = no cuenta para la validez del formulario hasta que el destino sea Mecánica.
+    this.mechanicsGroup.disable({ emitEvent: false });
+    this.mechanicsGroup.get('toolCodeNA')?.valueChanges.subscribe((na: boolean) => this.applyToolCodeNA(na));
 
     this.loadProductionAreas();
     this.setupReferenceSearch();
@@ -534,6 +576,114 @@ export class SharedNewsComponent implements OnInit {
         ? subAreas.filter(s => s.subArea !== originSubArea)
         : subAreas;
     this.novedadForm.get('assignmentSubArea')?.setValue('');
+    this.setMechanicsBlock(isMechanicsArea(area));
+  }
+
+  // ---------------- SOLICITANTE (A) — Mecánica ----------------
+
+  private buildMechanicsGroup(): FormGroup {
+    return this.fb.group(
+      {
+        toolName: ['', [Validators.required, Validators.maxLength(150)]],
+        toolCode: ['', [Validators.required, Validators.maxLength(60)]],
+        toolCodeNA: [false],
+        operationNumber: ['', [Validators.required, Validators.pattern(/^\d+$/), Validators.min(1)]],
+        operationTotal: ['', [Validators.required, Validators.pattern(/^\d+$/), Validators.min(1)]],
+        operationDescription: ['', [Validators.required, Validators.maxLength(300)]],
+        requestedWork: ['', Validators.required],
+        mountingHits: this.fb.array([this.buildHitRow()]),
+      },
+      { validators: operationRangeValidator },
+    );
+  }
+
+  private buildHitRow(): FormGroup {
+    return this.fb.group({
+      hits: ['', [Validators.required, Validators.pattern(/^\d+$/)]],
+      date: [this.getCurrentDate(), Validators.required],
+    });
+  }
+
+  /** Muestra/oculta el bloque y activa/desactiva sus validaciones. */
+  private setMechanicsBlock(active: boolean): void {
+    this.isMechanicsAssignment = active;
+    if (active) {
+      this.mechanicsGroup.enable({ emitEvent: false });
+      this.applyToolCodeNA(!!this.mechanicsGroup.get('toolCodeNA')?.value);
+    } else {
+      this.mechanicsGroup.disable({ emitEvent: false });
+    }
+  }
+
+  /** Cód. Htal "No aplica": fija 'N/A' y bloquea el campo. */
+  private applyToolCodeNA(na: boolean): void {
+    const code = this.mechanicsGroup.get('toolCode');
+    if (!code || !this.isMechanicsAssignment) return;
+    if (na) {
+      code.setValue('N/A', { emitEvent: false });
+      code.disable({ emitEvent: false });
+    } else {
+      if (code.value === 'N/A') code.setValue('', { emitEvent: false });
+      code.enable({ emitEvent: false });
+    }
+  }
+
+  setRequestedWork(value: MechanicsRequestedWork): void {
+    const ctrl = this.mechanicsGroup.get('requestedWork');
+    ctrl?.setValue(value);
+    ctrl?.markAsTouched();
+  }
+
+  addHitRow(): void {
+    if (this.mountingHits.length >= this.maxHitRows) return;
+    this.mountingHits.push(this.buildHitRow());
+  }
+
+  removeHitRow(index: number): void {
+    if (this.mountingHits.length <= 1) return;
+    this.mountingHits.removeAt(index);
+  }
+
+  isMechInvalid(path: string): boolean {
+    const control = this.mechanicsGroup.get(path);
+    return !!control && control.enabled && control.invalid && (control.dirty || control.touched);
+  }
+
+  get operationRangeError(): boolean {
+    const g = this.mechanicsGroup;
+    return !!g.errors?.['operationRange'] && (!!g.get('operationNumber')?.touched || !!g.get('operationTotal')?.touched);
+  }
+
+  /** Payload del bloque para el backend (fechas en DD/MM/YYYY). */
+  private buildMechanicsPayload(): NewsMechanicsRequest {
+    const v = this.mechanicsGroup.getRawValue();
+    return {
+      toolName: String(v.toolName || '').trim(),
+      toolCode: v.toolCodeNA ? 'N/A' : String(v.toolCode || '').trim(),
+      operationNumber: String(v.operationNumber || '').trim(),
+      operationTotal: String(v.operationTotal || '').trim(),
+      operationDescription: String(v.operationDescription || '').trim(),
+      requestedWork: v.requestedWork,
+      mountingHits: (v.mountingHits as { hits: string; date: string }[]).map((h) => ({
+        hits: Number(h.hits),
+        date: isoToDdMmYyyy(h.date),
+      })),
+    };
+  }
+
+  private resetMechanicsBlock(): void {
+    while (this.mountingHits.length > 1) this.mountingHits.removeAt(1);
+    this.mechanicsGroup.reset({
+      toolName: '',
+      toolCode: '',
+      toolCodeNA: false,
+      operationNumber: '',
+      operationTotal: '',
+      operationDescription: '',
+      requestedWork: '',
+      mountingHits: [{ hits: '', date: this.getCurrentDate() }],
+    }, { emitEvent: false });
+    this.setMechanicsBlock(false);
   }
 
   get originSubAreas(): string[] {
@@ -610,7 +760,8 @@ export class SharedNewsComponent implements OnInit {
               responsible: { document: this.projectResponsible.document, fullName: this.projectResponsible.fullName }
             }
           }
-        : {})
+        : {}),
+      ...(this.isMechanicsAssignment ? { mechanicsRequest: this.buildMechanicsPayload() } : {})
     };
 
     const isOngoingStop = this.isLineaParada && !this.isStopFinished;
@@ -688,6 +839,7 @@ export class SharedNewsComponent implements OnInit {
       detalle: '',
       projectName: ''
     });
+    this.resetMechanicsBlock();
     this.projectResponsible = null;
     this.responsibleSearch = '';
     this.responsibleTouched = false;

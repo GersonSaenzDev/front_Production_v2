@@ -450,6 +450,199 @@ textarea.form-control {
 // =======================
 //  PROYECTO + RESPONSABLE (opcional)
 // =======================
+// ============================================================
+//  SOLICITANTE (A) — Herramental Mecánica (destino = Mecánica)
+// ============================================================
+.mech-block {
+  position: relative;
+  border: 1px solid #fde4c8;
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(180deg, #fffaf3 0%, #ffffff 70%);
+  animation: mech-in 0.22s ease-out;
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
+
+@keyframes mech-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.mech-number {
+  background: #f59e0b !important;
+  color: #fff;
+}
+
+.mech-badge {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.mech-code-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  .form-control { flex: 1; min-width: 0; }
+}
+
+.mech-na-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+
+  input { accent-color: #f59e0b; }
+}
+
+.mech-operation {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .form-control {
+    width: 4.5rem;
+    text-align: center;
+    font-weight: 600;
+  }
+}
+
+.mech-operation-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.mech-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: #dc2626;
+}
+
+.mech-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 2px;
+  border-radius: 12px;
+
+  &.is-invalid { box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.35); }
+}
+
+.mech-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.95rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: #f59e0b; color: #b45309; }
+
+  &.active {
+    border-color: #f59e0b;
+    background: #f59e0b;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  }
+
+  &:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
+}
+
+.mech-hits-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.mech-add-row {
+  border: 1px dashed #f59e0b;
+  color: #b45309;
+  background: transparent;
+  font-weight: 600;
+
+  &:hover:not(:disabled) { background: #fef3c7; }
+}
+
+.mech-hits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 0.5rem;
+}
+
+.mech-hit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  background: #fff;
+
+  .form-control { min-width: 0; }
+  input[inputmode='numeric'] { flex: 0 0 6.5rem; }
+  input[type='date'] { flex: 1; }
+}
+
+.mech-hit-index {
+  flex: 0 0 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.mech-hit-remove {
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+
+  &:hover:not(:disabled) { background: #fee2e2; color: #dc2626; }
+  &:disabled { opacity: 0.35; }
+}
+
+.mech-note {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #475569;
+  background: #f8fafc;
+
+  i { color: #f59e0b; margin-top: 0.1rem; }
+}
+
 .project-block {
   border: 1px dashed #c7d2fe;
   background: #f5f7ff;

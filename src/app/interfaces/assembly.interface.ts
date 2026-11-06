@@ -1,4 +1,5 @@
 // src/app/core/interfaces/assembly.interface.ts
+import { NewsMechanicsRequest } from './production-news.interface';
 
 // Interfaz para la respuesta de las tarjetas (ya la tenías)
 export interface AssemblyMetrics {
@@ -134,6 +135,10 @@ export interface NewsStop {
  * @description Cada respuesta histórica dada a la novedad.
  */
 export interface NewsResponseItem {
+  /** Mensaje administrativo del Jefe de Mantenimiento/Mecánica (no cierra ni cambia estados). */
+  isAdministrative?: boolean;
+  /** Área en nombre de la cual se respondió (p.ej. 'Mantenimiento'). */
+  area?: string;
   observation: string;
   actionTaken?: string;
   rootCause?: string;
@@ -178,6 +183,8 @@ export interface ProductionNews {
   workOrders?: NewsWorkOrderSummary[];
   /** Proyecto (opcional) y la persona responsable de atenderlo. */
   project?: NewsProject;
+  /** SOLICITANTE (A) del SME55003 (solo novedades asignadas a Mecánica). */
+  mechanicsRequest?: NewsMechanicsRequest;
 
   // Campos legacy (planos) que aún viajan en la respuesta del backend.
   assemblyLine?: string;
@@ -236,6 +243,8 @@ export interface NewsWorkOrderSummary {
   consecutive: string;
   /** 'MTTO #062600015' / 'SME #062600003' */
   label: string;
+  /** Consecutivo del fechero (global del área), p.ej. '0000278355'. */
+  stamp?: string;
   status: 'PENDIENTE' | 'EN_PROCESO' | 'PENDIENTE_ACEPTACION' | 'COMPLETADO' | 'CANCELADO' | string;
   priority: string;
   createdAt: string;

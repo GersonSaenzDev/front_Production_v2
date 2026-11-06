@@ -26,7 +26,8 @@ import {
     WarehouseEntryValidationResponse,
     ViewNewsQuery,
     FollowedNewsResponse,
-    FollowNewsToggleResponse
+    FollowNewsToggleResponse,
+    ProductionNews
 } from '../interfaces/assembly.interface';
 import { environment } from 'src/environments/environment';
 import { ErrorRecord, ErrorRecordsResponse, InventoryGroup, InventoryReportResponse } from '../interfaces/dashInventory.interface';
@@ -57,6 +58,7 @@ export class DashboardServices {
   private readonly LOAD_ASSEMBLY_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/loadAssembly`;
   private readonly CLEAN_DUPLICATE_BARCODES_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/storage/cleanDuplicateBarcodes`;
   private readonly FOLLOW_NEWS_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews/follow`;
+  private readonly ADMIN_RESPONSE_ENDPOINT = `${this.BASE_URL}${this.BASE_API}/assembly/productionNews/adminResponse`;
 
 
   private handleError(error: any) {
@@ -206,6 +208,16 @@ export class DashboardServices {
   toggleFollowNews(newsId: string, follow: boolean): Observable<FollowNewsToggleResponse> {
     return this.http
       .post<FollowNewsToggleResponse>(this.FOLLOW_NEWS_ENDPOINT, { newsId, follow })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /**
+   * Respuesta administrativa del Jefe de Mantenimiento/Mecánica (p.ej. repuesto pendiente).
+   * Solo agrega el mensaje: no cierra la novedad ni cambia estados. Identidad desde el token.
+   */
+  addAdminResponse(newsId: string, message: string): Observable<{ ok: boolean; msg: string; data?: ProductionNews }> {
+    return this.http
+      .post<{ ok: boolean; msg: string; data?: ProductionNews }>(this.ADMIN_RESPONSE_ENDPOINT, { newsId, message })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

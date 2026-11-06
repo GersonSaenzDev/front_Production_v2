@@ -5,7 +5,7 @@
 // "Generar solicitud"); en ese caso la solicitud queda ligada a quien reportó la novedad, que
 // será el único que podrá aceptar y evaluar la intervención.
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
@@ -26,12 +26,13 @@ import { MechanicsServices } from '../../services/mechanics-services';
 import { NewsServices } from '../../services/news-services';
 import { RhStaffServices } from '../../services/rh-staff-services';
 import { WORK_ORDER_PRIORITIES } from '../../theme/layout/admin/navigation/work-order-acceptance/work-order.util';
+import { StampConsecutiveComponent } from '../../theme/layout/admin/navigation/work-order-acceptance/stamp-consecutive.component';
 import { toBackendDate, toBackendDateTime, toDatetimeLocal } from '../mechanics-time.util';
 
 @Component({
   selector: 'app-mechanics-request',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, StampConsecutiveComponent],
   templateUrl: './mechanics-request.html',
   styleUrl: './mechanics-request.scss'
 })
@@ -44,6 +45,9 @@ export class MechanicsRequestForm implements OnInit {
   private draftService = inject(MechanicsDraftService);
   private router = inject(Router);
   private toastr = inject(ToastrService);
+
+  /** Consecutivo del fechero de Mecánica: se refresca tras crear para mostrar el siguiente. */
+  @ViewChild('stampField') private stampField?: StampConsecutiveComponent;
 
   readonly requestedWorkOptions = MECHANICS_REQUESTED_WORK;
   readonly smeRequestTypes = MECHANICS_SME_REQUEST_TYPES;
@@ -131,6 +135,24 @@ export class MechanicsRequestForm implements OnInit {
       reportedAt: draft.reportedAt ? toDatetimeLocal(draft.reportedAt) : '',
       receivedAt: toDatetimeLocal(this.nowBackend())
     });
+
+    // SOLICITANTE (A) que diligenció el área en la novedad (Htal, operación, requiere, golpes).
+    const sme = draft.mechanicsRequest;
+    if (sme) {
+      this.form.patchValue({
+        toolName: sme.toolName || '',
+        toolCode: sme.toolCode || '',
+        operationNumber: sme.operationNumber || '',
+        operationTotal: sme.operationTotal || '',
+        operationDescription: sme.operationDescription || '',
+        requestedWork: sme.requestedWork || ''
+      });
+      // Fechas 'DD/MM/YYYY' -> 'yyyy-MM-dd' (input date de la tabla).
+      this.mountingHits = (sme.mountingHits || []).map((h) => {
+        const [d, m, y] = (h.date || '').split('/');
+        return { hits: h.hits ?? null, date: d && m && y ? `${y}-${m}-${d}` : '' };
+      });
+    }
   }
 
   dismissDraftNotice(): void {
@@ -302,9 +324,14 @@ export class MechanicsRequestForm implements OnInit {
           return;
         }
         const consecutive = res.data?.consecutiveSme;
-        this.toastr.success(consecutive ? `Solicitud creada. SME #${consecutive}` : 'Solicitud creada.', 'Mecánica');
+        const stamp = res.data?.consecutiveSummum;
+        const parts = [consecutive ? `SME #${consecutive}` : '', stamp ? `Consecutivo ${stamp}` : ''].filter(Boolean);
+        this.toastr.success(parts.length ? `Solicitud creada. ${parts.join(' · ')}` : 'Solicitud creada.', 'Mecánica', {
+          timeOut: 9000,
+        });
         const fromNews = !!this.sourceNewsId;
         this.resetForm();
+        this.stampField?.load();
         // Desde una novedad se vuelve a la gestión para seguir asignando.
         if (fromNews) this.router.navigate(['/machining/mechanicsManagement']);
       },

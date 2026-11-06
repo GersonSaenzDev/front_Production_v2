@@ -148,7 +148,7 @@
               </td>
               <td class="text-end col-actions">
                 <button class="btn btn-sm btn-outline-secondary me-1" (click)="openComments(n)"
-                  title="Respuestas, intervenciones y aprobaciones">
+                  [title]="canManage ? 'Comentarios y respuesta administrativa' : 'Respuestas, intervenciones y aprobaciones'">
                   <i class="ti ti-messages"></i>
                   <span class="badge bg-primary ms-1" *ngIf="commentsCount(n)">{{ commentsCount(n) }}</span>
                 </button>
@@ -182,7 +182,8 @@
       </div>
       <div class="comments-body">
         <p class="comments-detail">{{ commentsNews.detail }}</p>
-        <app-news-thread [news]="commentsNews"></app-news-thread>
+        <app-news-thread [news]="commentsNews" [canAdminRespond]="canManage"
+          (adminResponded)="onAdminResponded($event)"></app-news-thread>
       </div>
     </div>
   </div>
@@ -273,7 +274,12 @@
               <td colspan="9" class="text-center text-muted py-3">Sin solicitudes.</td>
             </tr>
             <tr *ngFor="let o of visibleOrders">
-              <td><strong>#{{ o.consecutiveMtto }}</strong></td>
+              <td>
+                <strong>#{{ o.consecutiveMtto }}</strong>
+                <small *ngIf="o.consecutiveSummum" class="d-block text-muted font-monospace" title="Consecutivo Summum">
+                  {{ o.consecutiveSummum }}
+                </small>
+              </td>
               <td>
                 <div>{{ o.machineCode }}</div>
                 <small class="text-muted">{{ o.machineName }}</small>
@@ -324,7 +330,10 @@
             <i class="ti ti-tool"></i>
             MTTO #{{ detailOrder.consecutiveMtto }} · {{ detailOrder.machineCode }}
           </h5>
-          <p class="modal-subtitle">{{ detailOrder.machineName || 'Máquina sin nombre' }}</p>
+          <p class="modal-subtitle">
+            {{ detailOrder.machineName || 'Máquina sin nombre' }}
+            <span *ngIf="detailOrder.consecutiveSummum"> · Consecutivo {{ detailOrder.consecutiveSummum }}</span>
+          </p>
         </div>
         <button type="button" class="btn-close btn-close-white" (click)="closeDetail()"></button>
       </div>

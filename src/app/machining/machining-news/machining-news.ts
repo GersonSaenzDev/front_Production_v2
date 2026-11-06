@@ -1,4 +1,5 @@
-﻿import { Component } from '@angular/core';
+﻿// src/app/machining/machining-news/machining-news.ts
+import { Component } from '@angular/core';
 import { SharedNewsComponent } from '../../theme/layout/admin/navigation/shared-news/shared-news.component';
 
 @Component({

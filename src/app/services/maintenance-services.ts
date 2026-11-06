@@ -10,6 +10,7 @@ import {
   ApprovalRequest,
   ApprovalResponse,
   ClosureTrackingResponse,
+  StampCounterResponse,
   CreateMaintenanceRequest,
   DeleteMaintenanceResponse,
   MaintenanceListFilters,
@@ -187,6 +188,20 @@ export class MaintenanceServices {
     if (scope) params = params.set('scope', scope);
     return this.http
       .get<ClosureTrackingResponse<MaintenanceRequest>>(`${this.BASE_API}/requester/closure-tracking`, { params })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Consecutivo del fechero de Mantenimiento: último usado / siguiente + si puede ajustarlo. */
+  getStampCounter(): Observable<StampCounterResponse> {
+    return this.http
+      .get<StampCounterResponse>(`${this.BASE_API}/stamp-counter`)
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  /** Fija el ÚLTIMO número usado del fechero (solo Jefe de Mantenimiento / Gerencia). */
+  setStampCounter(lastUsed: number, reason: string): Observable<StampCounterResponse> {
+    return this.http
+      .put<StampCounterResponse>(`${this.BASE_API}/stamp-counter`, { lastUsed, reason })
       .pipe(catchError(this.handleError.bind(this)));
   }
 

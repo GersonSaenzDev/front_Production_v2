@@ -7,31 +7,93 @@
 // Lo usan el detalle de la vista de novedades de las áreas (app-shared-view-news) y las
 // pantallas de Mantenimiento y Mecánica, para que todos lean lo mismo.
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
 import {
   NewsResponseItem,
   NewsWorkOrderEvaluation,
   NewsWorkOrderSummary,
   ProductionNews
 } from '../../../../../interfaces/assembly.interface';
+import { DashboardServices } from '../../../../../services/dashboard-services';
 import { ratingStars, workOrderStatusLabel } from '../work-order-acceptance/work-order.util';
+
+/** Límites del mensaje administrativo (iguales al backend). */
+const ADMIN_MESSAGE_MIN = 10;
+const ADMIN_MESSAGE_MAX = 1000;
 
 @Component({
   selector: 'app-news-thread',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './news-thread.component.html',
   styleUrl: './news-thread.component.scss'
 })
 export class NewsThreadComponent {
+  private dashboardServices = inject(DashboardServices);
+  private toastr = inject(ToastrService);
+
   @Input({ required: true }) news!: ProductionNews;
   /** Decide si el usuario puede aprobar la orden (lo resuelve el contenedor). Sin función: no se muestra el botón. */
   @Input() canApprove?: (wo: NewsWorkOrderSummary) => boolean;
+  /**
+   * Jefe de Mantenimiento/Mecánica: puede escribir una RESPUESTA ADMINISTRATIVA (p.ej. repuesto
+   * pendiente). Solo mensaje: no cierra la novedad ni cambia estados. El backend valida el permiso.
+   */
+  @Input() canAdminRespond = false;
 
   /** Aprobar el cierre de una orden (el contenedor abre el modal de estrellas). */
   @Output() approve = new EventEmitter<NewsWorkOrderSummary>();
+  /** Novedad actualizada tras registrar la respuesta administrativa (el contenedor refresca su lista). */
+  @Output() adminResponded = new EventEmitter<ProductionNews>();
 
   readonly ratingStars = ratingStars;
+  readonly adminMessageMax = ADMIN_MESSAGE_MAX;
+
+  adminComposerOpen = false;
+  adminMessage = '';
+  adminSending = false;
+
+  get canSendAdmin(): boolean {
+    const len = this.adminMessage.trim().length;
+    return !this.adminSending && len >= ADMIN_MESSAGE_MIN && len <= ADMIN_MESSAGE_MAX;
+  }
+
+  get adminMessageHint(): string {
+    const len = this.adminMessage.trim().length;
+    return len < ADMIN_MESSAGE_MIN ? `Mínimo ${ADMIN_MESSAGE_MIN} caracteres` : `${len}/${ADMIN_MESSAGE_MAX}`;
+  }
+
+  toggleAdminComposer(): void {
+    this.adminComposerOpen = !this.adminComposerOpen;
+    if (!this.adminComposerOpen) this.adminMessage = '';
+  }
+
+  sendAdminResponse(): void {
+    if (!this.canSendAdmin || !this.news?._id) return;
+    this.adminSending = true;
+    this.dashboardServices.addAdminResponse(this.news._id, this.adminMessage.trim()).subscribe({
+      next: (res) => {
+        this.adminSending = false;
+        if (!res.ok) {
+          this.toastr.error(res.msg || 'No se pudo registrar la respuesta.', 'Respuesta administrativa');
+          return;
+        }
+        // Se conserva workOrders (el backend devuelve el documento sin el cruce de órdenes).
+        const updated: ProductionNews = { ...this.news, ...(res.data || {}), workOrders: this.news.workOrders };
+        this.news = updated;
+        this.adminMessage = '';
+        this.adminComposerOpen = false;
+        this.toastr.success('Mensaje enviado. Quien reportó la novedad ya puede verlo.', 'Respuesta administrativa');
+        this.adminResponded.emit(updated);
+      },
+      error: (err: Error) => {
+        this.adminSending = false;
+        this.toastr.error(err.message || 'No se pudo registrar la respuesta.', 'Respuesta administrativa');
+      }
+    });
+  }
 
   get workOrders(): NewsWorkOrderSummary[] {
     return this.news?.workOrders || [];
@@ -56,6 +118,10 @@ export class NewsThreadComponent {
         evaluatedAt: wo.acceptance.approvedAt
       }
     ];
+  }
+
+  requestedWorkLabel(value: string): string {
+    return ({ REPARAR: 'Reparar', ACONDICIONAR: 'Acondicionar', MEJORAR_REPONER: 'Mejorar / reponer' } as Record<string, string>)[value] || value;
   }
 
   serviceAreaLabel(area: string): string {

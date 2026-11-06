@@ -12,12 +12,34 @@
   </div>
 </div>
 
+<!-- SOLICITANTE (A) — Herramental Mecánica (SME55003) -->
+<div class="nt-section nt-sme" *ngIf="news.mechanicsRequest as sme">
+  <div class="nt-header">
+    <h6 class="mb-0"><i class="ti ti-tools"></i> Solicitante (A) · Herramental Mecánica</h6>
+    <span class="nt-sme-chip">{{ requestedWorkLabel(sme.requestedWork) }}</span>
+  </div>
+  <dl class="nt-sme-grid">
+    <div><dt>Htal</dt><dd>{{ sme.toolName }}</dd></div>
+    <div><dt>Cód. Htal</dt><dd>{{ sme.toolCode }}</dd></div>
+    <div><dt>Operación</dt><dd>{{ sme.operationNumber }} de {{ sme.operationTotal }}</dd></div>
+    <div class="nt-sme-wide"><dt>Descripción</dt><dd>{{ sme.operationDescription }}</dd></div>
+  </dl>
+  <div class="nt-sme-hits" *ngIf="sme.mountingHits.length">
+    <small class="nt-label">Golpes montaje / Fecha</small>
+    <span class="nt-sme-hit" *ngFor="let h of sme.mountingHits">
+      <strong>{{ h.hits | number }}</strong> · {{ h.date }}
+    </span>
+  </div>
+</div>
+
 <!-- ORDEN DE SERVICIO (Mantenimiento / Mecánica) -->
 <div class="nt-section" *ngFor="let wo of workOrders">
   <div class="nt-header">
     <h6 class="mb-0">
       <i class="ti ti-tool"></i>
       {{ serviceAreaLabel(wo.serviceArea) }} · <strong>{{ wo.label }}</strong>
+      <span *ngIf="wo.stamp" class="text-muted fw-normal small font-monospace" title="Consecutivo Summum">
+        · {{ wo.stamp }}</span>
     </h6>
     <span class="wo-chip" [ngClass]="phaseClass(wo)">{{ phaseLabel(wo) }}</span>
   </div>
@@ -75,17 +97,46 @@
 <div class="nt-section">
   <div class="nt-header">
     <h6 class="mb-0"><i class="ti ti-messages"></i> Respuestas de las áreas ({{ responses.length }})</h6>
+    <button *ngIf="canAdminRespond && !news.isClosed" type="button" class="nt-admin-btn"
+      [class.active]="adminComposerOpen" (click)="toggleAdminComposer()">
+      <i class="ti" [ngClass]="adminComposerOpen ? 'ti-x' : 'ti-message-plus'"></i>
+      {{ adminComposerOpen ? 'Cancelar' : 'Respuesta administrativa' }}
+    </button>
   </div>
+
+  <!-- Composer: mensaje del Jefe (no cierra ni cambia estados) -->
+  <div class="nt-admin-composer" *ngIf="adminComposerOpen && canAdminRespond">
+    <label for="ntAdminMessage" class="nt-admin-label">
+      Mensaje para quien reportó la novedad
+    </label>
+    <textarea id="ntAdminMessage" class="form-control" rows="3" [maxLength]="adminMessageMax"
+      [(ngModel)]="adminMessage" [disabled]="adminSending"
+      placeholder="Ej: Se solicitó el repuesto (rodamiento 6205) y está pendiente de llegada. Les avisamos al recibirlo."></textarea>
+    <div class="nt-admin-foot">
+      <small class="text-muted">
+        <i class="ti ti-info-circle"></i> Solo informa: la novedad y la orden siguen abiertas. · {{ adminMessageHint }}
+      </small>
+      <button type="button" class="btn btn-sm btn-primary" [disabled]="!canSendAdmin" (click)="sendAdminResponse()">
+        <span *ngIf="adminSending" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!adminSending" class="ti ti-send me-1"></i> Enviar
+      </button>
+    </div>
+  </div>
+
   <div *ngIf="responses.length; else noResponses">
-    <div class="nt-item" *ngFor="let r of responses">
-      <div class="nt-dot"></div>
+    <div class="nt-item" *ngFor="let r of responses" [class.nt-item-admin]="r.isAdministrative">
+      <div class="nt-dot" [class.nt-dot-admin]="r.isAdministrative"></div>
       <div class="nt-body">
         <small class="text-muted d-block">
+          <span *ngIf="r.isAdministrative" class="nt-admin-tag"><i class="ti ti-shield-check"></i> Administrativa · {{ r.area }}</span>
           <strong>{{ r.respondedBy?.name || '—' }}</strong>
           <ng-container *ngIf="r.respondedBy?.subArea || r.respondedBy?.area"> · {{ r.respondedBy?.subArea || r.respondedBy?.area }}</ng-container>
           · {{ r.respondedAt || '—' }}
         </small>
-        <p class="mb-1"><span class="nt-key">Observación:</span> {{ r.observation }}</p>
+        <p class="mb-1" *ngIf="r.isAdministrative; else regularObservation">{{ r.observation }}</p>
+        <ng-template #regularObservation>
+          <p class="mb-1"><span class="nt-key">Observación:</span> {{ r.observation }}</p>
+        </ng-template>
         <p class="mb-1" *ngIf="r.actionTaken"><span class="nt-key">Acción tomada:</span> {{ r.actionTaken }}</p>
         <p class="mb-0" *ngIf="r.rootCause"><span class="nt-key">Causa raíz:</span> {{ r.rootCause }}</p>
       </div>

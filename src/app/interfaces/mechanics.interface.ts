@@ -97,6 +97,8 @@ export interface MechanicsRequest {
   documentVersion: string;
   /** SOLICITUD N° — MMAA + secuencia de 5 dígitos por mes. */
   consecutiveSme: string;
+  /** Consecutivo del fechero de Mecánica (global, lo asigna el servidor al crear). */
+  consecutiveSummum?: string | null;
   toolName: string;
   toolCode: string;
   operationNumber: string;

@@ -380,6 +380,41 @@ export interface ClosureTrackingResponse<T> {
   data: { awaitingRequester: T[]; awaitingClose: T[] };
 }
 
+/** Área de servicio dueña de un contador de fechero (consecutivo global). */
+export type StampArea = 'MTTO' | 'SME';
+
+/** Ajuste manual del contador del fechero (auditoría). */
+export interface StampAdjustment {
+  from: number | null;
+  to: number;
+  by?: string;
+  byDocument?: string;
+  at?: string;
+  reason?: string;
+}
+
+/**
+ * Estado del consecutivo del fechero (antes sello manual): lo asigna el servidor al crear la
+ * solicitud. `lastUsed` = último número entregado; `next` = el que recibirá la próxima.
+ */
+export interface StampCounterStatus {
+  area: StampArea;
+  label: string;
+  configured: boolean;
+  lastUsed: number | null;
+  next: number | null;
+  lastUsedFormatted: string | null;
+  nextFormatted: string | null;
+  lastAdjustment: StampAdjustment | null;
+  canAdjust: boolean;
+}
+
+export interface StampCounterResponse {
+  ok: boolean;
+  msg?: string;
+  data: StampCounterStatus;
+}
+
 export interface DeleteMaintenanceResponse {
   ok: boolean;
   msg: string;
